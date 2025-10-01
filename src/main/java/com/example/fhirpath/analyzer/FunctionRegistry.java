@@ -26,9 +26,7 @@ public final class FunctionRegistry {
 
     // Public static methods for binary operations (called from Analyzer)
     public static IRNode buildAdd(IRNode left, IRNode right) {
-        IRNode l = ensureDecimal(left);
-        IRNode r = ensureDecimal(right);
-        return new Add(l, r);
+        return Add.create(left, right);
     }
 
     public static IRNode buildSub(IRNode left, IRNode right) {
@@ -82,4 +80,21 @@ public final class FunctionRegistry {
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

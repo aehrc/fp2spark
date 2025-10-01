@@ -31,7 +31,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
             // Strip quotes only; no escape handling in this minimal scaffold
             return new AstLiteral(val.substring(1, val.length() - 1));
         }
-        throw new IllegalArgumentException("Unsupported literal: " + ctx.getText());
+        throw new UnsupportedOperationException("Unsupported literal: " + ctx.getText());
     }
 
     @Override

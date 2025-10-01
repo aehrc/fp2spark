@@ -43,11 +43,17 @@ public class FhirPathIntegrationTest {
                 Arguments.of("12", "12"),
                 Arguments.of("10.4", "10.4"),
                 Arguments.of("true", "true"),
+                // plus operator with different types
                 Arguments.of("5 + 10", "15"),
                 Arguments.of("5.1 + 10.2", "15.3"),
                 Arguments.of("5 + 10.2", "15.2"),
                 Arguments.of("5.1 + 10", "15.1"),
                 Arguments.of("'foo' + 'bar'", "foobar"),
+                // minus operator with different types
+                Arguments.of("10 - 4", "6"),
+                Arguments.of("10.5 - 4.2", "6.3"),
+                Arguments.of("10 - 4.2", "5.8"),
+                Arguments.of("10.5 - 4", "6.5"),
                 // test count() on literals
                 Arguments.of("10.count()", "1"),
                 Arguments.of("{}.count()", "0"),

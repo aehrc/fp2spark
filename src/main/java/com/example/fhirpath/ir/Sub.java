@@ -1,14 +1,35 @@
 package com.example.fhirpath.ir;
 
+import com.example.fhirpath.analyzer.FunctionSignature;
+import com.example.fhirpath.analyzer.OverloadResolver;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 
-public record Sub(IRNode left, IRNode right) implements IRNode {
+import java.util.List;
+
+public record Sub(IRNode left, IRNode right, Type resultType) implements IRNode {
+
+    // Allowed overloads for subtraction
+    public static final List<FunctionSignature> SUB_SIGNATURES = List.of(
+        new FunctionSignature(List.of(Type.INTEGER, Type.INTEGER), Type.INTEGER),
+        new FunctionSignature(List.of(Type.DECIMAL, Type.DECIMAL), Type.DECIMAL)
+    );
+
+    // Factory to resolve overloads and perform necessary implicit casts
+    public static Sub create(IRNode left, IRNode right) {
+        OverloadResolver.ResolvedCall resolved =
+            OverloadResolver.resolveBinary(SUB_SIGNATURES, left, right);
+        return new Sub(resolved.left(), resolved.right(), resolved.resultType());
+    }
+
     @Override
-    public Type getType() { return Type.DECIMAL; }
+    public Type getType() { return resultType; }
 
     @Override
     public Column eval() {
-        return left.eval().minus(right.eval());
+        return switch (resultType) {
+            case INTEGER, DECIMAL -> left.eval().minus(right.eval());
+            default -> throw new IllegalArgumentException("Unsupported result type for Sub: " + resultType);
+        };
     }
 }

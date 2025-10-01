@@ -30,9 +30,8 @@ public final class FunctionRegistry {
     }
 
     public static IRNode buildSub(IRNode left, IRNode right) {
-        IRNode l = ensureDecimal(left);
-        IRNode r = ensureDecimal(right);
-        return new Sub(l, r);
+        // Use overloaded resolution similar to Add
+        return Sub.create(left, right);
     }
 
 
@@ -80,21 +79,3 @@ public final class FunctionRegistry {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

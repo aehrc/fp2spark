@@ -9,9 +9,11 @@ import java.util.List;
 
 public final class OverloadResolver {
 
-    private OverloadResolver() {}
+    private OverloadResolver() {
+    }
 
-    public record ResolvedCall(IRNode left, IRNode right, Type resultType) {}
+    public record ResolvedCall(IRNode left, IRNode right, Type resultType) {
+    }
 
     public static ResolvedCall resolveBinary(List<FunctionSignature> candidates,
                                              IRNode left,
@@ -45,14 +47,17 @@ public final class OverloadResolver {
         return best;
     }
 
-    private record Adapt(IRNode node, boolean ok, int cost) {}
+    private record Adapt(IRNode node, boolean ok, int cost) {
+    }
 
     private static Adapt adapt(IRNode arg, Type target) {
         Type actual = arg.getType();
         if (actual == target) return new Adapt(arg, true, 0);
 
         // Allow implicit casts via TypeSystem or from UNKNOWN
-        if (actual == Type.UNKNOWN || TypeSystem.canCast(actual, target)) {
+        if (target == Type.UNKNOWN) {
+            return new Adapt(arg, true, 1);
+        } else if (TypeSystem.canCast(actual, target)) {
             return new Adapt(new Cast(arg, target), true, 1);
         }
 

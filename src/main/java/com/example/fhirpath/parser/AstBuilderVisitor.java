@@ -173,7 +173,11 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
     @Override
     public AstNode visitEqualityExpression(FhirPathParser.EqualityExpressionContext ctx) {
-        throw new UnsupportedOperationException("Equality expressions (=, !=, ~, !~) are not yet supported");
+        AstNode left = visit(ctx.expression(0));
+        AstNode right = visit(ctx.expression(1));
+
+        String op = ctx.getChild(1).getText();
+        return new AstBinaryOperator(op, left, right);
     }
 
     @Override

@@ -20,4 +20,9 @@ public record FunctionSignature(List<Type> parameterTypes, Type resultType) {
     public static FunctionSignature biOperator(@Nonnull Type type) {
         return new FunctionSignature(List.of(type, type), type);
     }
+
+    @Nonnull
+    public static FunctionSignature biOperator(@Nonnull final Type argumentType, @Nonnull final Type resultType) {
+        return new FunctionSignature(List.of(argumentType, argumentType), resultType);
+    }
 }

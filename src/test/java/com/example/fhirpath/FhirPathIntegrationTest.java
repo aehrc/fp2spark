@@ -43,6 +43,7 @@ public class FhirPathIntegrationTest {
                 Arguments.of("12", "12"),
                 Arguments.of("10.4", "10.4"),
                 Arguments.of("true", "true"),
+                Arguments.of("{}", null),
                 // plus operator with different types
                 Arguments.of("5 + 10", "15"),
                 Arguments.of("5.1 + 10.2", "15.3"),
@@ -58,7 +59,16 @@ public class FhirPathIntegrationTest {
                 Arguments.of("10.count()", "1"),
                 Arguments.of("{}.count()", "0"),
                 Arguments.of("'xxx'.exists()", "true"),
-                Arguments.of("{}.exists()", "false")
+                Arguments.of("{}.exists()", "false"),
+                // test equality operators
+                Arguments.of("5 = 5", "true"),
+                Arguments.of("5 = 5.0", "true"),
+                Arguments.of("5.3 = 5.3", "true"),
+                Arguments.of("6.0 = 6", "true"),
+                Arguments.of("'x' = 'y'", "false"),
+                Arguments.of("'1' = 1", "false"),// different types
+                Arguments.of("{} = 1", null),
+                Arguments.of("'xxx'={}", null)
         );
     }
 
@@ -70,8 +80,7 @@ public class FhirPathIntegrationTest {
         // Evaluate the expression
         final Dataset<Row> result = spark.range(1).toDF().select(column.alias("result"));
         final Row row = result.first();
-        final Object value = row.get(0);
-        final String actualResult = value.toString();
+        final String actualResult = row.isNullAt(0)?null: row.get(0).toString();
         assertEquals(expectedResult, actualResult,
                 "Expression '" + expression + "' did not produce expected result");
     }

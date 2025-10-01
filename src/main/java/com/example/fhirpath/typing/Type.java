@@ -1,5 +1,7 @@
 package com.example.fhirpath.typing;
 
+import javax.annotation.Nonnull;
+
 public enum Type {
     INTEGER,
     DECIMAL,
@@ -10,5 +12,6 @@ public enum Type {
     STRING,
     NULL,
     UNKNOWN
+
 }
 

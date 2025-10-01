@@ -18,6 +18,7 @@ public final class FunctionRegistry {
         return switch (name) {
             case "+" -> buildAddFromArgs(args);
             case "-" -> buildSubFromArgs(args);
+            case "=" -> buildEqualsFromArgs(args);
             case "count" -> buildCount(args);
             case "exists" -> buildExists(args);
             default -> throw new UnsupportedOperationException("No matching overload for '" + name + "'");
@@ -34,6 +35,9 @@ public final class FunctionRegistry {
         return Sub.create(left, right);
     }
 
+    public static IRNode buildEquals(IRNode left, IRNode right) {
+        return Equals.create(left, right);
+    }
 
     // Private methods for function call resolution (with arity checking)
     private static IRNode buildAddFromArgs(List<IRNode> args) {
@@ -44,6 +48,11 @@ public final class FunctionRegistry {
     private static IRNode buildSubFromArgs(List<IRNode> args) {
         ensureArity("sub", args, 2);
         return buildSub(args.get(0), args.get(1));
+    }
+
+    private static IRNode buildEqualsFromArgs(List<IRNode> args) {
+        ensureArity("equals", args, 2);
+        return buildEquals(args.get(0), args.get(1));
     }
 
     private static IRNode buildCount(List<IRNode> args) {

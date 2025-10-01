@@ -1,22 +1,24 @@
 package com.example.fhirpath.typing;
 
+import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.DecimalType;
+
 public final class SparkTypeMapper {
 
-    public static final String DECIMAL_TYPE = "DECIMAL(38, 6)";
+    public static final DecimalType DECIMAL_TYPE = DataTypes.createDecimalType(38, 6);
 
-    private SparkTypeMapper() {}
+    private SparkTypeMapper() {
+    }
 
-    public static String toSparkTypeName(Type t) {
+    public static DataType toSparkDataType(Type t) {
         return switch (t) {
-            case INTEGER -> "int";
+            case INTEGER -> DataTypes.IntegerType;
             case DECIMAL -> DECIMAL_TYPE;
-            case DATE -> "date";
-            case DATE_TIME -> "timestamp";
-            case BOOLEAN -> "boolean";
-            case STRING, UNKNOWN -> "string";
-            case NULL -> "void";
+            case BOOLEAN -> DataTypes.BooleanType;
+            case STRING -> DataTypes.StringType;
+            case NULL -> DataTypes.NullType;
             default -> throw new IllegalArgumentException("Unknown type " + t);
         };
     }
 }
-

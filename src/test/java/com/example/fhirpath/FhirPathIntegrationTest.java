@@ -1,11 +1,14 @@
 package com.example.fhirpath;
 
-import org.apache.spark.sql.*;
-import org.apache.spark.sql.types.*;
-import org.junit.jupiter.api.*;
+import org.apache.spark.sql.Column;
+import org.apache.spark.sql.Dataset;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.SparkSession;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import javax.annotation.Nonnull;
@@ -15,7 +18,6 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.apache.spark.sql.functions.col;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class FhirPathIntegrationTest {
@@ -85,16 +87,14 @@ public class FhirPathIntegrationTest {
                 // NOTE: this may not be the correct behavior in general
                 // but because we do not support polymorphic collection this seem to be reasonable
                 // Another option is to fail when types are not the same
-                Arguments.of("1.1 | (2 | 3)", "[1.1, 2.0, 3.0]")
+                Arguments.of("1.1 | (2 | 3)", "[1.1, 2, 3]")
 
         );
     }
 
     @Nonnull
     static String valueToString(@Nonnull final Object value) {
-        if (value == null) {
-            return "null";
-        } else if (value instanceof BigDecimal bd) {
+        if (value instanceof BigDecimal bd) {
             return bd.stripTrailingZeros().toString();
         } else if (value instanceof scala.collection.mutable.WrappedArray<?> wa) {
             final List<String> elements = Arrays.stream((Object[]) wa.array())

@@ -1,8 +1,12 @@
 package com.example.fhirpath.ir;
 
-import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.SparkTypeMapper;
+import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
+import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.DataTypes;
+
+import static com.example.fhirpath.eval.EvalHelper.valueOf;
 
 public record Cast(IRNode child, Type targetType) implements IRNode {
     @Override
@@ -17,7 +21,11 @@ public record Cast(IRNode child, Type targetType) implements IRNode {
 
     @Override
     public Column eval() {
-        String sparkType = SparkTypeMapper.toSparkTypeName(targetType);
-        return child.eval().cast(sparkType);
+        final DataType sparkType = SparkTypeMapper.toSparkDataType(targetType);
+        // TODO: This only works for primitive SQL types.
+        return valueOf(child).apply(
+                a -> a.cast(DataTypes.createArrayType(sparkType)),
+                s -> s.cast(sparkType)
+        );
     }
 }

@@ -51,7 +51,7 @@ public record EvalHelper(Column column, boolean isSingular) {
     public Column asArray() {
         return applyNonNull(
                 Function.identity(),
-                s -> functions.array(s),
+                functions::array,
                 functions.array()
         );
     }

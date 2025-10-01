@@ -2,8 +2,6 @@ package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.ast.AstFunctionCall;
 import com.example.fhirpath.ir.*;
-import com.example.fhirpath.typing.Type;
-import com.example.fhirpath.typing.TypeSystem;
 
 import java.util.List;
 
@@ -73,23 +71,6 @@ public final class FunctionRegistry {
     private static IRNode buildExists(List<IRNode> args) {
         ensureArity("exists", args, 1);
         return new Exists(args.get(0));
-    }
-
-    private static IRNode ensureDecimal(IRNode n) {
-        Type t = n.getType();
-        if (t == Type.DECIMAL) return n;
-        if (TypeSystem.canCast(t, Type.DECIMAL)) return new Cast(n, Type.DECIMAL);
-        if (t == Type.UNKNOWN) return new Cast(n, Type.DECIMAL);
-        throw new IllegalArgumentException("Cannot cast " + t + " to DECIMAL");
-    }
-
-    private static IRNode ensureString(IRNode n) {
-        Type t = n.getType();
-        if (t == Type.STRING) return n;
-        if (TypeSystem.canCast(t, Type.STRING)) return new Cast(n, Type.STRING);
-        if (t == Type.UNKNOWN) return new Cast(n, Type.STRING);
-        // Allow implicit string conversion for most types
-        return new Cast(n, Type.STRING);
     }
 
     private static void ensureArity(String name, List<IRNode> args, int arity) {

@@ -2,7 +2,6 @@ package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.FunctionSignature;
 import com.example.fhirpath.analyzer.OverloadResolver;
-import com.example.fhirpath.eval.EvalHelper;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.TypeSystem;
 import org.apache.spark.sql.Column;

@@ -12,15 +12,15 @@ public record Add(IRNode left, IRNode right, Type resultType) implements IRNode 
 
     // Static signatures for Add operation
     public static final List<FunctionSignature> ADD_SIGNATURES = List.of(
-        new FunctionSignature(List.of(Type.INTEGER, Type.INTEGER), Type.INTEGER),
-        new FunctionSignature(List.of(Type.DECIMAL, Type.DECIMAL), Type.DECIMAL),
-        new FunctionSignature(List.of(Type.STRING, Type.STRING), Type.STRING)
+            FunctionSignature.biOperator(Type.INTEGER),
+            FunctionSignature.biOperator(Type.DECIMAL),
+            FunctionSignature.biOperator(Type.STRING)
     );
 
     // Factory method to resolve and create Add with proper types
     public static Add create(IRNode left, IRNode right) {
         OverloadResolver.ResolvedCall resolved =
-            OverloadResolver.resolveBinary(ADD_SIGNATURES, left, right);
+                OverloadResolver.resolveBinary(ADD_SIGNATURES, left, right);
         return new Add(resolved.left(), resolved.right(), resolved.resultType());
     }
 

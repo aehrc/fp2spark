@@ -8,6 +8,7 @@ public enum Type {
     DATE_TIME,
     BOOLEAN,
     STRING,
+    NULL,
     UNKNOWN
 }
 

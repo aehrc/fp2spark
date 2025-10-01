@@ -22,6 +22,7 @@ public class Analyzer {
     }
 
     private Type inferType(Object value) {
+        if (value == null) return Type.NULL;
         if (value instanceof Integer) return Type.INTEGER;
         if (value instanceof BigDecimal) return Type.DECIMAL;
         if (value instanceof Boolean) return Type.BOOLEAN;

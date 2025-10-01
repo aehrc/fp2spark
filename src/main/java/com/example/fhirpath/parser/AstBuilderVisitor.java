@@ -1,37 +1,155 @@
 package com.example.fhirpath.parser;
 
 import com.example.fhirpath.ast.*;
-import org.antlr.v4.runtime.tree.TerminalNode;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
     @Override
-    public AstNode visitParse(FhirPathParser.ParseContext ctx) {
+    public AstNode visitEntireExpression(FhirPathParser.EntireExpressionContext ctx) {
         return visit(ctx.expression());
     }
 
+    // Handle different expression types - for now, focus on the ones we support
     @Override
-    public AstNode visitLiteral(FhirPathParser.LiteralContext ctx) {
-        TerminalNode intNode = ctx.INT();
-        if (intNode != null) {
-            String text = intNode.getText();
-            // Fit into Integer if small; else Long
-            try {
+    public AstNode visitTermExpression(FhirPathParser.TermExpressionContext ctx) {
+        return visit(ctx.term());
+    }
+
+    @Override
+    public AstNode visitAdditiveExpression(FhirPathParser.AdditiveExpressionContext ctx) {
+        AstNode left = visit(ctx.expression(0));
+        AstNode right = visit(ctx.expression(1));
+
+        String op = ctx.getChild(1).getText();
+        String functionName = switch (op) {
+            case "+" -> "add";
+            case "-" -> "sub";
+            case "&" -> "concat"; // String concatenation - not implemented yet
+            default -> throw new IllegalArgumentException("Unknown additive operator: " + op);
+        };
+
+        return new AstFunctionCall(functionName, List.of(left, right));
+    }
+
+    @Override
+    public AstNode visitMultiplicativeExpression(FhirPathParser.MultiplicativeExpressionContext ctx) {
+        AstNode left = visit(ctx.expression(0));
+        AstNode right = visit(ctx.expression(1));
+
+        String op = ctx.getChild(1).getText();
+        String functionName = switch (op) {
+            case "*" -> "multiply";
+            case "/" -> "divide";
+            case "div" -> "div";
+            case "mod" -> "mod";
+            default -> throw new IllegalArgumentException("Unknown multiplicative operator: " + op);
+        };
+
+        return new AstFunctionCall(functionName, List.of(left, right));
+    }
+
+    @Override
+    public AstNode visitPolarityExpression(FhirPathParser.PolarityExpressionContext ctx) {
+        AstNode operand = visit(ctx.expression());
+        String op = ctx.getChild(0).getText();
+
+        String functionName = switch (op) {
+            case "+" -> "unaryPlus";
+            case "-" -> "unaryMinus";
+            default -> throw new IllegalArgumentException("Unknown polarity operator: " + op);
+        };
+
+        return new AstFunctionCall(functionName, List.of(operand));
+    }
+
+    // Term handling
+    @Override
+    public AstNode visitLiteralTerm(FhirPathParser.LiteralTermContext ctx) {
+        return visit(ctx.literal());
+    }
+
+    @Override
+    public AstNode visitInvocationTerm(FhirPathParser.InvocationTermContext ctx) {
+        return visit(ctx.invocation());
+    }
+
+    @Override
+    public AstNode visitParenthesizedTerm(FhirPathParser.ParenthesizedTermContext ctx) {
+        return visit(ctx.expression());
+    }
+
+    // Literal handling
+    @Override
+    public AstNode visitStringLiteral(FhirPathParser.StringLiteralContext ctx) {
+        String text = ctx.STRING().getText();
+        // Remove surrounding quotes and handle basic escaping
+        String value = text.substring(1, text.length() - 1);
+        return new AstLiteral(value);
+    }
+
+    @Override
+    public AstNode visitNumberLiteral(FhirPathParser.NumberLiteralContext ctx) {
+        String text = ctx.NUMBER().getText();
+        try {
+            if (text.contains(".")) {
+                return new AstLiteral(new BigDecimal(text));
+            } else {
                 return new AstLiteral(Integer.parseInt(text));
-            } catch (NumberFormatException nfe) {
-                return new AstLiteral(Long.parseLong(text));
+            }
+        } catch (NumberFormatException e) {
+            return new AstLiteral(Long.parseLong(text));
+        }
+    }
+
+    @Override
+    public AstNode visitLongNumberLiteral(FhirPathParser.LongNumberLiteralContext ctx) {
+        String text = ctx.LONGNUMBER().getText();
+        // Remove 'L' suffix if present
+        if (text.endsWith("L")) {
+            text = text.substring(0, text.length() - 1);
+        }
+        return new AstLiteral(Long.parseLong(text));
+    }
+
+    @Override
+    public AstNode visitBooleanLiteral(FhirPathParser.BooleanLiteralContext ctx) {
+        String text = ctx.getText();
+        return new AstLiteral(Boolean.parseBoolean(text));
+    }
+
+    @Override
+    public AstNode visitNullLiteral(FhirPathParser.NullLiteralContext ctx) {
+        return new AstLiteral(null);
+    }
+
+    // Invocation handling
+    @Override
+    public AstNode visitMemberInvocation(FhirPathParser.MemberInvocationContext ctx) {
+        String identifier = visit(ctx.identifier()).toString();
+        return new AstTraversal(identifier);
+    }
+
+    @Override
+    public AstNode visitFunctionInvocation(FhirPathParser.FunctionInvocationContext ctx) {
+        return visit(ctx.function());
+    }
+
+    @Override
+    public AstNode visitFunction(FhirPathParser.FunctionContext ctx) {
+        String functionName = ctx.identifier().getText();
+        List<AstNode> arguments = new ArrayList<>();
+
+        if (ctx.paramList() != null) {
+            for (var expr : ctx.paramList().expression()) {
+                arguments.add(visit(expr));
             }
         }
-        TerminalNode strNode = ctx.STRING();
-        if (strNode != null) {
-            String val = strNode.getText();
-            // Strip quotes only; no escape handling in this minimal scaffold
-            return new AstLiteral(val.substring(1, val.length() - 1));
-        }
-        throw new UnsupportedOperationException("Unsupported literal: " + ctx.getText());
+
+        return new AstFunctionCall(functionName, arguments);
     }
 
     @Override
@@ -39,35 +157,101 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
         return new AstTraversal(ctx.getText());
     }
 
+    // Default behavior for unsupported expressions - throw informative errors
     @Override
-    public AstNode visitFunctionCall(FhirPathParser.FunctionCallContext ctx) {
-        String fn = ctx.identifier().getText();
-        List<AstNode> args = new ArrayList<>();
-        List<FhirPathParser.ExpressionContext> exprs = ctx.expression();
-        if (exprs != null) {
-            for (var e : exprs) {
-                args.add(visit(e));
-            }
-        }
-        return new AstFunctionCall(fn, args);
+    public AstNode visitInvocationExpression(FhirPathParser.InvocationExpressionContext ctx) {
+        throw new UnsupportedOperationException("Invocation expressions (.) are not yet supported");
     }
 
     @Override
-    public AstNode visitAdditiveExpr(FhirPathParser.AdditiveExprContext ctx) {
-        // Left associative fold of primary (op primary)* into nested function calls
-        AstNode current = visit(ctx.primary(0));
-        int termCount = ctx.primary().size();
-        for (int i = 1; i < termCount; i++) {
-            String op = ctx.getChild(2 * i - 1).getText();
-            AstNode right = visit(ctx.primary(i));
-            String fn = switch (op) {
-                case "+" -> "add";
-                case "-" -> "sub"; // Not implemented yet in registry; kept for future
-                default -> throw new IllegalArgumentException("Unknown op: " + op);
-            };
-            current = new AstFunctionCall(fn, List.of(current, right));
-        }
-        return current;
+    public AstNode visitIndexerExpression(FhirPathParser.IndexerExpressionContext ctx) {
+        throw new UnsupportedOperationException("Indexer expressions ([]) are not yet supported");
+    }
+
+    @Override
+    public AstNode visitUnionExpression(FhirPathParser.UnionExpressionContext ctx) {
+        throw new UnsupportedOperationException("Union expressions (|) are not yet supported");
+    }
+
+    @Override
+    public AstNode visitEqualityExpression(FhirPathParser.EqualityExpressionContext ctx) {
+        throw new UnsupportedOperationException("Equality expressions (=, !=, ~, !~) are not yet supported");
+    }
+
+    @Override
+    public AstNode visitInequalityExpression(FhirPathParser.InequalityExpressionContext ctx) {
+        throw new UnsupportedOperationException("Inequality expressions (<, <=, >, >=) are not yet supported");
+    }
+
+    @Override
+    public AstNode visitMembershipExpression(FhirPathParser.MembershipExpressionContext ctx) {
+        throw new UnsupportedOperationException("Membership expressions (in, contains) are not yet supported");
+    }
+
+    @Override
+    public AstNode visitAndExpression(FhirPathParser.AndExpressionContext ctx) {
+        throw new UnsupportedOperationException("Logical AND expressions are not yet supported");
+    }
+
+    @Override
+    public AstNode visitOrExpression(FhirPathParser.OrExpressionContext ctx) {
+        throw new UnsupportedOperationException("Logical OR expressions are not yet supported");
+    }
+
+    @Override
+    public AstNode visitImpliesExpression(FhirPathParser.ImpliesExpressionContext ctx) {
+        throw new UnsupportedOperationException("Implies expressions are not yet supported");
+    }
+
+    @Override
+    public AstNode visitTypeExpression(FhirPathParser.TypeExpressionContext ctx) {
+        throw new UnsupportedOperationException("Type expressions (is, as) are not yet supported");
+    }
+
+    // Unsupported literal types
+    @Override
+    public AstNode visitDateLiteral(FhirPathParser.DateLiteralContext ctx) {
+        throw new UnsupportedOperationException("Date literals are not yet supported");
+    }
+
+    @Override
+    public AstNode visitDateTimeLiteral(FhirPathParser.DateTimeLiteralContext ctx) {
+        throw new UnsupportedOperationException("DateTime literals are not yet supported");
+    }
+
+    @Override
+    public AstNode visitTimeLiteral(FhirPathParser.TimeLiteralContext ctx) {
+        throw new UnsupportedOperationException("Time literals are not yet supported");
+    }
+
+    @Override
+    public AstNode visitQuantityLiteral(FhirPathParser.QuantityLiteralContext ctx) {
+        throw new UnsupportedOperationException("Quantity literals are not yet supported");
+    }
+
+    @Override
+    public AstNode visitCodingLiteral(FhirPathParser.CodingLiteralContext ctx) {
+        throw new UnsupportedOperationException("Coding literals are not yet supported");
+    }
+
+    // Special invocations
+    @Override
+    public AstNode visitThisInvocation(FhirPathParser.ThisInvocationContext ctx) {
+        throw new UnsupportedOperationException("$this invocations are not yet supported");
+    }
+
+    @Override
+    public AstNode visitIndexInvocation(FhirPathParser.IndexInvocationContext ctx) {
+        throw new UnsupportedOperationException("$index invocations are not yet supported");
+    }
+
+    @Override
+    public AstNode visitTotalInvocation(FhirPathParser.TotalInvocationContext ctx) {
+        throw new UnsupportedOperationException("$total invocations are not yet supported");
+    }
+
+    @Override
+    public AstNode visitExternalConstantTerm(FhirPathParser.ExternalConstantTermContext ctx) {
+        throw new UnsupportedOperationException("External constants (%) are not yet supported");
     }
 }
-

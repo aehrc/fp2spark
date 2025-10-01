@@ -42,6 +42,7 @@ public class FhirPathIntegrationTest {
                 Arguments.of("'hello'", "hello"),
                 Arguments.of("12", "12"),
                 Arguments.of("10.4", "10.4"),
+                Arguments.of("true", "true"),
                 Arguments.of("5 + 10", "15")
         );
     }

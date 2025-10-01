@@ -11,6 +11,7 @@ public final class SparkTypeMapper {
             case DATE_TIME -> "timestamp";
             case BOOLEAN -> "boolean";
             case STRING, UNKNOWN -> "string";
+            case NULL -> "null";
         };
     }
 }

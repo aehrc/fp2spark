@@ -12,7 +12,7 @@ public final class ParserFacade {
         FhirPathLexer lexer = new FhirPathLexer(CharStreams.fromString(expr));
         FhirPathParser parser = new FhirPathParser(new CommonTokenStream(lexer));
         parser.setErrorHandler(new BailErrorStrategy());
-        return new AstBuilderVisitor().visit(parser.parse());
+        return new AstBuilderVisitor().visit(parser.entireExpression());
     }
 }
 

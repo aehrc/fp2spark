@@ -12,11 +12,10 @@ public final class FunctionRegistry {
     private FunctionRegistry() {}
 
     public static IRNode resolve(Analyzer analyzer, AstFunctionCall call) {
-        List<IRNode> args = call.getArguments().stream().map(analyzer::analyze).toList();
-        String name = call.getFunctionName();
+        List<IRNode> args = call.arguments().stream().map(analyzer::analyze).toList();
+        String name = call.functionName();
         return switch (name) {
             case "+", "add" -> buildAdd(args);
-            case "-", "sub" -> buildSub(args);
             case "count" -> buildCount(args);
             case "exists" -> buildExists(args);
             default -> throw new UnsupportedOperationException("No matching overload for '" + name + "'");
@@ -28,13 +27,6 @@ public final class FunctionRegistry {
         IRNode l = ensureDecimal(args.get(0));
         IRNode r = ensureDecimal(args.get(1));
         return new Add(l, r);
-    }
-
-    private static IRNode buildSub(List<IRNode> args) {
-        ensureArity("sub", args, 2);
-        IRNode l = ensureDecimal(args.get(0));
-        IRNode r = ensureDecimal(args.get(1));
-        return new Sub(l, r);
     }
 
     private static IRNode buildCount(List<IRNode> args) {

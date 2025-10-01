@@ -8,10 +8,10 @@ public class Analyzer {
 
     public IRNode analyze(AstNode node) {
         if (node instanceof AstLiteral lit) {
-            return new Literal(lit.getValue(), inferType(lit.getValue()));
+            return new Literal(lit.value(), inferType(lit.value()));
         }
         if (node instanceof AstTraversal trav) {
-            return new Traversal(trav.getPath());
+            return new Traversal(trav.path());
         }
         if (node instanceof AstFunctionCall call) {
             return FunctionRegistry.resolve(this, call);
@@ -28,4 +28,3 @@ public class Analyzer {
         return Type.UNKNOWN;
     }
 }
-

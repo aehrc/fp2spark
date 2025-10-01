@@ -1,6 +1,8 @@
 package com.example.fhirpath.ast;
 
 public interface AstNode {
-    int getId();
+    default int getId() {
+        return System.identityHashCode(this);
+    }
 }
 

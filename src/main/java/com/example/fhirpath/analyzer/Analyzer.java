@@ -4,6 +4,8 @@ import com.example.fhirpath.ast.*;
 import com.example.fhirpath.ir.*;
 import com.example.fhirpath.typing.Type;
 
+import java.math.BigDecimal;
+
 public class Analyzer {
 
     public IRNode analyze(AstNode node) {
@@ -21,10 +23,9 @@ public class Analyzer {
 
     private Type inferType(Object value) {
         if (value instanceof Integer) return Type.INTEGER;
-        if (value instanceof Long) return Type.INTEGER;
-        if (value instanceof Double || value instanceof Float) return Type.DECIMAL;
+        if (value instanceof BigDecimal) return Type.DECIMAL;
         if (value instanceof Boolean) return Type.BOOLEAN;
         if (value instanceof String) return Type.STRING;
-        return Type.UNKNOWN;
+        throw new IllegalArgumentException("Unsupported literal value: " + value);
     }
 }

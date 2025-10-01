@@ -9,24 +9,44 @@ import java.util.List;
 
 public final class FunctionRegistry {
 
-    private FunctionRegistry() {}
+    private FunctionRegistry() {
+    }
 
     public static IRNode resolve(Analyzer analyzer, AstFunctionCall call) {
         List<IRNode> args = call.arguments().stream().map(analyzer::analyze).toList();
         String name = call.functionName();
         return switch (name) {
-            case "+", "add" -> buildAdd(args);
+            case "+" -> buildAddFromArgs(args);
+            case "-" -> buildSubFromArgs(args);
             case "count" -> buildCount(args);
             case "exists" -> buildExists(args);
             default -> throw new UnsupportedOperationException("No matching overload for '" + name + "'");
         };
     }
 
-    private static IRNode buildAdd(List<IRNode> args) {
-        ensureArity("add", args, 2);
-        IRNode l = ensureDecimal(args.get(0));
-        IRNode r = ensureDecimal(args.get(1));
+    // Public static methods for binary operations (called from Analyzer)
+    public static IRNode buildAdd(IRNode left, IRNode right) {
+        IRNode l = ensureDecimal(left);
+        IRNode r = ensureDecimal(right);
         return new Add(l, r);
+    }
+
+    public static IRNode buildSub(IRNode left, IRNode right) {
+        IRNode l = ensureDecimal(left);
+        IRNode r = ensureDecimal(right);
+        return new Sub(l, r);
+    }
+
+
+    // Private methods for function call resolution (with arity checking)
+    private static IRNode buildAddFromArgs(List<IRNode> args) {
+        ensureArity("add", args, 2);
+        return buildAdd(args.get(0), args.get(1));
+    }
+
+    private static IRNode buildSubFromArgs(List<IRNode> args) {
+        ensureArity("sub", args, 2);
+        return buildSub(args.get(0), args.get(1));
     }
 
     private static IRNode buildCount(List<IRNode> args) {
@@ -43,9 +63,17 @@ public final class FunctionRegistry {
         Type t = n.getType();
         if (t == Type.DECIMAL) return n;
         if (TypeSystem.canCast(t, Type.DECIMAL)) return new Cast(n, Type.DECIMAL);
-        // Last-resort: try casting unknowns
         if (t == Type.UNKNOWN) return new Cast(n, Type.DECIMAL);
         throw new IllegalArgumentException("Cannot cast " + t + " to DECIMAL");
+    }
+
+    private static IRNode ensureString(IRNode n) {
+        Type t = n.getType();
+        if (t == Type.STRING) return n;
+        if (TypeSystem.canCast(t, Type.STRING)) return new Cast(n, Type.STRING);
+        if (t == Type.UNKNOWN) return new Cast(n, Type.STRING);
+        // Allow implicit string conversion for most types
+        return new Cast(n, Type.STRING);
     }
 
     private static void ensureArity(String name, List<IRNode> args, int arity) {

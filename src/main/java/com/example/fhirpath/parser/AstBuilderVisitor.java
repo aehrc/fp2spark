@@ -25,14 +25,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
         AstNode right = visit(ctx.expression(1));
 
         String op = ctx.getChild(1).getText();
-        String functionName = switch (op) {
-            case "+" -> "add";
-            case "-" -> "sub";
-            case "&" -> "concat"; // String concatenation - not implemented yet
-            default -> throw new IllegalArgumentException("Unknown additive operator: " + op);
-        };
-
-        return new AstFunctionCall(functionName, List.of(left, right));
+        return new AstBinaryOperator(op, left, right);
     }
 
     @Override
@@ -41,15 +34,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
         AstNode right = visit(ctx.expression(1));
 
         String op = ctx.getChild(1).getText();
-        String functionName = switch (op) {
-            case "*" -> "multiply";
-            case "/" -> "divide";
-            case "div" -> "div";
-            case "mod" -> "mod";
-            default -> throw new IllegalArgumentException("Unknown multiplicative operator: " + op);
-        };
-
-        return new AstFunctionCall(functionName, List.of(left, right));
+        return new AstBinaryOperator(op, left, right);
     }
 
     @Override

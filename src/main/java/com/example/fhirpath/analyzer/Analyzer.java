@@ -18,7 +18,22 @@ public class Analyzer {
         if (node instanceof AstFunctionCall call) {
             return FunctionRegistry.resolve(this, call);
         }
+        if (node instanceof AstBinaryOperator binaryOp) {
+            return resolveBinaryOp(binaryOp);
+        }
         throw new IllegalArgumentException("Unsupported AST node: " + node);
+    }
+
+    private IRNode resolveBinaryOp(AstBinaryOperator binaryOp) {
+        IRNode left = analyze(binaryOp.left());
+        IRNode right = analyze(binaryOp.right());
+        String op = binaryOp.operator();
+
+        return switch (op) {
+            case "+" -> FunctionRegistry.buildAdd(left, right);
+            case "-" -> FunctionRegistry.buildSub(left, right);
+            default -> throw new IllegalArgumentException("Unsupported binary operator: " + op);
+        };
     }
 
     private Type inferType(Object value) {

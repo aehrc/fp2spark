@@ -8,6 +8,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import javax.annotation.Nonnull;
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
@@ -58,8 +60,12 @@ public class FhirPathIntegrationTest {
                 // test count() on literals
                 Arguments.of("10.count()", "1"),
                 Arguments.of("{}.count()", "0"),
+                Arguments.of("(1 | 2).count()", "2"),
+                Arguments.of("('a' | 'b' | 'c').count()", "3"),
+                // test exists() on literals
                 Arguments.of("'xxx'.exists()", "true"),
                 Arguments.of("{}.exists()", "false"),
+                Arguments.of("(1 | 2).exists()", "true"),
                 // test equality operators
                 Arguments.of("5 = 5", "true"),
                 Arguments.of("5 = 5.0", "true"),
@@ -68,8 +74,36 @@ public class FhirPathIntegrationTest {
                 Arguments.of("'x' = 'y'", "false"),
                 Arguments.of("'1' = 1", "false"),// different types
                 Arguments.of("{} = 1", null),
-                Arguments.of("'xxx'={}", null)
+                Arguments.of("'xxx'={}", null),
+                // Union operator test left for later when implemented
+                Arguments.of("5 | 10", "[5, 10]"),
+                Arguments.of("5.2 | 10.5", "[5.2, 10.5]"),
+                Arguments.of("'a' | 'b' | 'c'", "[a, b, c]"),
+                Arguments.of("1 | {}", "[1]"),
+                Arguments.of("{} | 1", "[1]"),
+                Arguments.of("true | false | true", "[true, false]"),
+                // NOTE: this may not be the correct behavior in general
+                // but because we do not support polymorphic collection this seem to be reasonable
+                // Another option is to fail when types are not the same
+                Arguments.of("1.1 | (2 | 3)", "[1.1, 2.0, 3.0]")
+
         );
+    }
+
+    @Nonnull
+    static String valueToString(@Nonnull final Object value) {
+        if (value == null) {
+            return "null";
+        } else if (value instanceof BigDecimal bd) {
+            return bd.stripTrailingZeros().toString();
+        } else if (value instanceof scala.collection.mutable.WrappedArray<?> wa) {
+            final List<String> elements = Arrays.stream((Object[]) wa.array())
+                    .map(FhirPathIntegrationTest::valueToString)
+                    .toList();
+            return "[" + String.join(", ", elements) + "]";
+        } else {
+            return value.toString();
+        }
     }
 
     @ParameterizedTest
@@ -80,7 +114,7 @@ public class FhirPathIntegrationTest {
         // Evaluate the expression
         final Dataset<Row> result = spark.range(1).toDF().select(column.alias("result"));
         final Row row = result.first();
-        final String actualResult = row.isNullAt(0)?null: row.get(0).toString();
+        final String actualResult = row.isNullAt(0) ? null : valueToString(row.get(0));
         assertEquals(expectedResult, actualResult,
                 "Expression '" + expression + "' did not produce expected result");
     }

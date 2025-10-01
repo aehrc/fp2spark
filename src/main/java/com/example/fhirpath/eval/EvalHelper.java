@@ -3,6 +3,7 @@ package com.example.fhirpath.eval;
 
 import com.example.fhirpath.ir.IRNode;
 import org.apache.spark.sql.Column;
+import org.apache.spark.sql.functions;
 
 import javax.annotation.Nonnull;
 import java.util.function.Function;
@@ -44,6 +45,15 @@ public record EvalHelper(Column column, boolean isSingular) {
                                Column defaultValue) {
         return when(column.isNotNull(), apply(arrayFunction, singleFunction))
                 .otherwise(defaultValue);
+    }
+
+    @Nonnull
+    public Column asArray() {
+        return applyNonNull(
+                Function.identity(),
+                s -> functions.array(s),
+                functions.array()
+        );
     }
 
     /**

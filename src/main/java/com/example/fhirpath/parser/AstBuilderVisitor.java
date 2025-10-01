@@ -168,7 +168,11 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
     @Override
     public AstNode visitUnionExpression(FhirPathParser.UnionExpressionContext ctx) {
-        throw new UnsupportedOperationException("Union expressions (|) are not yet supported");
+        AstNode left = visit(ctx.expression(0));
+        AstNode right = visit(ctx.expression(1));
+
+        String op = ctx.getChild(1).getText(); // Should be "|"
+        return new AstBinaryOperator(op, left, right);
     }
 
     @Override

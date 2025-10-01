@@ -42,6 +42,7 @@ public class Analyzer {
             case "+" -> FunctionRegistry.buildAdd(left, right);
             case "-" -> FunctionRegistry.buildSub(left, right);
             case "=" -> FunctionRegistry.buildEquals(left, right);
+            case "|" -> FunctionRegistry.buildUnion(left, right);
             default -> throw new IllegalArgumentException("Unsupported binary operator: " + op);
         };
     }

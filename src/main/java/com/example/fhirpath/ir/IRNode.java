@@ -6,7 +6,9 @@ import org.apache.spark.sql.Column;
 public interface IRNode {
     Type getType();
 
-    boolean isSingular();
+    default boolean isSingular() {
+        return false;
+    }
 
     Column eval();
 }

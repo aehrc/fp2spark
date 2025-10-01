@@ -4,6 +4,10 @@ import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
+import static com.example.fhirpath.eval.EvalHelper.cons;
+import static com.example.fhirpath.eval.EvalHelper.valueOf;
+import static org.apache.spark.sql.functions.lit;
+
 public record Count(IRNode child) implements SingularIRNode {
     @Override
     public Type getType() {
@@ -12,7 +16,10 @@ public record Count(IRNode child) implements SingularIRNode {
 
     @Override
     public Column eval() {
-        return functions.when(child.eval().isNotNull(), functions.lit(1))
-                .otherwise(functions.lit(0));
+        return valueOf(child).applyNonNull(
+                functions::size,
+                cons(1),
+                lit(0)
+        );
     }
 }

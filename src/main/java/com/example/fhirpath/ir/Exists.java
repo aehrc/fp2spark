@@ -2,7 +2,10 @@ package com.example.fhirpath.ir;
 
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
-import org.apache.spark.sql.functions;
+
+import static com.example.fhirpath.eval.EvalHelper.cons;
+import static com.example.fhirpath.eval.EvalHelper.valueOf;
+import static org.apache.spark.sql.functions.lit;
 
 public record Exists(IRNode child) implements SingularIRNode {
     @Override
@@ -12,7 +15,10 @@ public record Exists(IRNode child) implements SingularIRNode {
 
     @Override
     public Column eval() {
-        return functions.when(child.eval().isNotNull(), functions.lit(true))
-                .otherwise(functions.lit(false));
+        return valueOf(child).applyNonNull(
+                cons(true), // technically we should check for size
+                cons(true),
+                lit(false)
+        );
     }
 }

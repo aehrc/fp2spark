@@ -1,229 +1,117 @@
-# FHIRPath → SparkSQL Translator
+# FHIRPath → SparkSQL Translator (Direct-eval, single module)
 
 ## Overview
 
-This project is a Java 17 library for parsing, analyzing, and compiling [FHIRPath](https://hl7.org/fhirpath/) expressions into [Apache Spark 3.5](https://spark.apache.org/) SQL `Column` expressions. It is designed for use in FHIR analytics pipelines where structured health data must be queried and transformed efficiently.
+Java 17 library that parses FHIRPath and evaluates directly to Apache Spark 3.5 SQL Column expressions. The IR nodes expose eval() that returns a Spark Column, removing the need for a separate backend compiler.
 
-The translator pipeline:
+Simplified pipeline:
 
 ```
 FHIRPath string
-   ↓ (ANTLR grammar)
-AST (AstLiteral, AstTraversal, AstFunctionCall, ...)
-   ↓ (Translator: type checking, overload resolution, implicit casts)
+  ↓ (ANTLR)
+AST (AstLiteral, AstTraversal, AstFunctionCall)
+  ↓ (Analyzer: typing, overload resolution, implicit casts)
 IR (Literal, Traversal, Add, Cast, Count, Exists, ...)
-   ↓ (Backend)
-Spark SQL Column
+  ↓ (IR.eval())
+Spark Column
 ```
 
 Key properties:
 
-* **Early diagnostics** with line/column information.
-* **Typed intermediate representation (IR)** with implicit conversion rules from FHIRPath.
-* **Extensible**: new functions/operators can be registered in the FunctionRegistry.
-* **FHIR-aware**: traversal nodes can be resolved against FHIR resource definitions.
+- Direct eval on IR nodes: Add.eval() returns left.eval().plus(right.eval()).
+- Typed IR with simple implicit casts (INTEGER→DECIMAL, DATE→DATE_TIME, etc.).
+- Pluggable FunctionRegistry for functions/operators and overload resolution.
+- Single-module Maven project with ANTLR grammar and Java sources.
 
 ---
 
 ## Features
 
-* Parse FHIRPath expressions using ANTLR grammar.
-* Build a simple, uniform **AST** (`AstLiteral`, `AstTraversal`, `AstFunctionCall`).
-* Translate AST to **typed IR** nodes (`Add`, `Cast`, `Count`, `Exists`, etc.).
-* Perform **type checking** and apply **FHIRPath implicit casts**:
-
-  * `INTEGER → DECIMAL → QUANTITY`
-  * `DATE → DATE_TIME`
-* Report **semantic errors with source locations**.
-* Translate IR nodes to **Spark SQL `Column`** expressions.
-* Support **function and operator overloads** via a `FunctionRegistry`.
+- Parse FHIRPath using ANTLR4.
+- Build a minimal AST (literal, traversal, function call).
+- Analyze into typed IR with implicit casts.
+- Evaluate IR directly to Spark Column without a separate compiler.
+- Basic functions/operators: +, -, count(), exists().
 
 ---
 
 ## Architecture
 
-### 1. AST (Abstract Syntax Tree)
-
-* Represents syntactic structure of FHIRPath expressions.
-* Small set of nodes, prefixed with `Ast*`:
-
-  * `AstLiteral`
-  * `AstTraversal`
-  * `AstFunctionCall`
-
-### 2. IR (Intermediate Representation)
-
-* Represents **typed, resolved** expressions.
-* Node names are short and similar to Spark Catalyst:
-
-  * `Literal`, `Traversal`, `Add`, `Cast`, `Count`, `Exists`, etc.
-* Each IR node implements `IRNode` with a `getType()` method.
-
-### 3. SourceMap
-
-* Associates AST nodes with source locations (line, column, text).
-* Uses `System.identityHashCode()` as stable keys.
-* Keeps AST classes minimal (no embedded location data).
-
-### 4. Type System
-
-* Enum `Type` defines supported types: `STRING`, `INTEGER`, `DECIMAL`, `QUANTITY`, `DATE`, `DATE_TIME`, `BOOLEAN`.
-* Rules for **implicit casts** and **common type resolution**.
-* Example: `INTEGER + DECIMAL` → `DECIMAL`.
-
-### 5. Function Registry
-
-* Registry of functions/operators with overloads and builders.
-* Responsible for creating specialized IR nodes.
-* Example: `+` operator builds an `Add` IR node.
-
-### 6. Translator
-
-* Converts AST to IR:
-
-  * Resolves functions/operators from registry.
-  * Inserts `Cast` nodes as needed.
-  * Throws `SemanticException` with source location on errors.
-
-### 7. Spark Backend
-
-* Converts IR nodes to Spark SQL `Column` expressions.
-* Uses Spark 3.5 API (`functions.*`).
-* Example:
-
-  * `Add(left, right, DECIMAL)` → `leftCol.plus(rightCol)`.
-  * `Cast(child, DATE_TIME)` → `childCol.cast("timestamp")`.
+- AST (com.example.fhirpath.ast): AstLiteral, AstTraversal, AstFunctionCall.
+- IR (com.example.fhirpath.ir): IRNode with Type getType() and Column eval(). Nodes: Literal, Traversal, Add, Sub, Cast, Count, Exists.
+- Typing (com.example.fhirpath.typing): Type enum, TypeSystem rules, SparkTypeMapper for cast targets.
+- Analyzer (com.example.fhirpath.analyzer): converts AST→IR and calls FunctionRegistry for function/operator nodes.
+- Parser (com.example.fhirpath.parser): ANTLR grammar FhirPath.g4, generated lexer/parser, and AstBuilderVisitor.
 
 ---
 
-## Example
+## Usage
 
-Input FHIRPath:
+High-level API:
 
-```fhirpath
-1 + '2'
+```java
+import com.example.fhirpath.FhirPath;
+import org.apache.spark.sql.Column;
+
+Column c = FhirPath.toColumn("5 + 10");
+// Use with a DataFrame
+// df.select(c.alias("result")).show();
 ```
 
-Pipeline:
+Manual pipeline:
 
-1. **AST**
+```java
+import com.example.fhirpath.parser.ParserFacade;
+import com.example.fhirpath.analyzer.Analyzer;
+import com.example.fhirpath.ast.AstNode;
+import com.example.fhirpath.ir.IRNode;
+import org.apache.spark.sql.Column;
 
-   ```
-   AstFunctionCall("+", [AstLiteral(1), AstLiteral("2")])
-   ```
-
-2. **IR**
-
-   ```
-   Add(Cast(Literal(1, INTEGER) → DECIMAL),
-       Cast(Literal("2", STRING) → DECIMAL),
-       DECIMAL)
-   ```
-
-3. **Spark**
-
-   ```java
-   lit(1).cast("double").plus(lit("2").cast("double"))
-   ```
-
----
-
-## Error Reporting
-
-Example: unknown function `cunt()`
-
-```
-SemanticException: No matching overload for function/operator 'cunt'
-at line 1, column 7, fragment="cunt"
+AstNode ast = ParserFacade.parse("5 + 10");
+IRNode ir = new Analyzer().analyze(ast);
+Column col = ir.eval();
 ```
 
-Errors always include line/column and offending expression snippet.
+Notes:
+- count() returns an aggregate Column intended for df.agg(...). You must use it in an aggregation context.
+- exists() is a simple size(col) > 0 on the child column and assumes array semantics when appropriate.
 
 ---
 
 ## Project Structure
 
 ```
-fhirpath-translator/
-  ├── fhirpath-core/
-  │    ├── src/main/java/... (AST, IR, TypeSystem, Translator, Registry)
-  │    └── src/main/antlr/... (FHIRPath grammar)
-  ├── fhirpath-spark/
-  │    └── src/main/java/... (SparkTranslator backend)
-  └── fhirpath-tests/
-       └── src/test/java/... (unit tests)
+src/main/
+  antrl/FhirPath.g4
+  java/com/example/fhirpath/
+    FhirPath.java
+    analyzer/{ Analyzer.java, FunctionRegistry.java }
+    ast/{ AstLiteral.java, AstTraversal.java, AstFunctionCall.java }
+    ir/{ IRNode.java, Literal.java, Traversal.java, Add.java, Sub.java, Cast.java, Count.java, Exists.java }
+    parser/{ AstBuilderVisitor.java, ParserFacade.java }
+    typing/{ Type.java, TypeSystem.java, SparkTypeMapper.java }
+    util/{ SourceLocation.java }
 ```
 
 ---
 
-## Example Usage
+## Build
 
-```java
-String expr = "Patient.name.given.count()";
-
-// Parse FHIRPath string to AST
-AstNode ast = parser.parse(expr);
-SourceMap sourceMap = parser.getSourceMap();
-
-// Translate AST → IR
-AstToIrTranslator translator = new AstToIrTranslator(functionRegistry, sourceMap);
-IRNode ir = translator.translate(ast);
-
-// Translate IR → Spark Column
-SparkTranslator sparkTranslator = new SparkTranslator();
-Column col = sparkTranslator.translate(ir);
-
-// Use in Spark DataFrame
-Dataset<Row> patients = ...;
-patients.select(col.alias("given_count")).show();
-```
-
----
-
-## Dependencies
-
-* **Java**: 17
-* **Spark**: 3.5
-* **ANTLR**: for FHIRPath grammar
-* **JUnit 5**: for tests
-
-Example Maven dependencies:
-
-```xml
-<dependencies>
-  <dependency>
-    <groupId>org.antlr</groupId>
-    <artifactId>antlr4-runtime</artifactId>
-    <version>4.13.1</version>
-  </dependency>
-  <dependency>
-    <groupId>org.apache.spark</groupId>
-    <artifactId>spark-sql_2.12</artifactId>
-    <version>3.5.0</version>
-    <scope>provided</scope>
-  </dependency>
-  <dependency>
-    <groupId>org.junit.jupiter</groupId>
-    <artifactId>junit-jupiter</artifactId>
-    <version>5.10.0</version>
-    <scope>test</scope>
-  </dependency>
-</dependencies>
+```bash
+mvn -DskipTests package
 ```
 
 ---
 
 ## Roadmap
 
-* [ ] Add support for full FHIRPath function set.
-* [ ] Support for collection operations (`where`, `select`, `flatten`).
-* [ ] Integration with FHIR StructureDefinitions for traversal typing.
-* [ ] Unit-aware Quantity handling.
-* [ ] Optimizations (e.g. pushdown simplifications).
+- Expand FHIRPath coverage: collections (where/select/flatten), string/date ops, quantity arithmetic.
+- Cardinality tracking in IR (single/optional/many) to improve exists/collection ops.
+- Improved diagnostics with source spans and better error messages.
+- FHIR StructureDefinition-aware traversal typing.
 
 ---
 
 ## License
 
-Apache 2.0 (suggested — confirm based on project needs).
-
+Apache 2.0 (placeholder).

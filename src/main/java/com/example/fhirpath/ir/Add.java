@@ -8,6 +8,7 @@ import org.apache.spark.sql.functions;
 
 import java.util.List;
 
+// This requires singular arguments
 public record Add(IRNode left, IRNode right, Type resultType) implements SingularIRNode {
 
     // Static signatures for Add operation
@@ -15,6 +16,9 @@ public record Add(IRNode left, IRNode right, Type resultType) implements Singula
             FunctionSignature.biOperator(Type.INTEGER),
             FunctionSignature.biOperator(Type.DECIMAL),
             FunctionSignature.biOperator(Type.STRING)
+            // maybe I can just add date/time arythmetics here
+            // as the result DATE/TIME is only allowed for DATE + TIME QUANTITY (indeed DATETIME + TIME QUANTITY)
+            // as implict cast is available from DATETIME to DATE
     );
 
     // Factory method to resolve and create Add with proper types
@@ -34,6 +38,8 @@ public record Add(IRNode left, IRNode right, Type resultType) implements Singula
         return switch (resultType) {
             case STRING -> functions.concat(left.eval(), right.eval());
             case INTEGER, DECIMAL -> left.eval().plus(right.eval());
+            //case DATE_TIME -> DateTimeSql.add(left.eval(), right.eval());
+            //case QUANTITY -> QuantitySql.add(left.eval(), right.eval());
             default -> throw new IllegalArgumentException("Unsupported result type for Add: " + resultType);
         };
     }

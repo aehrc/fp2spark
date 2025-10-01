@@ -4,15 +4,7 @@ import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
-public class Traversal implements IRNode {
-    private final String path;
-
-    public Traversal(String path) {
-        this.path = path;
-    }
-
-    public String path() { return path; }
-
+public record Traversal(String path) implements IRNode {
     @Override
     public Type getType() { return Type.UNKNOWN; }
 
@@ -21,4 +13,3 @@ public class Traversal implements IRNode {
         return functions.col(path);
     }
 }
-

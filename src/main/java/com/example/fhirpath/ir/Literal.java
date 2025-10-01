@@ -4,17 +4,7 @@ import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
-public class Literal implements IRNode {
-    private final Object value;
-    private final Type type;
-
-    public Literal(Object value, Type type) {
-        this.value = value;
-        this.type = type;
-    }
-
-    public Object value() { return value; }
-
+public record Literal(Object value, Type type) implements IRNode {
     @Override
     public Type getType() { return type; }
 
@@ -23,4 +13,3 @@ public class Literal implements IRNode {
         return functions.lit(value);
     }
 }
-

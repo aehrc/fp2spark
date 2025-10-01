@@ -4,17 +4,7 @@ import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.SparkTypeMapper;
 import org.apache.spark.sql.Column;
 
-public class Cast implements IRNode {
-    private final IRNode child;
-    private final Type targetType;
-
-    public Cast(IRNode child, Type targetType) {
-        this.child = child;
-        this.targetType = targetType;
-    }
-
-    public IRNode child() { return child; }
-
+public record Cast(IRNode child, Type targetType) implements IRNode {
     @Override
     public Type getType() { return targetType; }
 
@@ -24,4 +14,3 @@ public class Cast implements IRNode {
         return child.eval().cast(sparkType);
     }
 }
-

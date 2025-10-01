@@ -43,7 +43,12 @@ public class FhirPathIntegrationTest {
                 Arguments.of("12", "12"),
                 Arguments.of("10.4", "10.4"),
                 Arguments.of("true", "true"),
-                Arguments.of("5 + 10", "15")
+                Arguments.of("5 + 10", "15"),
+                // test count() on literals
+                Arguments.of("10.count()", "1"),
+                Arguments.of("{}.count()", "0"),
+                Arguments.of("'xxx'.exists()", "true"),
+                Arguments.of("{}.exists()", "false")
         );
     }
 

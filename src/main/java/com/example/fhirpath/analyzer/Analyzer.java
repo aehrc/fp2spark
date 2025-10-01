@@ -13,7 +13,7 @@ public class Analyzer {
             return new Literal(lit.value(), inferType(lit.value()));
         }
         if (node instanceof AstTraversal trav) {
-            return new Traversal(trav.path());
+            return resolveTraversal(trav);
         }
         if (node instanceof AstFunctionCall call) {
             return FunctionRegistry.resolve(this, call);
@@ -22,6 +22,15 @@ public class Analyzer {
             return resolveBinaryOp(binaryOp);
         }
         throw new IllegalArgumentException("Unsupported AST node: " + node);
+    }
+
+    private IRNode resolveTraversal(AstTraversal traversal) {
+        if (traversal.target() != null) {
+            // Handle member access like "expr.field" - for now, treat as unsupported
+            throw new UnsupportedOperationException("Member traversal with target not yet implemented: " + traversal.path());
+        }
+        // Handle standalone field access
+        return new Traversal(traversal.path());
     }
 
     private IRNode resolveBinaryOp(AstBinaryOperator binaryOp) {

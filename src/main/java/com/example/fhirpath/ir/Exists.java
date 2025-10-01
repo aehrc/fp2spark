@@ -11,16 +11,19 @@ public class Exists implements IRNode {
         this.child = child;
     }
 
-    public IRNode child() { return child; }
+    public IRNode child() {
+        return child;
+    }
 
     @Override
-    public Type getType() { return Type.BOOLEAN; }
+    public Type getType() {
+        return Type.BOOLEAN;
+    }
 
     @Override
     public Column eval() {
-        // Best-effort: if child yields an array column, use size > 0, otherwise cast to boolean.
-        Column c = child.eval();
-        return functions.size(c).gt(0);
+        return functions.when(child.eval().isNotNull(), functions.lit(true))
+                .otherwise(functions.lit(false));
     }
 }
 

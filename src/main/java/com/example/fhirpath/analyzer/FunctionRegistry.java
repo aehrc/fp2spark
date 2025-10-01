@@ -13,7 +13,7 @@ public final class FunctionRegistry {
     }
 
     public static IRNode resolve(Analyzer analyzer, AstFunctionCall call) {
-        List<IRNode> args = call.arguments().stream().map(analyzer::analyze).toList();
+        List<IRNode> args = call.children().map(analyzer::analyze).toList();
         String name = call.functionName();
         return switch (name) {
             case "+" -> buildAddFromArgs(args);
@@ -82,3 +82,4 @@ public final class FunctionRegistry {
         }
     }
 }
+

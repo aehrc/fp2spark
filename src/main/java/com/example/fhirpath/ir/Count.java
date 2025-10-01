@@ -11,15 +11,19 @@ public class Count implements IRNode {
         this.child = child;
     }
 
-    public IRNode child() { return child; }
+    public IRNode child() {
+        return child;
+    }
 
     @Override
-    public Type getType() { return Type.INTEGER; }
+    public Type getType() {
+        return Type.INTEGER;
+    }
 
     @Override
     public Column eval() {
-        // In Spark SQL, count is an aggregate. Caller should use df.agg(...) when needed.
-        return functions.count(child.eval());
+        return functions.when(child.eval().isNotNull(), functions.lit(1))
+                .otherwise(functions.lit(0));
     }
 }
 

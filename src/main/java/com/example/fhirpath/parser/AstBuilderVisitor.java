@@ -114,8 +114,8 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
     // Invocation handling
     @Override
     public AstNode visitMemberInvocation(FhirPathParser.MemberInvocationContext ctx) {
-        String identifier = visit(ctx.identifier()).toString();
-        return new AstTraversal(identifier);
+        String identifier = ctx.identifier().getText();
+        return new AstTraversal(identifier); // Uses convenience constructor (target = null)
     }
 
     @Override
@@ -139,13 +139,26 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
     @Override
     public AstNode visitIdentifier(FhirPathParser.IdentifierContext ctx) {
-        return new AstTraversal(ctx.getText());
+        return new AstTraversal(ctx.getText()); // Uses convenience constructor (target = null)
     }
 
     // Default behavior for unsupported expressions - throw informative errors
     @Override
     public AstNode visitInvocationExpression(FhirPathParser.InvocationExpressionContext ctx) {
-        throw new UnsupportedOperationException("Invocation expressions (.) are not yet supported");
+        // Handle method-style function calls like "10.count()" or "expr.exists()"
+        AstNode target = visit(ctx.expression());
+        AstNode invocation = visit(ctx.invocation());
+
+        // Convert invocation to function call with target stored separately
+        if (invocation instanceof AstFunctionCall funcCall) {
+            // Create new function call with target stored in the target field
+            return new AstFunctionCall(funcCall.functionName(), target, funcCall.arguments());
+        } else if (invocation instanceof AstTraversal traversal) {
+            // Handle member access like "expr.field" - create traversal with target
+            return new AstTraversal(traversal.path(), target);
+        }
+
+        throw new UnsupportedOperationException("Unsupported invocation type: " + invocation.getClass());
     }
 
     @Override

@@ -9,7 +9,7 @@ import org.apache.spark.sql.functions;
 
 import java.util.List;
 
-public record Equals(IRNode left, IRNode right) implements IRNode {
+public record Equals(IRNode left, IRNode right) implements SingularIRNode {
 
     static final List<FunctionSignature> EQUALS_SIGNATURES = TypeSystem.allTypes()
             .map(t -> FunctionSignature.biOperator(t, Type.BOOLEAN))

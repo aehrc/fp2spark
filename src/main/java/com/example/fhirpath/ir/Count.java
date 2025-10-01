@@ -4,7 +4,7 @@ import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
-public record Count(IRNode child) implements IRNode {
+public record Count(IRNode child) implements SingularIRNode {
     @Override
     public Type getType() {
         return Type.INTEGER;

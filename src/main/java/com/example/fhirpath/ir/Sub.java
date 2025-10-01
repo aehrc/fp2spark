@@ -7,7 +7,7 @@ import org.apache.spark.sql.Column;
 
 import java.util.List;
 
-public record Sub(IRNode left, IRNode right, Type resultType) implements IRNode {
+public record Sub(IRNode left, IRNode right, Type resultType) implements SingularIRNode {
 
     // Allowed overloads for subtraction
     public static final List<FunctionSignature> SUB_SIGNATURES = List.of(

@@ -1,7 +1,8 @@
 package com.example.fhirpath;
 
-import com.example.fhirpath.ast.AstNode;
-import com.example.fhirpath.parser.ParserFacade;
+import com.example.fhirpath.typing.ComplexType;
+import com.example.fhirpath.typing.FieldSpec;
+import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -105,8 +106,12 @@ public class FhirPathIntegrationTest {
                 // Another option is to fail when types are not the same
                 Arguments.of("1.1 | (2 | 3)", "[1.1, 2, 3]"),
                 // 2.0 should be skipped
-                Arguments.of("(2 | 3) | (1.1 | 2.3 | 2.0)", "[2, 3, 1.1, 2.3]")
-
+                Arguments.of("(2 | 3) | (1.1 | 2.3 | 2.0)", "[2, 3, 1.1, 2.3]"),
+                // test default empty context which is also empty resource
+                Arguments.of("count()", "0"),
+                Arguments.of("%resource.exists()", "false"),
+                Arguments.of("%resource.foo", null),
+                Arguments.of("bar", null)
         );
     }
 
@@ -130,14 +135,13 @@ public class FhirPathIntegrationTest {
                 Arguments.of("exists()", "'x'", "true"),
                 Arguments.of("%context.exists()", "{}", "false"),
                 Arguments.of("5 + %context", "10", "15"),
-                Arguments.of("count() = 3", "10 | 20 | 30 | %context", "true")
+                Arguments.of("count() = 3", "10 | 20 | 30 | %context.foo", "true")
         );
     }
 
     @ParameterizedTest
     @MethodSource("expressionsWithContext")
     void testFhirPathExpressionsWithContext(String expression, String context, String expectedResult) {
-        AstNode ast = ParserFacade.parse(context);
         final Column column = FhirPath.toColumn(expression, context);
         // Evaluate the expression
         final Dataset<Row> result = spark.range(1).toDF().select(column.alias("result"));
@@ -146,4 +150,11 @@ public class FhirPathIntegrationTest {
         assertEquals(expectedResult, actualResult,
                 "Expression '" + expression + "' did not produce expected result");
     }
+
+
+    ComplexType humanNameType = new ComplexType(
+            FieldSpec.singular("family", Type.STRING),
+            FieldSpec.collection("given", Type.STRING),
+            FieldSpec.singular("use", Type.STRING)
+    );
 }

@@ -2,16 +2,19 @@ package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.FunctionSignature;
 import com.example.fhirpath.analyzer.OverloadResolver;
+import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 
 import java.util.List;
 
+import static com.example.fhirpath.typing.Type.INTEGER;
+
 public record Sub(IRNode left, IRNode right, Type resultType) implements SingularIRNode {
 
     // Allowed overloads for subtraction
     public static final List<FunctionSignature> SUB_SIGNATURES = List.of(
-            FunctionSignature.biOperator(Type.INTEGER),
+            FunctionSignature.biOperator(INTEGER),
             FunctionSignature.biOperator(Type.DECIMAL)
     );
 
@@ -29,7 +32,7 @@ public record Sub(IRNode left, IRNode right, Type resultType) implements Singula
 
     @Override
     public Column eval() {
-        return switch (resultType) {
+        return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> left.eval().minus(right.eval());
             default -> throw new IllegalArgumentException("Unsupported result type for Sub: " + resultType);
         };

@@ -12,13 +12,17 @@ public final class SparkTypeMapper {
     }
 
     public static DataType toSparkDataType(Type t) {
-        return switch (t) {
-            case INTEGER -> DataTypes.IntegerType;
-            case DECIMAL -> DECIMAL_TYPE;
-            case BOOLEAN -> DataTypes.BooleanType;
-            case STRING -> DataTypes.StringType;
-            case NULL -> DataTypes.NullType;
-            default -> throw new IllegalArgumentException("Unknown type " + t);
-        };
+        if (t instanceof PrimitiveType pt) {
+            return switch (pt) {
+                case INTEGER -> DataTypes.IntegerType;
+                case DECIMAL -> DECIMAL_TYPE;
+                case BOOLEAN -> DataTypes.BooleanType;
+                case STRING -> DataTypes.StringType;
+                case NULL -> DataTypes.NullType;
+                default -> throw new IllegalArgumentException("Unknown primitive type " + t);
+            };
+        } else {
+            throw new IllegalArgumentException("Unsupported non primitive type " + t);
+        }
     }
 }

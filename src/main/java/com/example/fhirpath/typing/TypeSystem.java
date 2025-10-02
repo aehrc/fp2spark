@@ -18,13 +18,14 @@ public final class TypeSystem {
 
     @Nonnull
     public static Stream<Type> allTypes() {
-        return Stream.of(Type.values());
+        return Stream.of(PrimitiveType.values());
     }
-
 
     @Nonnull
     public static Stream<Type> definedTypes() {
-        return Stream.of(Type.values()).filter(t -> t != Type.UNKNOWN);
+        return Stream.of(PrimitiveType.values())
+                .map(Type.class::cast)
+                .filter(t -> t != PrimitiveType.UNKNOWN);
     }
 }
 

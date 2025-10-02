@@ -1,17 +1,19 @@
 package com.example.fhirpath.typing;
 
-import javax.annotation.Nonnull;
+public interface Type {
+    String getName();
+    boolean isPrimitive();
+    boolean isComplex();
+    boolean isCollection();
 
-public enum Type {
-    INTEGER,
-    DECIMAL,
-    QUANTITY,
-    DATE,
-    DATE_TIME,
-    BOOLEAN,
-    STRING,
-    NULL,
-    UNKNOWN
-
+    // Constants for backward compatibility
+    Type INTEGER = PrimitiveType.INTEGER;
+    Type DECIMAL = PrimitiveType.DECIMAL;
+    Type QUANTITY = PrimitiveType.QUANTITY;
+    Type DATE = PrimitiveType.DATE;
+    Type DATE_TIME = PrimitiveType.DATE_TIME;
+    Type BOOLEAN = PrimitiveType.BOOLEAN;
+    Type STRING = PrimitiveType.STRING;
+    Type NULL = PrimitiveType.NULL;
+    Type UNKNOWN = PrimitiveType.UNKNOWN;
 }
-

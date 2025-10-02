@@ -2,6 +2,7 @@ package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.FunctionSignature;
 import com.example.fhirpath.analyzer.OverloadResolver;
+import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
@@ -35,7 +36,7 @@ public record Add(IRNode left, IRNode right, Type resultType) implements Singula
 
     @Override
     public Column eval() {
-        return switch (resultType) {
+        return switch ((PrimitiveType) resultType) {
             case STRING -> functions.concat(left.eval(), right.eval());
             case INTEGER, DECIMAL -> left.eval().plus(right.eval());
             //case DATE_TIME -> DateTimeSql.add(left.eval(), right.eval());

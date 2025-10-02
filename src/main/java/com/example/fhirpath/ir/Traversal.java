@@ -1,15 +1,25 @@
 package com.example.fhirpath.ir;
 
+import com.example.fhirpath.typing.FieldSpec;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
-import org.apache.spark.sql.functions;
 
-public record Traversal(String path) implements SingularIRNode {
+import javax.annotation.Nonnull;
+
+public record Traversal(@Nonnull IRNode target, @Nonnull FieldSpec fieldSpec) implements IRNode {
+
     @Override
-    public Type getType() { return Type.UNKNOWN; }
+    public boolean isSingular() {
+        return fieldSpec.isSingular();
+    }
+
+    @Override
+    public Type getType() {
+        return fieldSpec.getType();
+    }
 
     @Override
     public Column eval() {
-        return functions.col(path);
+        return target.eval().getField(fieldSpec.getName());
     }
 }

@@ -1,5 +1,9 @@
 package com.example.fhirpath;
 
+import com.example.fhirpath.analyzer.Analyzer;
+import com.example.fhirpath.ast.AstNode;
+import com.example.fhirpath.ir.IRNode;
+import com.example.fhirpath.parser.ParserFacade;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -38,6 +42,20 @@ public class FhirPathIntegrationTest {
     void teardownSpark() {
         if (spark != null) {
             spark.stop();
+        }
+    }
+
+    @Nonnull
+    static String valueToString(@Nonnull final Object value) {
+        if (value instanceof BigDecimal bd) {
+            return bd.stripTrailingZeros().toString();
+        } else if (value instanceof scala.collection.mutable.WrappedArray<?> wa) {
+            final List<String> elements = Arrays.stream((Object[]) wa.array())
+                    .map(FhirPathIntegrationTest::valueToString)
+                    .toList();
+            return "[" + String.join(", ", elements) + "]";
+        } else {
+            return value.toString();
         }
     }
 
@@ -94,25 +112,35 @@ public class FhirPathIntegrationTest {
         );
     }
 
-    @Nonnull
-    static String valueToString(@Nonnull final Object value) {
-        if (value instanceof BigDecimal bd) {
-            return bd.stripTrailingZeros().toString();
-        } else if (value instanceof scala.collection.mutable.WrappedArray<?> wa) {
-            final List<String> elements = Arrays.stream((Object[]) wa.array())
-                    .map(FhirPathIntegrationTest::valueToString)
-                    .toList();
-            return "[" + String.join(", ", elements) + "]";
-        } else {
-            return value.toString();
-        }
-    }
-
     @ParameterizedTest
     @MethodSource("expressions")
     void testFhirPathExpressions(String expression, String expectedResult) {
         final Column column = FhirPath.toColumn(expression);
 
+        // Evaluate the expression
+        final Dataset<Row> result = spark.range(1).toDF().select(column.alias("result"));
+        final Row row = result.first();
+        final String actualResult = row.isNullAt(0) ? null : valueToString(row.get(0));
+        assertEquals(expectedResult, actualResult,
+                "Expression '" + expression + "' did not produce expected result");
+    }
+
+
+    Stream<Arguments> expressionsWithContext() {
+        return Stream.of(
+                Arguments.of("%context.count()", "'x'", "1"),
+                Arguments.of("exists()", "'x'", "true"),
+                Arguments.of("%context.exists()", "{}", "false"),
+                Arguments.of("5 + %context", "10", "15"),
+                Arguments.of("count() = 3", "10 | 20 | 30 | %context", "true")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("expressionsWithContext")
+    void testFhirPathExpressionsWithContext(String expression, String context, String expectedResult) {
+        AstNode ast = ParserFacade.parse(context);
+        final Column column = FhirPath.toColumn(expression, context);
         // Evaluate the expression
         final Dataset<Row> result = spark.range(1).toDF().select(column.alias("result"));
         final Row row = result.first();

@@ -152,7 +152,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
         // Convert invocation to function call with target stored separately
         if (invocation instanceof AstFunctionCall funcCall) {
             // Create new function call with target stored in the target field
-            return new AstFunctionCall(funcCall.functionName(), target, funcCall.arguments());
+            return funcCall.withTarget(target);
         } else if (invocation instanceof AstTraversal traversal) {
             // Handle member access like "expr.field" - create traversal with target
             return new AstTraversal(traversal.path(), target);
@@ -258,6 +258,21 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
     @Override
     public AstNode visitExternalConstantTerm(FhirPathParser.ExternalConstantTermContext ctx) {
-        throw new UnsupportedOperationException("External constants (%) are not yet supported");
+        return visit(ctx.externalConstant());
+    }
+
+    @Override
+    public AstNode visitExternalConstant(FhirPathParser.ExternalConstantContext ctx) {
+        String variableName;
+        if (ctx.identifier() != null) {
+            variableName = "%" + ctx.identifier().getText();
+        } else if (ctx.STRING() != null) {
+            String stringText = ctx.STRING().getText();
+            // Remove surrounding quotes
+            variableName = "%" + stringText.substring(1, stringText.length() - 1);
+        } else {
+            throw new IllegalArgumentException("Invalid external constant");
+        }
+        return new AstVariable(variableName);
     }
 }

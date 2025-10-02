@@ -20,4 +20,15 @@ public record AstFunctionCall(String functionName, @Nullable AstNode target,
         }
         return argsStream;
     }
+
+    /**
+     * Create a new AstFunctionCall with a different target.
+     *
+     * @param newTarget the new target node
+     * @return a new AstFunctionCall instance with the updated target
+     */
+    @Nonnull
+    public AstFunctionCall withTarget(@Nonnull AstNode newTarget) {
+        return new AstFunctionCall(this.functionName, newTarget, this.arguments);
+    }
 }

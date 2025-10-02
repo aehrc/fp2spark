@@ -1,5 +1,7 @@
 package com.example.fhirpath.typing;
 
+import com.example.fhirpath.typing.fhir.FhirType;
+
 import javax.annotation.Nonnull;
 import java.util.stream.Stream;
 
@@ -8,6 +10,9 @@ public final class TypeSystem {
     }
 
     public static boolean canCast(Type from, Type to) {
+        if (from instanceof FhirType ft) {
+            return canCast(ft.systemType(), to);
+        }
         if (from == to) return true;
         if (from == Type.NULL) return true;
         if (from == Type.INTEGER && to == Type.DECIMAL) return true;

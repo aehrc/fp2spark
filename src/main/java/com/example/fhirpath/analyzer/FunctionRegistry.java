@@ -2,6 +2,7 @@ package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.ast.AstFunctionCall;
 import com.example.fhirpath.ir.*;
+import com.example.fhirpath.typing.fhir.FhirType;
 
 import java.util.List;
 
@@ -20,8 +21,19 @@ public final class FunctionRegistry {
             case "|" -> buildUnionFromArgs(args);
             case "count" -> buildCount(args);
             case "exists" -> buildExists(args);
+            case "getValue" -> buildGetValue(args);
             default -> throw new UnsupportedOperationException("No matching overload for '" + name + "'");
         };
+    }
+
+    private static IRNode buildGetValue(List<IRNode> args) {
+        ensureArity("getValue", args, 1);
+        // check that the type is OK
+        if (args.get(0).getType() instanceof FhirType) {
+            return new GetValue(args.get(0));
+        } else {
+            throw  new UnsupportedOperationException("No matching overload for 'getValue'");
+        }
     }
 
     // Public static methods for binary operations (called from Analyzer)

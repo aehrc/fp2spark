@@ -1,9 +1,12 @@
 package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.ir.Cast;
+import com.example.fhirpath.ir.GetValue;
 import com.example.fhirpath.ir.IRNode;
+import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.TypeSystem;
+import com.example.fhirpath.typing.fhir.FhirType;
 
 import java.util.List;
 
@@ -58,7 +61,14 @@ public final class OverloadResolver {
         if (target == Type.UNKNOWN) {
             return new Adapt(arg, true, 1);
         } else if (TypeSystem.canCast(actual, target)) {
-            return new Adapt(new Cast(arg, target), true, 1);
+            // we should check somehow if getValue() should be applied first
+            final IRNode implicts;
+            if (actual instanceof FhirType && target instanceof PrimitiveType) {
+                implicts = new Cast(new GetValue(arg), target);
+            } else {
+                implicts = new Cast(arg, target);
+            }
+            return new Adapt(implicts, true, 1);
         }
 
         return new Adapt(arg, false, Integer.MAX_VALUE);

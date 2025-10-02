@@ -1,9 +1,7 @@
 package com.example.fhirpath;
 
-import com.example.fhirpath.typing.ComplexType;
-import com.example.fhirpath.typing.FieldSpec;
-import com.example.fhirpath.typing.ResourceType;
-import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.*;
+import com.example.fhirpath.typing.fhir.FhirType;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.Metadata;
@@ -162,7 +160,13 @@ public class FhirPathIntegrationTest {
                 Arguments.of("%context.name.use", "[official, alias]"),
                 Arguments.of("%resource.count()", "1"),
                 Arguments.of("exists()", "true"),
-                Arguments.of("%context.gender = %resource.gender", "true")
+                Arguments.of("%context.gender = %resource.gender", "true"),
+                // test FHIR
+                Arguments.of("age + 10", "65"),
+                Arguments.of("10.3 + age", "65.3"),
+                Arguments.of("gender = 'male'", "true"),
+                Arguments.of("value", "344.1000"),
+                Arguments.of("value.getValue()", "344.1")
         );
     }
 
@@ -174,13 +178,14 @@ public class FhirPathIntegrationTest {
                 new StructField[]{
                         new StructField("family", DataTypes.StringType, true, Metadata.empty()),
                         new StructField("given", DataTypes.createArrayType(DataTypes.StringType), true, Metadata.empty()),
-                        new StructField("use", DataTypes.StringType, true, Metadata.empty())
+                        new StructField("use", DataTypes.StringType, true, Metadata.empty()),
                 });
         StructType patientSchema = DataTypes.createStructType(
                 new StructField[]{
                         new StructField("id", DataTypes.StringType, true, Metadata.empty()),
                         new StructField("gender", DataTypes.StringType, true, Metadata.empty()),
                         new StructField("age", DataTypes.IntegerType, true, Metadata.empty()),
+                        new StructField("value", DataTypes.StringType, true, Metadata.empty()),
                         new StructField("name", DataTypes.createArrayType(humanNameSchema), true, Metadata.empty()),
                 }
         );
@@ -190,6 +195,7 @@ public class FhirPathIntegrationTest {
                 "id":"id1",
                 "gender":"male",
                 "age":55,
+                "value":"344.1000",
                 "name":[
                     {
                       "family":"Szul",
@@ -211,8 +217,9 @@ public class FhirPathIntegrationTest {
 
         final Column column = FhirPath.toColumn(expression, new ResourceType("Patient",
                 FieldSpec.singular("id", Type.STRING),
-                FieldSpec.singular("gender", Type.STRING),
-                FieldSpec.singular("age", Type.INTEGER),
+                FieldSpec.singular("gender", new FhirType(PrimitiveType.STRING)),
+                FieldSpec.singular("age", new FhirType(PrimitiveType.INTEGER)),
+                FieldSpec.singular("value", new FhirType(PrimitiveType.DECIMAL)),
                 FieldSpec.collection("name", new ComplexType(
                         FieldSpec.singular("family", Type.STRING),
                         FieldSpec.collection("given", Type.STRING),

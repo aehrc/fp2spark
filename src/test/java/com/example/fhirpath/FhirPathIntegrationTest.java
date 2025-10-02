@@ -2,11 +2,13 @@ package com.example.fhirpath;
 
 import com.example.fhirpath.typing.ComplexType;
 import com.example.fhirpath.typing.FieldSpec;
+import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Type;
-import org.apache.spark.sql.Column;
-import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.Metadata;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
@@ -151,10 +153,78 @@ public class FhirPathIntegrationTest {
                 "Expression '" + expression + "' did not produce expected result");
     }
 
+    Stream<Arguments> expressionsWithResource() {
+        return Stream.of(
+                Arguments.of("id", "id1"),
+                Arguments.of("age", "55"),
+                Arguments.of("name.family", "[Szul, Brown]"),
+                Arguments.of("name.given", "[Piotr, Jaroslaw, John, Mark]"),
+                Arguments.of("%context.name.use", "[official, alias]"),
+                Arguments.of("%resource.count()", "1"),
+                Arguments.of("exists()", "true"),
+                Arguments.of("%context.gender = %resource.gender", "true")
+        );
+    }
 
-    ComplexType humanNameType = new ComplexType(
-            FieldSpec.singular("family", Type.STRING),
-            FieldSpec.collection("given", Type.STRING),
-            FieldSpec.singular("use", Type.STRING)
-    );
+    @ParameterizedTest
+    @MethodSource("expressionsWithResource")
+    void testFhirPathExpressionsWithResource(String expression, String expectedResult) {
+
+        StructType humanNameSchema = DataTypes.createStructType(
+                new StructField[]{
+                        new StructField("family", DataTypes.StringType, true, Metadata.empty()),
+                        new StructField("given", DataTypes.createArrayType(DataTypes.StringType), true, Metadata.empty()),
+                        new StructField("use", DataTypes.StringType, true, Metadata.empty())
+                });
+        StructType patientSchema = DataTypes.createStructType(
+                new StructField[]{
+                        new StructField("id", DataTypes.StringType, true, Metadata.empty()),
+                        new StructField("gender", DataTypes.StringType, true, Metadata.empty()),
+                        new StructField("age", DataTypes.IntegerType, true, Metadata.empty()),
+                        new StructField("name", DataTypes.createArrayType(humanNameSchema), true, Metadata.empty()),
+                }
+        );
+
+        String data = """
+                {
+                "id":"id1",
+                "gender":"male",
+                "age":55,
+                "name":[
+                    {
+                      "family":"Szul",
+                      "given":["Piotr", "Jaroslaw"],
+                      "use": "official"
+                    },
+                    {
+                      "family":"Brown",
+                      "given":["John", "Mark"],
+                      "use": "alias"
+                    },
+                    {}
+                ]
+                }
+                """;
+        Dataset<Row> inputDf = spark.createDataset(List.of(data), Encoders.STRING())
+                .select(
+                        functions.from_json(functions.col("value"), patientSchema).alias("Patient"));
+
+        final Column column = FhirPath.toColumn(expression, new ResourceType("Patient",
+                FieldSpec.singular("id", Type.STRING),
+                FieldSpec.singular("gender", Type.STRING),
+                FieldSpec.singular("age", Type.INTEGER),
+                FieldSpec.collection("name", new ComplexType(
+                        FieldSpec.singular("family", Type.STRING),
+                        FieldSpec.collection("given", Type.STRING),
+                        FieldSpec.singular("use", Type.STRING))
+                )
+        ));
+        // Evaluate the expression
+        final Dataset<Row> result = inputDf.select(column.alias("result"));
+        final Row row = result.first();
+        final String actualResult = row.isNullAt(0) ? null : valueToString(row.get(0));
+        assertEquals(expectedResult, actualResult,
+                "Expression '" + expression + "' did not produce expected result");
+
+    }
 }

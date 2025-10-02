@@ -1,8 +1,6 @@
 package com.example.fhirpath;
 
-import com.example.fhirpath.analyzer.Analyzer;
 import com.example.fhirpath.ast.AstNode;
-import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.parser.ParserFacade;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;

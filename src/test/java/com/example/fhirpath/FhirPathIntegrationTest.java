@@ -87,7 +87,9 @@ public class FhirPathIntegrationTest {
                 // NOTE: this may not be the correct behavior in general
                 // but because we do not support polymorphic collection this seem to be reasonable
                 // Another option is to fail when types are not the same
-                Arguments.of("1.1 | (2 | 3)", "[1.1, 2, 3]")
+                Arguments.of("1.1 | (2 | 3)", "[1.1, 2, 3]"),
+                // 2.0 should be skipped
+                Arguments.of("(2 | 3) | (1.1 | 2.3 | 2.0)", "[2, 3, 1.1, 2.3]")
 
         );
     }

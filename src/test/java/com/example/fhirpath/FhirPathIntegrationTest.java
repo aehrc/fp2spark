@@ -71,11 +71,36 @@ public class FhirPathIntegrationTest {
                 Arguments.of("5 + 10.2", "15.2"),
                 Arguments.of("5.1 + 10", "15.1"),
                 Arguments.of("'foo' + 'bar'", "foobar"),
+                Arguments.of("{} + 10", null),
+                Arguments.of("{} + {}", null),
                 // minus operator with different types
                 Arguments.of("10 - 4", "6"),
                 Arguments.of("10.5 - 4.2", "6.3"),
                 Arguments.of("10 - 4.2", "5.8"),
                 Arguments.of("10.5 - 4", "6.5"),
+                // div operator with different types
+                Arguments.of("10 / 4", "2.5"),
+                Arguments.of("10.4 / 4.0", "2.6"),
+                Arguments.of("10 / 4.0", "2.5"),
+                Arguments.of("10.4 / 4", "2.6"),
+                // Comparison operators
+                Arguments.of("5 < 10", "true"),
+                Arguments.of("5.1 > 10.2", "false"),
+                Arguments.of("5 < 10.2", "true"),
+                Arguments.of("5.1 >= 10", "false"),
+                Arguments.of("'a' > 'A'", "true"),
+                Arguments.of("'a' > {}", null),
+                // Math functions
+                // abs() on different types
+                Arguments.of("5.abs()", "5"),
+                Arguments.of("5.3.abs()", "5.3"),
+                // exp() on different types
+                Arguments.of("1.exp()", "2.7182818284590455"),
+                Arguments.of("2.0.exp()", "7.38905609893065"),
+                // String functions
+                Arguments.of("{}.substring(1,2)", null),
+                Arguments.of("'abcde'.substring(1,2)", "bc"),
+                Arguments.of("'abcde'.substring(2)", "cde"),
                 // test count() on literals
                 Arguments.of("10.count()", "1"),
                 Arguments.of("{}.count()", "0"),

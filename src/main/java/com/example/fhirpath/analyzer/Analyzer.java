@@ -91,17 +91,7 @@ public class Analyzer {
     }
 
     private IRNode resolveBinaryOp(AstBinaryOperator binaryOp) {
-        IRNode left = analyze(binaryOp.left());
-        IRNode right = analyze(binaryOp.right());
-        String op = binaryOp.operator();
-
-        return switch (op) {
-            case "+" -> FunctionRegistry.buildAdd(left, right);
-            case "-" -> FunctionRegistry.buildSub(left, right);
-            case "=" -> FunctionRegistry.buildEquals(left, right);
-            case "|" -> FunctionRegistry.buildUnion(left, right);
-            default -> throw new IllegalArgumentException("Unsupported binary operator: " + op);
-        };
+        return FunctionRegistry.resolve(this, binaryOp);
     }
 
     private Type inferType(Object value) {

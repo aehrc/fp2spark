@@ -186,8 +186,11 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
     @Override
     public AstNode visitInequalityExpression(FhirPathParser.InequalityExpressionContext ctx) {
-        throw new UnsupportedOperationException("Inequality expressions (<, <=, >, >=) are not yet supported");
-    }
+        AstNode left = visit(ctx.expression(0));
+        AstNode right = visit(ctx.expression(1));
+
+        String op = ctx.getChild(1).getText();
+        return new AstBinaryOperator(op, left, right);    }
 
     @Override
     public AstNode visitMembershipExpression(FhirPathParser.MembershipExpressionContext ctx) {

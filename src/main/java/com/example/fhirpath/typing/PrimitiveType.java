@@ -6,6 +6,7 @@ public enum PrimitiveType implements Type {
     QUANTITY("quantity"),
     DATE("date"),
     DATE_TIME("dateTime"),
+    TIME("time"),
     BOOLEAN("boolean"),
     STRING("string"),
     NULL("null"),

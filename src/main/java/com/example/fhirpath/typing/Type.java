@@ -16,6 +16,7 @@ public interface Type {
     Type QUANTITY = PrimitiveType.QUANTITY;
     Type DATE = PrimitiveType.DATE;
     Type DATE_TIME = PrimitiveType.DATE_TIME;
+    Type TIME = PrimitiveType.TIME;
     Type BOOLEAN = PrimitiveType.BOOLEAN;
     Type STRING = PrimitiveType.STRING;
     Type NULL = PrimitiveType.NULL;

@@ -1,12 +1,47 @@
 package com.example.fhirpath.analyzer;
 
+import com.example.fhirpath.ast.AstBinaryOperator;
 import com.example.fhirpath.ast.AstFunctionCall;
 import com.example.fhirpath.ir.*;
-import com.example.fhirpath.typing.fhir.FhirType;
+import com.example.fhirpath.ir.arythm.Add;
+import com.example.fhirpath.ir.arythm.Divide;
+import com.example.fhirpath.ir.arythm.Sub;
+import com.example.fhirpath.ir.builder.IRNodeBuilder;
+import com.example.fhirpath.ir.comparison.GreaterEqual;
+import com.example.fhirpath.ir.comparison.GreaterThan;
+import com.example.fhirpath.ir.comparison.LessThan;
+import com.example.fhirpath.ir.math.Abs;
+import com.example.fhirpath.ir.math.Exp;
+import com.example.fhirpath.ir.string.Substring;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static com.example.fhirpath.ir.builder.IRNodeBuilder.forClass;
 
 public final class FunctionRegistry {
+
+
+    final static Map<String, IRNodeBuilder> OPERATORS = Map.ofEntries(
+            Map.entry(">", forClass(GreaterThan.class)),
+            Map.entry("<", forClass(LessThan.class)),
+            Map.entry(">=", forClass(GreaterEqual.class)),
+            Map.entry("+", forClass(Add.class)),
+            Map.entry("-", forClass(Sub.class)),
+            Map.entry("/", forClass(Divide.class)),
+            Map.entry("=", forClass(Equals.class)),
+            Map.entry("|", forClass(Union.class))
+    );
+
+    final static Map<String, IRNodeBuilder> FUNCTIONS = Map.ofEntries(
+            Map.entry("count", forClass(Count.class)),
+            Map.entry("exists", forClass(Exists.class)),
+            Map.entry("abs", forClass(Abs.class)),
+            Map.entry("exp", forClass(Exp.class)),
+            Map.entry("getValue", forClass(GetValue.class)),
+            Map.entry("substring", forClass(Substring.class))
+    );
 
     private FunctionRegistry() {
     }
@@ -14,80 +49,30 @@ public final class FunctionRegistry {
     public static IRNode resolve(Analyzer analyzer, AstFunctionCall call) {
         List<IRNode> args = call.children().map(analyzer::analyze).toList();
         String name = call.functionName();
-        return switch (name) {
-            case "+" -> buildAddFromArgs(args);
-            case "-" -> buildSubFromArgs(args);
-            case "=" -> buildEqualsFromArgs(args);
-            case "|" -> buildUnionFromArgs(args);
-            case "count" -> buildCount(args);
-            case "exists" -> buildExists(args);
-            case "getValue" -> buildGetValue(args);
-            default -> throw new UnsupportedOperationException("No matching overload for '" + name + "'");
-        };
+        return Optional.ofNullable(FUNCTIONS.get(name))
+                .map(builder -> doResolve(builder, args))
+                .orElseThrow(() -> new UnsupportedOperationException("Function '" + name + "' is not supported"));
     }
 
-    private static IRNode buildGetValue(List<IRNode> args) {
-        ensureArity("getValue", args, 1);
-        // check that the type is OK
-        if (args.get(0).getType() instanceof FhirType) {
-            return new GetValue(args.get(0));
+    public static IRNode resolve(Analyzer analyzer, AstBinaryOperator biOperator) {
+        List<IRNode> args = List.of(
+                analyzer.analyze(biOperator.left()),
+                analyzer.analyze(biOperator.right())
+        );
+        String name = biOperator.operator();
+        return Optional.ofNullable(OPERATORS.get(name))
+                .map(builder -> doResolve(builder, args))
+                .orElseThrow(() -> new UnsupportedOperationException("Operator '" + name + "' is not supported"));
+    }
+
+    private static IRNode doResolve(IRNodeBuilder builder, List<IRNode> args) {
+        List<FunctionSignature> candidates = builder.getSignatures();
+        if (candidates.isEmpty()) {
+            // TODO: This needs to be fixed to check for arity
+            return builder.build(args.toArray(new IRNode[0]));
         } else {
-            throw  new UnsupportedOperationException("No matching overload for 'getValue'");
-        }
-    }
-
-    // Public static methods for binary operations (called from Analyzer)
-    public static IRNode buildAdd(IRNode left, IRNode right) {
-        return Add.create(left, right);
-    }
-
-    public static IRNode buildSub(IRNode left, IRNode right) {
-        // Use overloaded resolution similar to Add
-        return Sub.create(left, right);
-    }
-
-    public static IRNode buildEquals(IRNode left, IRNode right) {
-        return Equals.create(left, right);
-    }
-
-    public static IRNode buildUnion(IRNode left, IRNode right) {
-        return Union.create(left, right);
-    }
-
-    // Private methods for function call resolution (with arity checking)
-    private static IRNode buildAddFromArgs(List<IRNode> args) {
-        ensureArity("add", args, 2);
-        return buildAdd(args.get(0), args.get(1));
-    }
-
-    private static IRNode buildSubFromArgs(List<IRNode> args) {
-        ensureArity("sub", args, 2);
-        return buildSub(args.get(0), args.get(1));
-    }
-
-    private static IRNode buildEqualsFromArgs(List<IRNode> args) {
-        ensureArity("equals", args, 2);
-        return buildEquals(args.get(0), args.get(1));
-    }
-
-    private static IRNode buildUnionFromArgs(List<IRNode> args) {
-        ensureArity("union", args, 2);
-        return buildUnion(args.get(0), args.get(1));
-    }
-
-    private static IRNode buildCount(List<IRNode> args) {
-        ensureArity("count", args, 1);
-        return new Count(args.get(0));
-    }
-
-    private static IRNode buildExists(List<IRNode> args) {
-        ensureArity("exists", args, 1);
-        return new Exists(args.get(0));
-    }
-
-    private static void ensureArity(String name, List<IRNode> args, int arity) {
-        if (args.size() != arity) {
-            throw new IllegalArgumentException("Function '" + name + "' expects " + arity + " args, got " + args.size());
+            OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(candidates, args);
+            return builder.build(resolvedCall.args().toArray(new IRNode[0]));
         }
     }
 }

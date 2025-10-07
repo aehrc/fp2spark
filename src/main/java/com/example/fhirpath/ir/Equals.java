@@ -1,7 +1,6 @@
 package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.FunctionSignature;
-import com.example.fhirpath.analyzer.OverloadResolver;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.TypeSystem;
 import org.apache.spark.sql.Column;
@@ -11,16 +10,9 @@ import java.util.List;
 
 public record Equals(IRNode left, IRNode right) implements IRNode {
 
-    static final List<FunctionSignature> EQUALS_SIGNATURES = TypeSystem.allTypes()
+    public static final List<FunctionSignature> SIGNATURES = TypeSystem.allTypes()
             .map(t -> FunctionSignature.biOperator(t, Type.BOOLEAN))
             .toList();
-
-    // Factory method for equality - accepts any types, always returns BOOLEAN
-    public static Equals create(IRNode left, IRNode right) {
-        OverloadResolver.ResolvedCall resolved =
-                OverloadResolver.resolveBinary(EQUALS_SIGNATURES, left, right);
-        return new Equals(resolved.left(), resolved.right());
-    }
 
     @Override
     public Type getType() {

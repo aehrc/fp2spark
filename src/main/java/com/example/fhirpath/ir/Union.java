@@ -1,7 +1,6 @@
 package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.FunctionSignature;
-import com.example.fhirpath.analyzer.OverloadResolver;
 import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.TypeSystem;
@@ -12,27 +11,21 @@ import java.util.List;
 
 import static com.example.fhirpath.eval.EvalHelper.valueOf;
 
-public record Union(IRNode left, IRNode right, Type resultType) implements IRNode {
+public record Union(IRNode left, IRNode right) implements IRNode {
 
     // Static signatures for Union operation - overloaded for all defined types
-    public static final List<FunctionSignature> UNION_SIGNATURES =
+    public static final List<FunctionSignature> SIGNATURES =
             TypeSystem.definedTypes()
                     .map(CollectionType::new)
                     .map(FunctionSignature::biOperator)
                     .toList();
 
-    // Factory method to resolve and create Union with proper types
-    public static Union create(IRNode left, IRNode right) {
-        OverloadResolver.ResolvedCall resolved =
-                OverloadResolver.resolveBinary(UNION_SIGNATURES, left, right);
-        return new Union(resolved.left(), resolved.right(), resolved.resultType());
-    }
-
     @Override
     public Type getType() {
-        return resultType;
+        // we may get singluar value here collection but the result is always a collection
+        // except for null cases.
+        return new CollectionType(left.getType());
     }
-
 
     @Override
     public Column eval() {

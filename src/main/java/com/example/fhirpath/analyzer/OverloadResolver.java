@@ -8,44 +8,54 @@ import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.TypeSystem;
 import com.example.fhirpath.typing.fhir.FhirType;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 public final class OverloadResolver {
 
     private OverloadResolver() {
     }
 
-    public record ResolvedCall(IRNode left, IRNode right, Type resultType) {
+    public record ResolvedCall(FunctionSignature signature, List<IRNode> args) {
     }
 
-    public static ResolvedCall resolveBinary(List<FunctionSignature> candidates,
-                                             IRNode left,
-                                             IRNode right) {
+    public static ResolvedCall resolveCall(List<FunctionSignature> candidates,
+                                           List<IRNode> args) {
         ResolvedCall best = null;
         int bestCost = Integer.MAX_VALUE;
 
         for (FunctionSignature sig : candidates) {
-            if (sig.arity() != 2) continue;
+            if (args.size() > sig.arity() || args.size() < sig.minArity()) continue;
 
-            Type t1 = sig.parameterTypes().get(0);
-            Type t2 = sig.parameterTypes().get(1);
+            int cost = 0;
+            List<Adapt> adaptations = new ArrayList<>();
 
-            Adapt a1 = adapt(left, t1);
-            if (!a1.ok) continue;
+            for (int i = 0; i < args.size(); i++) {
+                Type t1 = sig.parameterTypes().get(i);
 
-            Adapt a2 = adapt(right, t2);
-            if (!a2.ok) continue;
+                Adapt a1 = adapt(args.get(i), t1);
+                if (!a1.ok) break;
+                adaptations.add(a1);
+                cost += a1.cost;
+            }
 
-            int cost = a1.cost + a2.cost;
+            if (adaptations.size() != args.size()) continue; // not all adapted
+
             if (cost < bestCost) {
                 bestCost = cost;
-                best = new ResolvedCall(a1.node, a2.node, sig.resultType());
+                best = new ResolvedCall(sig,
+                        Stream.concat(
+                                adaptations.stream().map(a -> a.node),
+                                // pad with nulls for varargs
+                                Stream.generate(() -> (IRNode) null).limit(sig.arity() - adaptations.size())
+                        ).toList());
             }
         }
 
         if (best == null) {
             throw new IllegalArgumentException("No matching overload for binary operation with arg types: "
-                    + left.getType() + ", " + right.getType());
+                    + args.stream().map(IRNode::getType).toList());
         }
         return best;
     }

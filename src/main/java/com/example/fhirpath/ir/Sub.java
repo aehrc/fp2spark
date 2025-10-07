@@ -10,7 +10,7 @@ import java.util.List;
 
 import static com.example.fhirpath.typing.Type.INTEGER;
 
-public record Sub(IRNode left, IRNode right, Type resultType) implements SingularIRNode {
+public record Sub(IRNode left, IRNode right, Type resultType) implements IRNode {
 
     // Allowed overloads for subtraction
     public static final List<FunctionSignature> SUB_SIGNATURES = List.of(

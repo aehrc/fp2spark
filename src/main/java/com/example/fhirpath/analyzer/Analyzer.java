@@ -80,7 +80,7 @@ public class Analyzer {
     private IRNode resolveTraversal(AstTraversal traversal) {
         // add implicit context if no target is specified
         IRNode targetIR = analyze(traversal.target() != null ? traversal.target() : AstVariable.contextVariable());
-        return Optional.of(targetIR.getType())
+        return Optional.of(targetIR.getType().effectiveType())
                 .filter(ComplexType.class::isInstance)
                 .map(ComplexType.class::cast)
                 .flatMap(ct -> ct.getField(traversal.path()))

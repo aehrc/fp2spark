@@ -55,7 +55,9 @@ public final class OverloadResolver {
 
     private static Adapt adapt(IRNode arg, Type target) {
         Type actual = arg.getType();
-        if (actual == target) return new Adapt(arg, true, 0);
+        if (actual.effectiveType() == target.effectiveType()) {
+            return new Adapt(arg, true, 0);
+        }
 
         // Allow implicit casts via TypeSystem or from UNKNOWN
         if (target == Type.UNKNOWN) {

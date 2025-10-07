@@ -1,5 +1,6 @@
 package com.example.fhirpath.ir;
 
+import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.FieldSpec;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
@@ -16,7 +17,9 @@ public record Traversal(@Nonnull IRNode target, @Nonnull FieldSpec fieldSpec) im
 
     @Override
     public Type getType() {
-        return fieldSpec.getType();
+        return target.isSingular()
+                ? fieldSpec.getType()
+                : new CollectionType(fieldSpec.getType());
     }
 
     @Override

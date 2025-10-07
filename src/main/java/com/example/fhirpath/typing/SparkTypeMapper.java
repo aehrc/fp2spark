@@ -12,7 +12,9 @@ public final class SparkTypeMapper {
     }
 
     public static DataType toSparkDataType(Type t) {
-        if (t instanceof PrimitiveType pt) {
+        if (t instanceof CollectionType ct) {
+            return DataTypes.createArrayType(toSparkDataType(ct.elementType()));
+        } else if (t instanceof PrimitiveType pt) {
             return switch (pt) {
                 case INTEGER -> DataTypes.IntegerType;
                 case DECIMAL -> DECIMAL_TYPE;

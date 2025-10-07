@@ -15,9 +15,17 @@ public final class TypeSystem {
         }
         if (from == to) return true;
         if (from == Type.NULL) return true;
+
+        // Primitive casts
         if (from == Type.INTEGER && to == Type.DECIMAL) return true;
         if (from == Type.DECIMAL && to == Type.QUANTITY) return true;
         if (from == Type.DATE && to == Type.DATE_TIME) return true;
+
+        // Collection element type compatibility
+        if (from instanceof CollectionType cf && to instanceof CollectionType ct) {
+            return canCast(cf.elementType(), ct.elementType());
+        }
+
         return false;
     }
 

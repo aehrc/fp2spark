@@ -6,7 +6,7 @@ import org.apache.spark.sql.functions;
 
 import static com.example.fhirpath.typing.SparkTypeMapper.toSparkDataType;
 
-public record Literal(Object value, Type type) implements SingularIRNode {
+public record Literal(Object value, Type type) implements IRNode {
     @Override
     public Type getType() {
         return type;

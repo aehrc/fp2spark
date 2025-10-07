@@ -6,6 +6,10 @@ public interface Type {
     boolean isComplex();
     boolean isCollection();
 
+    default Type effectiveType() {
+        return this;
+    }
+
     // Constants for backward compatibility
     Type INTEGER = PrimitiveType.INTEGER;
     Type DECIMAL = PrimitiveType.DECIMAL;

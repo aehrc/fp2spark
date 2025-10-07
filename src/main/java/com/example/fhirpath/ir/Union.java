@@ -2,6 +2,7 @@ package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.FunctionSignature;
 import com.example.fhirpath.analyzer.OverloadResolver;
+import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.TypeSystem;
 import org.apache.spark.sql.Column;
@@ -16,6 +17,7 @@ public record Union(IRNode left, IRNode right, Type resultType) implements IRNod
     // Static signatures for Union operation - overloaded for all defined types
     public static final List<FunctionSignature> UNION_SIGNATURES =
             TypeSystem.definedTypes()
+                    .map(CollectionType::new)
                     .map(FunctionSignature::biOperator)
                     .toList();
 

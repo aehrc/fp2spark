@@ -7,7 +7,7 @@ public interface IRNode {
     Type getType();
 
     default boolean isSingular() {
-        return false;
+        return !getType().isCollection();
     }
 
     Column eval();

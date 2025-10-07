@@ -7,7 +7,7 @@ import static com.example.fhirpath.eval.EvalHelper.cons;
 import static com.example.fhirpath.eval.EvalHelper.valueOf;
 import static org.apache.spark.sql.functions.lit;
 
-public record Exists(IRNode child) implements SingularIRNode {
+public record Exists(IRNode child) implements IRNode {
     @Override
     public Type getType() {
         return Type.BOOLEAN;

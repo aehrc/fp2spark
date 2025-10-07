@@ -10,7 +10,7 @@ import org.apache.spark.sql.functions;
 import java.util.List;
 
 // This requires singular arguments
-public record Add(IRNode left, IRNode right, Type resultType) implements SingularIRNode {
+public record Add(IRNode left, IRNode right, Type resultType) implements IRNode {
 
     // Static signatures for Add operation
     public static final List<FunctionSignature> ADD_SIGNATURES = List.of(

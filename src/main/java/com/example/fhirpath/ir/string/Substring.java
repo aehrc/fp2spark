@@ -15,7 +15,7 @@ import static org.apache.spark.sql.functions.lit;
 public record Substring(IRNode target, IRNode pos, @Nullable IRNode length) implements IRNode {
 
     public static final List<FunctionSignature> SIGNATURES = List.of(
-            //  add minimal arrity 2 (STIRNG, INTEGER)
+            //  add minimal arrity 2 (STRING, INTEGER)
             new FunctionSignature(List.of(Type.STRING, Type.INTEGER, Type.INTEGER),
                     Type.STRING, 2)
     );
@@ -31,7 +31,7 @@ public record Substring(IRNode target, IRNode pos, @Nullable IRNode length) impl
             case STRING -> length != null
                     ? functions.substr(target.eval(), pos.eval().plus(lit(1)), length.eval())
                     : functions.substr(target.eval(), pos.eval().plus(lit(1)));
-            default -> throw new IllegalArgumentException("Unsupported result type for Exp: " + getType());
+            default -> throw new IllegalArgumentException("Unsupported result type for Substring: " + getType());
         };
     }
 }

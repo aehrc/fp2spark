@@ -12,7 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Unit tests for the Substring IRNode based on FHIRPath specification.
- *
  * Spec: substring(start : Integer [, length : Integer]) : String
  * - Returns string starting at position start (zero-based)
  * - If length is given, returns at most length characters

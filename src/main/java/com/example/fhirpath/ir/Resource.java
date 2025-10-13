@@ -2,19 +2,19 @@ package com.example.fhirpath.ir;
 
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Type;
-import org.apache.spark.sql.Column;
 
-import static org.apache.spark.sql.functions.col;
-import static org.apache.spark.sql.functions.lit;
+import javax.annotation.Nonnull;
 
 public record Resource(ResourceType type) implements IRNode {
     @Override
+    @Nonnull
     public Type getType() {
         return type;
     }
 
     @Override
-    public Column eval() {
-        return type != ResourceType.EMPTY ? col(type.getResourceName()) : lit(null);
+    @Nonnull
+    public <T> T accept(@Nonnull IRNodeVisitor<T> visitor) {
+        return visitor.visitResource(this);
     }
 }

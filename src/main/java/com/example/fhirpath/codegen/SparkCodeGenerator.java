@@ -1,0 +1,465 @@
+package com.example.fhirpath.codegen;
+
+import com.example.fhirpath.ir.*;
+import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.SparkTypeMapper;
+import com.example.fhirpath.typing.Type;
+import org.apache.spark.sql.Column;
+import org.apache.spark.sql.functions;
+import org.apache.spark.sql.types.DataType;
+
+import javax.annotation.Nonnull;
+import java.util.List;
+
+import static com.example.fhirpath.eval.EvalHelper.*;
+import static com.example.fhirpath.sql.DateTime.dateTime;
+import static com.example.fhirpath.sql.Quantity.quantity;
+import static com.example.fhirpath.sql.Date.date;
+import static com.example.fhirpath.sql.Time.time;
+import static org.apache.spark.sql.functions.*;
+
+/**
+ * Generates Spark Column expressions from FHIRPath IR trees.
+ *
+ * This visitor implements target-specific code generation for Apache Spark SQL.
+ * Each visit method transforms an IR node into a Spark Column that can be
+ * executed by the Spark SQL engine.
+ */
+public class SparkCodeGenerator implements IRNodeVisitor<Column> {
+
+    @Override
+    @Nonnull
+    public Column visitOperation(@Nonnull Operation op) {
+        // Recursively visit child arguments to generate their columns
+        // Handle null arguments (e.g., optional parameters that weren't provided)
+        List<Column> argColumns = op.args().stream()
+            .map(arg -> arg == null ? lit(null) : arg.accept(this))
+            .toList();
+
+        // Dispatch to appropriate evaluation method based on operation name
+        return evaluateOperation(op.name(), argColumns, op.getType(), op.args());
+    }
+
+    /**
+     * Central dispatch for all operations.
+     */
+    @Nonnull
+    private Column evaluateOperation(String name, List<Column> args, Type resultType, List<IRNode> argNodes) {
+        return switch(name) {
+            // Arithmetic
+            case "add" -> evaluateAdd(args, resultType);
+            case "sub" -> evaluateSub(args, resultType);
+            case "multiply" -> evaluateMultiply(args, resultType);
+            case "divide" -> evaluateDivide(args, resultType);
+            case "mod" -> evaluateMod(args, resultType);
+
+            // Comparison - use input type from first argument, not result type
+            case "gt" -> evaluateGreaterThan(args, argNodes.get(0).getType());
+            case "lt" -> evaluateLessThan(args, argNodes.get(0).getType());
+            case "geq" -> evaluateGreaterEqual(args, argNodes.get(0).getType());
+            case "leq" -> evaluateLessEqual(args, argNodes.get(0).getType());
+
+            // Math functions
+            case "abs" -> evaluateAbs(args, resultType);
+            case "ceiling" -> evaluateCeiling(args, resultType);
+            case "floor" -> evaluateFloor(args, resultType);
+            case "truncate" -> evaluateTruncate(args, resultType);
+            case "exp" -> evaluateExp(args, resultType);
+            case "ln" -> evaluateLn(args, resultType);
+            case "log" -> evaluateLog(args, resultType);
+            case "sqrt" -> evaluateSqrt(args, resultType);
+
+            // String functions
+            case "substring" -> evaluateSubstring(args);
+            case "startsWith" -> evaluateStartsWith(args);
+            case "endsWith" -> evaluateEndsWith(args);
+            case "contains" -> evaluateContains(args);
+            case "upper" -> upper(args.get(0));
+            case "lower" -> lower(args.get(0));
+            case "replace" -> regexp_replace(args.get(0), args.get(1), args.get(2));
+            case "matches" -> evaluateMatches(args);
+            case "length" -> length(args.get(0));
+
+            // Boolean operators
+            case "and" -> args.get(0).and(args.get(1));
+            case "or" -> args.get(0).or(args.get(1));
+            case "xor" -> args.get(0).bitwiseXOR(args.get(1));
+            case "implies" -> not(args.get(0)).or(args.get(1));
+            case "not" -> not(args.get(0));
+
+            default -> throw new UnsupportedOperationException(
+                "Unknown operation: " + name + " with result type: " + resultType);
+        };
+    }
+
+    // ========== Arithmetic Operations ==========
+
+    @Nonnull
+    private Column evaluateAdd(List<Column> args, Type resultType) {
+        Column left = args.get(0);
+        Column right = args.get(1);
+
+        return switch((PrimitiveType) resultType) {
+            case INTEGER, DECIMAL -> left.plus(right);
+            case STRING -> concat(left, right);
+            case DATE_TIME -> dateTime(left).plus(quantity(right));
+            case QUANTITY -> quantity(left).plus(quantity(right));
+            default -> throw new IllegalArgumentException(
+                "Unsupported result type for add: " + resultType);
+        };
+    }
+
+    @Nonnull
+    private Column evaluateSub(List<Column> args, Type resultType) {
+        Column left = args.get(0);
+        Column right = args.get(1);
+
+        return switch((PrimitiveType) resultType) {
+            case INTEGER, DECIMAL -> left.minus(right);
+            case DATE_TIME, QUANTITY -> left.minus(right); // Simplified - use direct minus
+            default -> throw new IllegalArgumentException(
+                "Unsupported result type for sub: " + resultType);
+        };
+    }
+
+    @Nonnull
+    private Column evaluateMultiply(List<Column> args, Type resultType) {
+        Column left = args.get(0);
+        Column right = args.get(1);
+
+        return switch((PrimitiveType) resultType) {
+            case INTEGER, DECIMAL -> left.multiply(right);
+            case QUANTITY -> left.multiply(right); // Use simple multiply for now
+            default -> throw new IllegalArgumentException(
+                "Unsupported result type for multiply: " + resultType);
+        };
+    }
+
+    @Nonnull
+    private Column evaluateDivide(List<Column> args, Type resultType) {
+        Column left = args.get(0);
+        Column right = args.get(1);
+
+        return switch((PrimitiveType) resultType) {
+            case INTEGER, DECIMAL -> left.divide(right);
+            case QUANTITY -> quantity(left).divide(quantity(right));
+            default -> throw new IllegalArgumentException(
+                "Unsupported result type for divide: " + resultType);
+        };
+    }
+
+    @Nonnull
+    private Column evaluateMod(List<Column> args, Type resultType) {
+        return args.get(0).mod(args.get(1));
+    }
+
+    // ========== Comparison Operations ==========
+
+    @Nonnull
+    private Column evaluateGreaterThan(List<Column> args, Type inputType) {
+        Column left = args.get(0);
+        Column right = args.get(1);
+
+        // Get input type from first argument's type (before comparison)
+        // Note: resultType is always BOOLEAN for comparisons
+        return switch((PrimitiveType) inputType) {
+            case INTEGER, DECIMAL, STRING -> left.gt(right);
+            case QUANTITY -> quantity(left).gt(quantity(right));
+            case DATE_TIME -> dateTime(left).gt(dateTime(right));
+            case DATE -> date(left).gt(date(right));
+            case TIME -> time(left).gt(time(right));
+            default -> throw new IllegalArgumentException(
+                "Unsupported input type for gt: " + inputType);
+        };
+    }
+
+    @Nonnull
+    private Column evaluateLessThan(List<Column> args, Type inputType) {
+        Column left = args.get(0);
+        Column right = args.get(1);
+
+        return switch((PrimitiveType) inputType) {
+            case INTEGER, DECIMAL, STRING -> left.lt(right);
+            case QUANTITY -> quantity(left).lt(quantity(right));
+            case DATE_TIME -> dateTime(left).lt(dateTime(right));
+            case DATE -> date(left).lt(date(right));
+            case TIME -> time(left).lt(time(right));
+            default -> throw new IllegalArgumentException(
+                "Unsupported input type for lt: " + inputType);
+        };
+    }
+
+    @Nonnull
+    private Column evaluateGreaterEqual(List<Column> args, Type inputType) {
+        Column left = args.get(0);
+        Column right = args.get(1);
+
+        return switch((PrimitiveType) inputType) {
+            case INTEGER, DECIMAL, STRING -> left.geq(right);
+            case QUANTITY -> quantity(left).geq(quantity(right));
+            case DATE_TIME -> dateTime(left).geq(dateTime(right));
+            case DATE -> date(left).geq(date(right));
+            case TIME -> time(left).geq(time(right));
+            default -> throw new IllegalArgumentException(
+                "Unsupported input type for geq: " + inputType);
+        };
+    }
+
+    @Nonnull
+    private Column evaluateLessEqual(List<Column> args, Type inputType) {
+        Column left = args.get(0);
+        Column right = args.get(1);
+
+        return switch((PrimitiveType) inputType) {
+            case INTEGER, DECIMAL, STRING -> left.leq(right);
+            case QUANTITY -> quantity(left).lt(quantity(right)).or(left.equalTo(right));
+            case DATE_TIME -> dateTime(left).lt(dateTime(right)).or(left.equalTo(right));
+            case DATE -> date(left).lt(date(right)).or(left.equalTo(right));
+            case TIME -> time(left).lt(time(right)).or(left.equalTo(right));
+            default -> throw new IllegalArgumentException(
+                "Unsupported input type for leq: " + inputType);
+        };
+    }
+
+    // ========== Math Functions ==========
+
+    @Nonnull
+    private Column evaluateAbs(List<Column> args, Type resultType) {
+        Column target = args.get(0);
+
+        return switch((PrimitiveType) resultType) {
+            case INTEGER, DECIMAL -> abs(target);
+            case QUANTITY -> quantity(target).abs();
+            default -> throw new IllegalArgumentException(
+                "Unsupported result type for abs: " + resultType);
+        };
+    }
+
+    @Nonnull
+    private Column evaluateCeiling(List<Column> args, Type resultType) {
+        return ceil(args.get(0));
+    }
+
+    @Nonnull
+    private Column evaluateFloor(List<Column> args, Type resultType) {
+        return floor(args.get(0));
+    }
+
+    @Nonnull
+    private Column evaluateTruncate(List<Column> args, Type resultType) {
+        // Truncate towards zero
+        Column target = args.get(0);
+        return when(target.geq(lit(0)), floor(target))
+            .otherwise(ceil(target));
+    }
+
+    @Nonnull
+    private Column evaluateExp(List<Column> args, Type resultType) {
+        return exp(args.get(0));
+    }
+
+    @Nonnull
+    private Column evaluateLn(List<Column> args, Type resultType) {
+        return log(args.get(0));
+    }
+
+    @Nonnull
+    private Column evaluateLog(List<Column> args, Type resultType) {
+        return log(10.0, args.get(0));
+    }
+
+    @Nonnull
+    private Column evaluateSqrt(List<Column> args, Type resultType) {
+        return sqrt(args.get(0));
+    }
+
+    // ========== String Functions ==========
+
+    @Nonnull
+    private Column evaluateStartsWith(List<Column> args) {
+        return args.get(0).startsWith(args.get(1));
+    }
+
+    @Nonnull
+    private Column evaluateEndsWith(List<Column> args) {
+        return args.get(0).endsWith(args.get(1));
+    }
+
+    @Nonnull
+    private Column evaluateContains(List<Column> args) {
+        return args.get(0).contains(args.get(1));
+    }
+
+    @Nonnull
+    private Column evaluateMatches(List<Column> args) {
+        // For matches, Spark SQL has a regexp_like function that works with column patterns
+        Column target = args.get(0);
+        Column pattern = args.get(1);
+        // Use call_function to dynamically call regexp_like with both columns
+        return functions.call_function("regexp_like", target, pattern);
+    }
+
+    @Nonnull
+    private Column evaluateSubstring(List<Column> args) {
+        final Column targetColumn = args.get(0);
+        // FHIRPath uses 0-based indexing, Spark uses 1-based
+        final Column posColumn = args.get(1).plus(lit(1));
+
+        // Handle optional length parameter
+        final Column lengthColumn = args.size() > 2 ? args.get(2) : lit(null);
+        final Column nonNullLengthColumn = coalesce(lengthColumn, lit(Integer.MAX_VALUE));
+
+        // FHIRPath null propagation rules
+        final Column nullPropagationCondition = targetColumn.isNull()
+            .or(posColumn.isNull());
+
+        final Column posOutOfBoundsCondition = posColumn.leq(0)
+            .or(posColumn.gt(length(targetColumn)));
+
+        final Column nullCondition = nullPropagationCondition
+            .or(posOutOfBoundsCondition);
+
+        return when(not(nullCondition),
+            substr(targetColumn, posColumn, nonNullLengthColumn));
+    }
+
+    // ========== Infrastructure Nodes ==========
+
+    @Override
+    @Nonnull
+    public Column visitLiteral(@Nonnull Literal lit) {
+        DataType sparkType = SparkTypeMapper.toSparkDataType(lit.type());
+        return lit(lit.value()).cast(sparkType);
+    }
+
+    @Override
+    @Nonnull
+    public Column visitTraversal(@Nonnull Traversal trav) {
+        Column target = trav.target().accept(this);
+        Column result = target.getField(trav.fieldSpec().getName());
+
+        // Handle collection traversals - need to filter nulls and flatten if necessary
+        if (!trav.target().isSingular()) {
+            result = functions.filter(result, Column::isNotNull);
+            if (!trav.fieldSpec().isSingular()) {
+                result = functions.flatten(result);
+            }
+        }
+        return result;
+    }
+
+    @Override
+    @Nonnull
+    public Column visitCast(@Nonnull Cast cast) {
+        DataType sparkType = SparkTypeMapper.toSparkDataType(cast.targetType());
+        // Get the child column
+        Column childColumn = cast.child().accept(this);
+        // Apply cast based on singularity
+        if (cast.isSingular()) {
+            return childColumn.cast(sparkType);
+        } else {
+            return childColumn.cast(org.apache.spark.sql.types.DataTypes.createArrayType(sparkType));
+        }
+    }
+
+    @Override
+    @Nonnull
+    public Column visitResource(@Nonnull Resource res) {
+        return res.type() != com.example.fhirpath.typing.ResourceType.EMPTY
+            ? col(res.type().getResourceName())
+            : lit(null);
+    }
+
+    @Override
+    @Nonnull
+    public Column visitGetValue(@Nonnull GetValue getValue) {
+        // GetValue converts FHIR types to system types by casting
+        Column childColumn = getValue.child().accept(this);
+        DataType sparkType = SparkTypeMapper.toSparkDataType(getValue.getType());
+
+        // Handle both singular and collection cases
+        if (getValue.isSingular()) {
+            return childColumn.cast(sparkType);
+        } else {
+            return childColumn.cast(org.apache.spark.sql.types.DataTypes.createArrayType(sparkType));
+        }
+    }
+
+    @Override
+    @Nonnull
+    public Column visitCount(@Nonnull Count count) {
+        Column childColumn = count.child().accept(this);
+        boolean isSingular = count.child().isSingular();
+
+        // Handle based on singularity
+        if (isSingular) {
+            return when(childColumn.isNotNull(), lit(1)).otherwise(lit(0));
+        } else {
+            return when(childColumn.isNotNull(), functions.size(childColumn)).otherwise(lit(0));
+        }
+    }
+
+    @Override
+    @Nonnull
+    public Column visitExists(@Nonnull Exists exists) {
+        Column childColumn = exists.child().accept(this);
+        return when(childColumn.isNotNull(), lit(true)).otherwise(lit(false));
+    }
+
+    @Override
+    @Nonnull
+    public Column visitUnion(@Nonnull Union union) {
+        Column leftColumn = union.left().accept(this);
+        Column rightColumn = union.right().accept(this);
+
+        // Convert to arrays if singular
+        Column leftArray = union.left().isSingular()
+            ? when(leftColumn.isNotNull(), functions.array(leftColumn)).otherwise(functions.array())
+            : leftColumn;
+        Column rightArray = union.right().isSingular()
+            ? when(rightColumn.isNotNull(), functions.array(rightColumn)).otherwise(functions.array())
+            : rightColumn;
+
+        return array_union(leftArray, rightArray);
+    }
+
+    @Override
+    @Nonnull
+    public Column visitEquals(@Nonnull Equals equals) {
+        Type leftType = equals.left().getType();
+        Type rightType = equals.right().getType();
+
+        // Normalize FHIR types to their system types for comparison
+        Type normalizedLeftType = leftType instanceof com.example.fhirpath.typing.fhir.FhirType fhirLeft
+            ? fhirLeft.systemType()
+            : leftType;
+        Type normalizedRightType = rightType instanceof com.example.fhirpath.typing.fhir.FhirType fhirRight
+            ? fhirRight.systemType()
+            : rightType;
+
+        // Handle null types
+        if (normalizedLeftType == Type.NULL || normalizedRightType == Type.NULL) {
+            return lit(null);
+        }
+
+        // Check if types are compatible (exact match or numeric coercion)
+        boolean typesCompatible = normalizedLeftType == normalizedRightType ||
+            (isNumericType(normalizedLeftType) && isNumericType(normalizedRightType));
+
+        if (!typesCompatible) {
+            return lit(false);
+        }
+
+        // If types are compatible, perform actual equality comparison
+        Column left = equals.left().accept(this);
+        Column right = equals.right().accept(this);
+        return left.equalTo(right);
+    }
+
+    /**
+     * Check if a type is numeric (INTEGER or DECIMAL).
+     */
+    private boolean isNumericType(Type type) {
+        return type == Type.INTEGER || type == Type.DECIMAL;
+    }
+}

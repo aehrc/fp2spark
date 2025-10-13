@@ -3,44 +3,25 @@ package com.example.fhirpath.analyzer;
 import com.example.fhirpath.ast.AstBinaryOperator;
 import com.example.fhirpath.ast.AstFunctionCall;
 import com.example.fhirpath.ir.*;
-import com.example.fhirpath.ir.arythm.Add;
-import com.example.fhirpath.ir.arythm.Divide;
-import com.example.fhirpath.ir.arythm.Sub;
-import com.example.fhirpath.ir.builder.IRNodeBuilder;
-import com.example.fhirpath.ir.comparison.GreaterEqual;
-import com.example.fhirpath.ir.comparison.GreaterThan;
-import com.example.fhirpath.ir.comparison.LessThan;
-import com.example.fhirpath.ir.math.Abs;
-import com.example.fhirpath.ir.math.Exp;
-import com.example.fhirpath.ir.string.Substring;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-
-import static com.example.fhirpath.ir.builder.IRNodeBuilder.forClass;
 
 public final class FunctionRegistry {
 
-
-    final static Map<String, IRNodeBuilder> OPERATORS = Map.ofEntries(
-            Map.entry(">", forClass(GreaterThan.class)),
-            Map.entry("<", forClass(LessThan.class)),
-            Map.entry(">=", forClass(GreaterEqual.class)),
-            Map.entry("+", forClass(Add.class)),
-            Map.entry("-", forClass(Sub.class)),
-            Map.entry("/", forClass(Divide.class)),
-            Map.entry("=", forClass(Equals.class)),
-            Map.entry("|", forClass(Union.class))
-    );
-
-    final static Map<String, IRNodeBuilder> FUNCTIONS = Map.ofEntries(
-            Map.entry("count", forClass(Count.class)),
-            Map.entry("exists", forClass(Exists.class)),
-            Map.entry("abs", forClass(Abs.class)),
-            Map.entry("exp", forClass(Exp.class)),
-            Map.entry("getValue", forClass(GetValue.class)),
-            Map.entry("substring", forClass(Substring.class))
+    // Mapping of operator symbols to canonical names
+    private static final Map<String, String> OPERATOR_NAMES = Map.ofEntries(
+            Map.entry(">", "gt"),
+            Map.entry("<", "lt"),
+            Map.entry(">=", "geq"),
+            Map.entry("<=", "leq"),
+            Map.entry("+", "add"),
+            Map.entry("-", "sub"),
+            Map.entry("*", "multiply"),
+            Map.entry("/", "divide"),
+            Map.entry("%", "mod"),
+            Map.entry("=", "equals"),
+            Map.entry("|", "union")
     );
 
     private FunctionRegistry() {
@@ -49,9 +30,23 @@ public final class FunctionRegistry {
     public static IRNode resolve(Analyzer analyzer, AstFunctionCall call) {
         List<IRNode> args = call.children().map(analyzer::analyze).toList();
         String name = call.functionName();
-        return Optional.ofNullable(FUNCTIONS.get(name))
-                .map(builder -> doResolve(builder, args))
-                .orElseThrow(() -> new UnsupportedOperationException("Function '" + name + "' is not supported"));
+
+        // Try OperationRegistry first (for functions with signatures)
+        List<FunctionSignature> signatures = OperationRegistry.getSignatures(name);
+        if (!signatures.isEmpty()) {
+            OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(signatures, args);
+            return new Operation(name, resolvedCall.args(), resolvedCall.signature());
+        }
+
+        // Special handling for infrastructure functions
+        return switch (name) {
+            case "count" -> new Count(args.get(0));
+            case "exists" -> new Exists(args.get(0));
+            case "getValue" -> new GetValue(args.get(0));
+            case "equals" -> new Equals(args.get(0), args.get(1));
+            case "union", "|" -> new Union(args.get(0), args.get(1));
+            default -> throw new UnsupportedOperationException("Function '" + name + "' is not supported");
+        };
     }
 
     public static IRNode resolve(Analyzer analyzer, AstBinaryOperator biOperator) {
@@ -59,20 +54,26 @@ public final class FunctionRegistry {
                 analyzer.analyze(biOperator.left()),
                 analyzer.analyze(biOperator.right())
         );
-        String name = biOperator.operator();
-        return Optional.ofNullable(OPERATORS.get(name))
-                .map(builder -> doResolve(builder, args))
-                .orElseThrow(() -> new UnsupportedOperationException("Operator '" + name + "' is not supported"));
-    }
+        String operatorSymbol = biOperator.operator();
 
-    private static IRNode doResolve(IRNodeBuilder builder, List<IRNode> args) {
-        List<FunctionSignature> candidates = builder.getSignatures();
-        if (candidates.isEmpty()) {
-            // TODO: This needs to be fixed to check for arity
-            return builder.build(args.toArray(new IRNode[0]));
-        } else {
-            OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(candidates, args);
-            return builder.build(resolvedCall.args().toArray(new IRNode[0]));
+        // Convert operator symbol to canonical name
+        String operationName = OPERATOR_NAMES.getOrDefault(operatorSymbol, operatorSymbol);
+
+        // Special handling for equals and union (infrastructure nodes)
+        if ("equals".equals(operationName)) {
+            return new Equals(args.get(0), args.get(1));
         }
+        if ("union".equals(operationName)) {
+            return new Union(args.get(0), args.get(1));
+        }
+
+        // Try OperationRegistry
+        List<FunctionSignature> signatures = OperationRegistry.getSignatures(operationName);
+        if (!signatures.isEmpty()) {
+            OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(signatures, args);
+            return new Operation(operationName, resolvedCall.args(), resolvedCall.signature());
+        }
+
+        throw new UnsupportedOperationException("Operator '" + operatorSymbol + "' is not supported");
     }
 }

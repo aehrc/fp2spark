@@ -1,0 +1,70 @@
+package com.example.fhirpath.ir;
+
+import com.example.fhirpath.analyzer.FunctionSignature;
+import com.example.fhirpath.typing.Type;
+import org.apache.spark.sql.Column;
+
+import javax.annotation.Nonnull;
+import java.util.List;
+
+/**
+ * Generic IR node representing any FHIRPath function or operator.
+ * Replaces specific operation classes (Add, Abs, etc.).
+ *
+ * The resolved signature is stored in the node, providing:
+ * - Result type (via signature.resultType())
+ * - Parameter types (for validation)
+ * - Which overload was selected (for debugging/optimization)
+ *
+ * Examples:
+ * - Operation("add", [leftIR, rightIR], biOperator(INTEGER))
+ * - Operation("abs", [targetIR], unaryOp(INTEGER, INTEGER))
+ * - Operation("substring", [strIR, posIR, lenIR], substringSignature)
+ */
+public record Operation(
+    @Nonnull String name,
+    @Nonnull List<IRNode> args,
+    @Nonnull FunctionSignature signature
+) implements IRNode {
+
+    /**
+     * Returns the result type from the resolved signature.
+     * No recalculation needed - single source of truth.
+     */
+    @Override
+    @Nonnull
+    public Type getType() {
+        return signature.resultType();
+    }
+
+    /**
+     * Delegates evaluation to SparkCodeGenerator visitor.
+     * This method is deprecated and will be removed once visitor pattern is fully adopted.
+     */
+    @Override
+    @Nonnull
+    public Column eval() {
+        // Temporary delegation to visitor - will be removed in final refactoring
+        return accept(new com.example.fhirpath.codegen.SparkCodeGenerator());
+    }
+
+    /**
+     * Accepts a visitor for target-specific code generation.
+     */
+    @Nonnull
+    public <T> T accept(@Nonnull IRNodeVisitor<T> visitor) {
+        return visitor.visitOperation(this);
+    }
+
+    /**
+     * Convenience method to get argument count.
+     */
+    public int arity() {
+        return args.size();
+    }
+
+    @Override
+    public String toString() {
+        return name + "(" + args + ") : " + getType();
+    }
+}

@@ -4,12 +4,9 @@ import com.example.fhirpath.analyzer.FunctionSignature;
 import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.TypeSystem;
-import org.apache.spark.sql.Column;
-import org.apache.spark.sql.functions;
 
+import javax.annotation.Nonnull;
 import java.util.List;
-
-import static com.example.fhirpath.eval.EvalHelper.valueOf;
 
 public record Union(IRNode left, IRNode right) implements IRNode {
 
@@ -21,6 +18,7 @@ public record Union(IRNode left, IRNode right) implements IRNode {
                     .toList();
 
     @Override
+    @Nonnull
     public Type getType() {
         // we may get singluar value here collection but the result is always a collection
         // except for null cases.
@@ -28,12 +26,8 @@ public record Union(IRNode left, IRNode right) implements IRNode {
     }
 
     @Override
-    public Column eval() {
-        // NOTE: THIS only works for primitive SQL types
-        // That do not need a custom comparator
-        return functions.array_union(
-                valueOf(left).asArray(),
-                valueOf(right).asArray()
-        );
+    @Nonnull
+    public <T> T accept(@Nonnull IRNodeVisitor<T> visitor) {
+        return visitor.visitUnion(this);
     }
 }

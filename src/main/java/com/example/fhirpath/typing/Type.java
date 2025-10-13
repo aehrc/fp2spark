@@ -20,5 +20,5 @@ public interface Type {
     Type BOOLEAN = PrimitiveType.BOOLEAN;
     Type STRING = PrimitiveType.STRING;
     Type NULL = PrimitiveType.NULL;
-    Type UNKNOWN = PrimitiveType.UNKNOWN;
+    Type ANY = PrimitiveType.UNKNOWN;
 }

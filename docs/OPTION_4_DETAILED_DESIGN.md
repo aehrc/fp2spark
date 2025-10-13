@@ -1,4 +1,4 @@
-# Option 4: Hybrid Registry + Visitor Pattern - Detailed Design
+Sr# Option 4: Hybrid Registry + Visitor Pattern - Detailed Design
 
 **Date:** 2025-10-13
 **Status:** Proposed Design for Discussion

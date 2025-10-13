@@ -80,7 +80,7 @@ public final class OverloadResolver {
         }
 
         // Allow implicit casts via TypeSystem or from UNKNOWN
-        if (target == Type.UNKNOWN) {
+        if (target == Type.ANY) {
             return new Adapt(arg, true, 1);
         } else if (TypeSystem.canCast(actual, target)) {
             // we should check somehow if getValue() should be applied first

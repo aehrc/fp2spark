@@ -119,23 +119,23 @@ public final class OperationRegistry {
         // first() returns the first element from a collection
         // Collection<T> → T (extracts element type)
         register("first", List.of(
-            elementExtractor(UNKNOWN)
+            elementExtractor(ANY)
         ));
 
         // count() returns the number of items in the collection
         // These work on any type, so we use UNKNOWN as a placeholder
         register("count", List.of(
-            collectionAggregator(UNKNOWN, INTEGER)
+            collectionAggregator(ANY, INTEGER)
         ));
 
         // exists() returns true if the collection is not empty
         register("exists", List.of(
-            collectionAggregator(UNKNOWN, BOOLEAN)
+            collectionAggregator(ANY, BOOLEAN)
         ));
 
         // empty() returns true if the collection is empty
         register("empty", List.of(
-            collectionAggregator(UNKNOWN, BOOLEAN)
+            collectionAggregator(ANY, BOOLEAN)
         ));
     }
 

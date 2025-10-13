@@ -32,17 +32,15 @@ public final class FunctionRegistry {
         String name = call.functionName();
 
         // Try OperationRegistry first (for functions with signatures)
-        List<FunctionSignature> signatures = OperationRegistry.getSignatures(name);
+        List<SignatureDefinition> signatures = OperationRegistry.getSignatures(name);
         if (!signatures.isEmpty()) {
             OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(signatures, args);
             return new Operation(name, resolvedCall.args(), resolvedCall.signature());
         }
 
-        // Special handling for infrastructure functions
+        // Special handling for infrastructure functions (not yet in registry)
         return switch (name) {
-            case "count" -> new Count(args.get(0));
-            case "exists" -> new Exists(args.get(0));
-            case "getValue" -> new GetValue(args.get(0));
+            case "getValue" -> new CastToSystem(args.get(0));
             case "equals" -> new Equals(args.get(0), args.get(1));
             case "union", "|" -> new Union(args.get(0), args.get(1));
             default -> throw new UnsupportedOperationException("Function '" + name + "' is not supported");
@@ -68,7 +66,7 @@ public final class FunctionRegistry {
         }
 
         // Try OperationRegistry
-        List<FunctionSignature> signatures = OperationRegistry.getSignatures(operationName);
+        List<SignatureDefinition> signatures = OperationRegistry.getSignatures(operationName);
         if (!signatures.isEmpty()) {
             OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(signatures, args);
             return new Operation(operationName, resolvedCall.args(), resolvedCall.signature());

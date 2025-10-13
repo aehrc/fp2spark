@@ -11,7 +11,6 @@ import org.apache.spark.sql.types.DataType;
 import javax.annotation.Nonnull;
 import java.util.List;
 
-import static com.example.fhirpath.eval.EvalHelper.*;
 import static com.example.fhirpath.sql.DateTime.dateTime;
 import static com.example.fhirpath.sql.Quantity.quantity;
 import static com.example.fhirpath.sql.Date.date;
@@ -86,6 +85,11 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             case "xor" -> args.get(0).bitwiseXOR(args.get(1));
             case "implies" -> not(args.get(0)).or(args.get(1));
             case "not" -> not(args.get(0));
+
+            // Collection functions
+            case "count" -> evaluateCount(args.get(0), argNodes.get(0).isSingular());
+            case "exists" -> evaluateExists(args.get(0));
+            case "empty" -> evaluateEmpty(args.get(0));
 
             default -> throw new UnsupportedOperationException(
                 "Unknown operation: " + name + " with result type: " + resultType);
@@ -323,6 +327,28 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             substr(targetColumn, posColumn, nonNullLengthColumn));
     }
 
+    // ========== Collection Functions ==========
+
+    @Nonnull
+    private Column evaluateCount(Column childColumn, boolean isSingular) {
+        // Handle based on singularity
+        if (isSingular) {
+            return when(childColumn.isNotNull(), lit(1)).otherwise(lit(0));
+        } else {
+            return when(childColumn.isNotNull(), functions.size(childColumn)).otherwise(lit(0));
+        }
+    }
+
+    @Nonnull
+    private Column evaluateExists(Column childColumn) {
+        return when(childColumn.isNotNull(), lit(true)).otherwise(lit(false));
+    }
+
+    @Nonnull
+    private Column evaluateEmpty(Column childColumn) {
+        return when(childColumn.isNull(), lit(true)).otherwise(lit(false));
+    }
+
     // ========== Infrastructure Nodes ==========
 
     @Override
@@ -372,38 +398,17 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
     @Override
     @Nonnull
-    public Column visitGetValue(@Nonnull GetValue getValue) {
+    public Column visitCastToSystem(@Nonnull CastToSystem castToSystem) {
         // GetValue converts FHIR types to system types by casting
-        Column childColumn = getValue.child().accept(this);
-        DataType sparkType = SparkTypeMapper.toSparkDataType(getValue.getType());
+        Column childColumn = castToSystem.child().accept(this);
+        DataType sparkType = SparkTypeMapper.toSparkDataType(castToSystem.getType());
 
         // Handle both singular and collection cases
-        if (getValue.isSingular()) {
+        if (castToSystem.isSingular()) {
             return childColumn.cast(sparkType);
         } else {
             return childColumn.cast(org.apache.spark.sql.types.DataTypes.createArrayType(sparkType));
         }
-    }
-
-    @Override
-    @Nonnull
-    public Column visitCount(@Nonnull Count count) {
-        Column childColumn = count.child().accept(this);
-        boolean isSingular = count.child().isSingular();
-
-        // Handle based on singularity
-        if (isSingular) {
-            return when(childColumn.isNotNull(), lit(1)).otherwise(lit(0));
-        } else {
-            return when(childColumn.isNotNull(), functions.size(childColumn)).otherwise(lit(0));
-        }
-    }
-
-    @Override
-    @Nonnull
-    public Column visitExists(@Nonnull Exists exists) {
-        Column childColumn = exists.child().accept(this);
-        return when(childColumn.isNotNull(), lit(true)).otherwise(lit(false));
     }
 
     @Override

@@ -12,8 +12,8 @@ import javax.annotation.Nonnull;
  * Code generation is delegated to target-specific visitors via the accept() method.
  */
 public sealed interface IRNode
-    permits Operation, Literal, Traversal, Cast, Resource, GetValue,
-            Count, Exists, Union, Equals {
+    permits Operation, Literal, Traversal, Cast, Resource, CastToSystem,
+            Union, Equals {
 
     /**
      * Returns the FHIRPath type of this expression.

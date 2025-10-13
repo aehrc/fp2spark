@@ -5,7 +5,7 @@ import com.example.fhirpath.typing.fhir.FhirType;
 
 import javax.annotation.Nonnull;
 
-public record GetValue(IRNode child) implements IRNode {
+public record CastToSystem(IRNode child) implements IRNode {
     @Override
     @Nonnull
     public Type getType() {
@@ -20,6 +20,6 @@ public record GetValue(IRNode child) implements IRNode {
     @Override
     @Nonnull
     public <T> T accept(@Nonnull IRNodeVisitor<T> visitor) {
-        return visitor.visitGetValue(this);
+        return visitor.visitCastToSystem(this);
     }
 }

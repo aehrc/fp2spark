@@ -1,6 +1,6 @@
 package com.example.fhirpath.ir;
 
-import com.example.fhirpath.analyzer.FunctionSignature;
+import com.example.fhirpath.analyzer.ResolvedSignature;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 
@@ -12,19 +12,22 @@ import java.util.List;
  * Replaces specific operation classes (Add, Abs, etc.).
  *
  * The resolved signature is stored in the node, providing:
- * - Result type (via signature.resultType())
+ * - Result type (via signature.resultType()) - statically resolved during construction
  * - Parameter types (for validation)
  * - Which overload was selected (for debugging/optimization)
  *
+ * Type resolution happens exactly once during Operation construction via
+ * ResolvedSignature.resolve(), converting ResultSpecs to concrete types.
+ *
  * Examples:
- * - Operation("add", [leftIR, rightIR], biOperator(INTEGER))
- * - Operation("abs", [targetIR], unaryOp(INTEGER, INTEGER))
- * - Operation("substring", [strIR, posIR, lenIR], substringSignature)
+ * - Operation("add", [leftIR, rightIR], resolvedSig)
+ * - Operation("abs", [targetIR], resolvedSig)
+ * - Operation("count", [collectionIR], resolvedSig) // now an Operation!
  */
 public record Operation(
     @Nonnull String name,
     @Nonnull List<IRNode> args,
-    @Nonnull FunctionSignature signature
+    @Nonnull ResolvedSignature signature
 ) implements IRNode {
 
     /**

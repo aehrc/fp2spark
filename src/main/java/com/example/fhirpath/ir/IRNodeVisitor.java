@@ -50,19 +50,7 @@ public interface IRNodeVisitor<T> {
      * Visit a getValue() operation (extract value from FHIR type).
      */
     @Nonnull
-    T visitGetValue(@Nonnull GetValue node);
-
-    /**
-     * Visit a count() aggregate function.
-     */
-    @Nonnull
-    T visitCount(@Nonnull Count node);
-
-    /**
-     * Visit an exists() predicate function.
-     */
-    @Nonnull
-    T visitExists(@Nonnull Exists node);
+    T visitCastToSystem(@Nonnull CastToSystem node);
 
     /**
      * Visit a union operation (collection union).

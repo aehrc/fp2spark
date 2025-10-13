@@ -1,7 +1,7 @@
 package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.ir.Cast;
-import com.example.fhirpath.ir.GetValue;
+import com.example.fhirpath.ir.CastToSystem;
 import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
@@ -17,15 +17,22 @@ public final class OverloadResolver {
     private OverloadResolver() {
     }
 
-    public record ResolvedCall(FunctionSignature signature, List<IRNode> args) {
+    /**
+     * Result of overload resolution with resolved signature and adapted arguments.
+     */
+    public record ResolvedCall(ResolvedSignature signature, List<IRNode> args) {
     }
 
-    public static ResolvedCall resolveCall(List<FunctionSignature> candidates,
+    /**
+     * Resolve a function call by selecting the best matching signature and adapting arguments.
+     * Returns a ResolvedCall with concrete result type.
+     */
+    public static ResolvedCall resolveCall(List<SignatureDefinition> candidates,
                                            List<IRNode> args) {
         ResolvedCall best = null;
         int bestCost = Integer.MAX_VALUE;
 
-        for (FunctionSignature sig : candidates) {
+        for (SignatureDefinition sig : candidates) {
             if (args.size() > sig.arity() || args.size() < sig.minArity()) continue;
 
             int cost = 0;
@@ -44,17 +51,20 @@ public final class OverloadResolver {
 
             if (cost < bestCost) {
                 bestCost = cost;
-                best = new ResolvedCall(sig,
-                        Stream.concat(
-                                adaptations.stream().map(a -> a.node),
-                                // pad with nulls for varargs
-                                Stream.generate(() -> (IRNode) null).limit(sig.arity() - adaptations.size())
-                        ).toList());
+                List<IRNode> adaptedArgs = Stream.concat(
+                        adaptations.stream().map(a -> a.node),
+                        // pad with nulls for varargs
+                        Stream.generate(() -> (IRNode) null).limit(sig.arity() - adaptations.size())
+                ).toList();
+
+                // Resolve the signature to get concrete result type
+                ResolvedSignature resolvedSig = ResolvedSignature.resolve(sig, adaptedArgs);
+                best = new ResolvedCall(resolvedSig, adaptedArgs);
             }
         }
 
         if (best == null) {
-            throw new IllegalArgumentException("No matching overload for binary operation with arg types: "
+            throw new IllegalArgumentException("No matching overload for operation with arg types: "
                     + args.stream().map(IRNode::getType).toList());
         }
         return best;
@@ -76,7 +86,7 @@ public final class OverloadResolver {
             // we should check somehow if getValue() should be applied first
             final IRNode implicts;
             if (actual instanceof FhirType && target instanceof PrimitiveType) {
-                implicts = new Cast(new GetValue(arg), target);
+                implicts = new Cast(new CastToSystem(arg), target);
             } else {
                 implicts = new Cast(arg, target);
             }

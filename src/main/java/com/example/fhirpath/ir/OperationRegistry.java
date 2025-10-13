@@ -1,6 +1,6 @@
 package com.example.fhirpath.ir;
 
-import com.example.fhirpath.analyzer.FunctionSignature;
+import com.example.fhirpath.analyzer.SignatureDefinition;
 import com.example.fhirpath.typing.Type;
 
 import javax.annotation.Nonnull;
@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static com.example.fhirpath.analyzer.FunctionSignature.*;
+import static com.example.fhirpath.analyzer.Signatures.*;
 import static com.example.fhirpath.typing.Type.*;
 
 /**
@@ -23,7 +23,7 @@ import static com.example.fhirpath.typing.Type.*;
  */
 public final class OperationRegistry {
 
-    private static final Map<String, List<FunctionSignature>> OPERATIONS = new HashMap<>();
+    private static final Map<String, List<SignatureDefinition>> OPERATIONS = new HashMap<>();
 
     static {
         // Arithmetic operators
@@ -31,13 +31,13 @@ public final class OperationRegistry {
         registerBinaryOp("add", INTEGER, DECIMAL, QUANTITY, STRING);
         OPERATIONS.put("add", appendSignature(
             OPERATIONS.get("add"),
-            biOperatorLeft(DATE_TIME, QUANTITY) // DateTime + Quantity → DateTime
+            binaryOp(DATE_TIME, QUANTITY, DATE_TIME) // DateTime + Quantity → DateTime
         ));
 
         registerBinaryOp("sub", INTEGER, DECIMAL, QUANTITY);
         OPERATIONS.put("sub", appendSignature(
             OPERATIONS.get("sub"),
-            biOperatorLeft(DATE_TIME, QUANTITY) // DateTime - Quantity → DateTime
+            binaryOp(DATE_TIME, QUANTITY, DATE_TIME) // DateTime - Quantity → DateTime
         ));
 
         registerBinaryOp("multiply", INTEGER, DECIMAL, QUANTITY);
@@ -70,48 +70,73 @@ public final class OperationRegistry {
         // FHIRPath Spec: 6.5.1 - 6.5.10
         register("substring", List.of(
             // substring(string, start) and substring(string, start, length)
-            new FunctionSignature(List.of(STRING, INTEGER, INTEGER), STRING, 2)
+            variadic(List.of(STRING, INTEGER, INTEGER), STRING, 2)
         ));
 
         register("startsWith", List.of(
-            new FunctionSignature(List.of(STRING, STRING), BOOLEAN)
+            binaryOp(STRING, STRING, BOOLEAN)
         ));
 
         register("endsWith", List.of(
-            new FunctionSignature(List.of(STRING, STRING), BOOLEAN)
+            binaryOp(STRING, STRING, BOOLEAN)
         ));
 
         register("contains", List.of(
-            new FunctionSignature(List.of(STRING, STRING), BOOLEAN)
+            binaryOp(STRING, STRING, BOOLEAN)
         ));
 
         register("upper", List.of(
-            new FunctionSignature(List.of(STRING), STRING)
+            stringOp(STRING)
         ));
 
         register("lower", List.of(
-            new FunctionSignature(List.of(STRING), STRING)
+            stringOp(STRING)
         ));
 
         register("replace", List.of(
-            new FunctionSignature(List.of(STRING, STRING, STRING), STRING)
+            stringOp(STRING, STRING, STRING)
         ));
 
         register("matches", List.of(
-            new FunctionSignature(List.of(STRING, STRING), BOOLEAN)
+            binaryOp(STRING, STRING, BOOLEAN)
         ));
 
         register("length", List.of(
-            new FunctionSignature(List.of(STRING), INTEGER)
+            unaryOp(STRING, INTEGER)
         ));
 
         // Boolean operators
         // FHIRPath Spec: 6.8.1 - 6.8.4
-        register("and", List.of(biOperator(BOOLEAN)));
-        register("or", List.of(biOperator(BOOLEAN)));
-        register("xor", List.of(biOperator(BOOLEAN)));
-        register("implies", List.of(biOperator(BOOLEAN)));
-        register("not", List.of(new FunctionSignature(List.of(BOOLEAN), BOOLEAN)));
+        register("and", List.of(binaryOp(BOOLEAN, BOOLEAN, BOOLEAN)));
+        register("or", List.of(binaryOp(BOOLEAN, BOOLEAN, BOOLEAN)));
+        register("xor", List.of(binaryOp(BOOLEAN, BOOLEAN, BOOLEAN)));
+        register("implies", List.of(binaryOp(BOOLEAN, BOOLEAN, BOOLEAN)));
+        register("not", List.of(unaryOp(BOOLEAN, BOOLEAN)));
+
+        // Collection functions
+        // FHIRPath Spec: 6.6.1 - 6.6.5
+
+        // first() returns the first element from a collection
+        // Collection<T> → T (extracts element type)
+        register("first", List.of(
+            elementExtractor(UNKNOWN)
+        ));
+
+        // count() returns the number of items in the collection
+        // These work on any type, so we use UNKNOWN as a placeholder
+        register("count", List.of(
+            collectionAggregator(UNKNOWN, INTEGER)
+        ));
+
+        // exists() returns true if the collection is not empty
+        register("exists", List.of(
+            collectionAggregator(UNKNOWN, BOOLEAN)
+        ));
+
+        // empty() returns true if the collection is empty
+        register("empty", List.of(
+            collectionAggregator(UNKNOWN, BOOLEAN)
+        ));
     }
 
     private OperationRegistry() {
@@ -123,7 +148,7 @@ public final class OperationRegistry {
      * Returns empty list if operation is not registered.
      */
     @Nonnull
-    public static List<FunctionSignature> getSignatures(@Nonnull String name) {
+    public static List<SignatureDefinition> getSignatures(@Nonnull String name) {
         return OPERATIONS.getOrDefault(name, List.of());
     }
 
@@ -139,7 +164,7 @@ public final class OperationRegistry {
      */
     private static void registerBinaryOp(String name, Type... types) {
         register(name, Stream.of(types)
-            .map(FunctionSignature::biOperator)
+            .map(t -> binaryOp(t, t, t))
             .toList());
     }
 
@@ -148,7 +173,7 @@ public final class OperationRegistry {
      */
     private static void registerUnaryOp(String name, Type... types) {
         register(name, Stream.of(types)
-            .map(t -> new FunctionSignature(List.of(t), t))
+            .map(t -> unaryOp(t, t))
             .toList());
     }
 
@@ -157,14 +182,14 @@ public final class OperationRegistry {
      */
     private static void registerComparison(String name, Type... types) {
         register(name, Stream.of(types)
-            .map(t -> biOperator(t, BOOLEAN))
+            .map(t -> comparisonOp(t, t))
             .toList());
     }
 
     /**
      * Core registration method.
      */
-    private static void register(String name, List<FunctionSignature> signatures) {
+    private static void register(String name, List<SignatureDefinition> signatures) {
         if (OPERATIONS.containsKey(name)) {
             throw new IllegalStateException("Operation already registered: " + name);
         }
@@ -174,9 +199,9 @@ public final class OperationRegistry {
     /**
      * Helper: Append a signature to existing list (for special cases).
      */
-    private static List<FunctionSignature> appendSignature(
-            List<FunctionSignature> existing,
-            FunctionSignature additional) {
+    private static List<SignatureDefinition> appendSignature(
+            List<SignatureDefinition> existing,
+            SignatureDefinition additional) {
         return Stream.concat(existing.stream(), Stream.of(additional)).toList();
     }
 }

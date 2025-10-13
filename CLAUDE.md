@@ -38,4 +38,17 @@ For writing or reviewing unit tests for FHIRPath functions and operators, use th
 **Reference:** See `src/test/java/com/example/fhirpath/ir/string/SubstringTest.java` for an example of the testing style the agent produces.
 
 **Agent location:** `.claude/agents/fhirpath-test-writer.md`
-- The detailed design is in @DESIGN.md. Use it both when writing the code and also to record new or modified design choices.
+
+## Project Guidelines
+
+### Design Documentation
+
+The detailed design is in @DESIGN.md. Use it both when writing the code and also to record new or modified design choices.
+
+### Commit Messages
+
+Keep commit messages succinct and focused:
+- Max a few sentences describing the **purpose** of the change
+- Focus on **what** and **why**, not **how**
+- Avoid details that are easily visible in `git diff`
+- Keep it concise and to the point

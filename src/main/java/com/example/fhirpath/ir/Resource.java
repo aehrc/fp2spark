@@ -3,7 +3,7 @@ package com.example.fhirpath.ir;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Type;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public record Resource(ResourceType type) implements IRNode {
     @Override

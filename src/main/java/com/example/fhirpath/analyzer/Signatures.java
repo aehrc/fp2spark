@@ -2,7 +2,7 @@ package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.typing.Type;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.Arrays;
 import java.util.List;
 
@@ -18,13 +18,13 @@ public final class Signatures {
     }
 
     /**
-     * Unary operation with static result type.
-     * Example: abs(Integer) → Integer
+     * Unary function with arbitrary types (unconstrained).
+     * Example: length(String) → Integer
      */
     @Nonnull
-    public static SignatureDefinition unaryOp(
-        @Nonnull Type paramType,
-        @Nonnull Type resultType
+    public static SignatureDefinition unaryFunc(
+        @Nonnull final Type paramType,
+        @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
             List.of(paramType),
@@ -33,14 +33,23 @@ public final class Signatures {
     }
 
     /**
-     * Binary operation with static result type.
-     * Example: add(Integer, Integer) → Integer
+     * Unary operation where input type = result type (T → T).
+     * Example: abs(Integer) → Integer
      */
     @Nonnull
-    public static SignatureDefinition binaryOp(
-        @Nonnull Type leftType,
-        @Nonnull Type rightType,
-        @Nonnull Type resultType
+    public static SignatureDefinition unaryOp(@Nonnull final Type type) {
+        return unaryFunc(type, type);
+    }
+
+    /**
+     * Binary function with arbitrary types (unconstrained).
+     * Example: startsWith(String, String) → Boolean
+     */
+    @Nonnull
+    public static SignatureDefinition binaryFunc(
+        @Nonnull final Type leftType,
+        @Nonnull final Type rightType,
+        @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
             List.of(leftType, rightType),
@@ -49,15 +58,48 @@ public final class Signatures {
     }
 
     /**
-     * Comparison operation - always returns Boolean.
+     * Binary operation where all types are the same ((T, T) → T).
+     * Example: add(Integer, Integer) → Integer
+     */
+    @Nonnull
+    public static SignatureDefinition binaryOp(@Nonnull final Type type) {
+        return binaryFunc(type, type, type);
+    }
+
+    /**
+     * Temporal arithmetic operation ((Temporal, Quantity) → Temporal).
+     * Example: Date + Quantity → Date, DateTime + Quantity → DateTime
+     * Used for FHIRPath date/time arithmetic operations.
+     */
+    @Nonnull
+    public static SignatureDefinition temporalArithmetic(@Nonnull final Type temporalType) {
+        return binaryFunc(temporalType, Type.QUANTITY, temporalType);
+    }
+
+    /**
+     * Ternary function with arbitrary types (unconstrained).
+     * Example: replace(String, String, String) → String
+     */
+    @Nonnull
+    public static SignatureDefinition ternaryFunc(
+        @Nonnull final Type firstType,
+        @Nonnull final Type secondType,
+        @Nonnull final Type thirdType,
+        @Nonnull final Type resultType
+    ) {
+        return new SignatureDefinition(
+            List.of(firstType, secondType, thirdType),
+            new ResultSpec.Static(resultType)
+        );
+    }
+
+    /**
+     * Comparison operation - always returns Boolean ((T, T) → Boolean).
      * Example: gt(Integer, Integer) → Boolean
      */
     @Nonnull
-    public static SignatureDefinition comparisonOp(
-        @Nonnull Type leftType,
-        @Nonnull Type rightType
-    ) {
-        return binaryOp(leftType, rightType, Type.BOOLEAN);
+    public static SignatureDefinition comparisonOp(@Nonnull final Type type) {
+        return binaryFunc(type, type, Type.BOOLEAN);
     }
 
     /**
@@ -65,7 +107,7 @@ public final class Signatures {
      * Example: Collection<T>.first() → T
      */
     @Nonnull
-    public static SignatureDefinition elementExtractor(@Nonnull Type inputType) {
+    public static SignatureDefinition elementExtractor(@Nonnull final Type inputType) {
         return new SignatureDefinition(
             List.of(inputType),
             ResultSpec.EffectiveInputType.INSTANCE
@@ -78,10 +120,10 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition collectionPreserver(
-        @Nonnull Type inputType,
-        @Nonnull Type... additionalParams
+        @Nonnull final Type inputType,
+        @Nonnull final Type... additionalParams
     ) {
-        List<Type> params = new java.util.ArrayList<>();
+        final List<Type> params = new java.util.ArrayList<>();
         params.add(inputType);
         params.addAll(Arrays.asList(additionalParams));
         return new SignatureDefinition(
@@ -97,8 +139,8 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition collectionAggregator(
-        @Nonnull Type inputType,
-        @Nonnull Type resultType
+        @Nonnull final Type inputType,
+        @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
             List.of(inputType),
@@ -112,9 +154,9 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition variadic(
-        @Nonnull List<Type> parameterTypes,
-        @Nonnull Type resultType,
-        int minArity
+        @Nonnull final List<Type> parameterTypes,
+        @Nonnull final Type resultType,
+        final int minArity
     ) {
         return new SignatureDefinition(parameterTypes, resultType, minArity);
     }
@@ -125,31 +167,20 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition variadic(
-        @Nonnull List<Type> parameterTypes,
-        @Nonnull ResultSpec resultSpec,
-        int minArity
+        @Nonnull final List<Type> parameterTypes,
+        @Nonnull final ResultSpec resultSpec,
+        final int minArity
     ) {
         return new SignatureDefinition(parameterTypes, resultSpec, minArity);
     }
 
-    /**
-     * String operation with static String result.
-     * Example: substring(String, Integer) → String
-     */
-    @Nonnull
-    public static SignatureDefinition stringOp(Type... paramTypes) {
-        return new SignatureDefinition(
-            Arrays.asList(paramTypes),
-            Type.STRING
-        );
-    }
 
     /**
      * Type test operation - always returns Boolean.
      * Example: is(T, Type) → Boolean
      */
     @Nonnull
-    public static SignatureDefinition typeTest(@Nonnull Type inputType) {
+    public static SignatureDefinition typeTest(@Nonnull final Type inputType) {
         return new SignatureDefinition(
             List.of(inputType, Type.STRING),
             Type.BOOLEAN
@@ -161,7 +192,7 @@ public final class Signatures {
      * Example: FhirType(STRING).getValue() → String
      */
     @Nonnull
-    public static SignatureDefinition fhirValueExtractor(@Nonnull Type fhirType) {
+    public static SignatureDefinition fhirValueExtractor(@Nonnull final Type fhirType) {
         return new SignatureDefinition(
             List.of(fhirType),
             ResultSpec.FhirSystemType.INSTANCE
@@ -173,7 +204,7 @@ public final class Signatures {
      * Example: Collection<T>.where(Boolean) → Collection<T>
      */
     @Nonnull
-    public static SignatureDefinition collectionFilter(@Nonnull Type collectionType) {
+    public static SignatureDefinition collectionFilter(@Nonnull final Type collectionType) {
         return collectionPreserver(collectionType, Type.BOOLEAN);
     }
 
@@ -184,9 +215,9 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition collectionMap(
-        @Nonnull Type inputType,
-        @Nonnull Type expressionType,
-        @Nonnull Type resultElementType
+        @Nonnull final Type inputType,
+        @Nonnull final Type expressionType,
+        @Nonnull final Type resultElementType
     ) {
         return new SignatureDefinition(
             List.of(inputType, expressionType),
@@ -200,8 +231,8 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition union(
-        @Nonnull Type leftType,
-        @Nonnull Type rightType
+        @Nonnull final Type leftType,
+        @Nonnull final Type rightType
     ) {
         return new SignatureDefinition(
             List.of(leftType, rightType),

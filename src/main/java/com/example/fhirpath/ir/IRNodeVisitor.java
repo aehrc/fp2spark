@@ -1,6 +1,6 @@
 package com.example.fhirpath.ir;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Visitor interface for traversing and transforming IR trees.

@@ -5,7 +5,7 @@ import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.TypeSystem;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 public record Union(IRNode left, IRNode right) implements IRNode {

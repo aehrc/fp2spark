@@ -4,7 +4,7 @@ import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.FieldSpec;
 import com.example.fhirpath.typing.Type;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public record Traversal(@Nonnull IRNode target, @Nonnull FieldSpec fieldSpec) implements IRNode {
 

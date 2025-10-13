@@ -4,7 +4,7 @@ import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.fhir.FhirType;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 /**

@@ -2,8 +2,9 @@ package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.typing.Type;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
+import java.util.stream.Stream;
 
 /**
  * Signature definition for registration purposes.
@@ -11,18 +12,21 @@ import java.util.List;
  *
  * This is used in the registry to define available function overloads.
  * During resolution, this is converted to a ResolvedSignature with concrete type.
+ *
+ * Implements TypeGroup to enable zero-overhead usage in registry:
+ * a SignatureDefinition IS a TypeGroup that expands to itself.
  */
 public record SignatureDefinition(
     @Nonnull List<Type> parameterTypes,
     @Nonnull ResultSpec resultSpec,
     int minArity
-) {
+) implements TypeGroup {
     /**
      * Constructor for fixed arity signatures.
      */
     public SignatureDefinition(
-        @Nonnull List<Type> parameterTypes,
-        @Nonnull ResultSpec resultSpec
+        @Nonnull final List<Type> parameterTypes,
+        @Nonnull final ResultSpec resultSpec
     ) {
         this(parameterTypes, resultSpec, parameterTypes.size());
     }
@@ -31,21 +35,31 @@ public record SignatureDefinition(
      * Convenience constructor for static result types (most common case).
      */
     public SignatureDefinition(
-        @Nonnull List<Type> parameterTypes,
-        @Nonnull Type resultType,
-        int minArity
+        @Nonnull final List<Type> parameterTypes,
+        @Nonnull final Type resultType,
+        final int minArity
     ) {
         this(parameterTypes, new ResultSpec.Static(resultType), minArity);
     }
 
     public SignatureDefinition(
-        @Nonnull List<Type> parameterTypes,
-        @Nonnull Type resultType
+        @Nonnull final List<Type> parameterTypes,
+        @Nonnull final Type resultType
     ) {
         this(parameterTypes, new ResultSpec.Static(resultType));
     }
 
     public int arity() {
         return parameterTypes.size();
+    }
+
+    /**
+     * TypeGroup implementation: a signature expands to itself.
+     * This enables zero-overhead usage in registry - no wrapper needed.
+     */
+    @Nonnull
+    @Override
+    public Stream<SignatureDefinition> expand() {
+        return Stream.of(this);
     }
 }

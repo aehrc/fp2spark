@@ -1,146 +1,217 @@
 package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.SignatureDefinition;
+import com.example.fhirpath.analyzer.TypeGroup;
 import com.example.fhirpath.typing.Type;
 
-import javax.annotation.Nonnull;
-import java.util.HashMap;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static com.example.fhirpath.analyzer.Signatures.*;
+import com.example.fhirpath.analyzer.Signatures;
+import static com.example.fhirpath.analyzer.TypeGroups.forTypes;
+import static com.example.fhirpath.analyzer.TypeSets.*;
 import static com.example.fhirpath.typing.Type.*;
 
 /**
  * Centralized registry of all FHIRPath functions and operators.
  *
+ * Uses Option 5 design with TypeGroup for zero-overhead single signatures
+ * and elegant composition of multi-type patterns.
+ *
  * Each entry maps a function/operator name to its list of supported signatures.
  * The OverloadResolver uses these signatures to find the best match for given arguments.
- *
- * Adding a new FHIRPath function requires only adding an entry here -
- * no new classes needed.
  */
 public final class OperationRegistry {
 
-    private static final Map<String, List<SignatureDefinition>> OPERATIONS = new HashMap<>();
-
-    static {
-        // Arithmetic operators
-        // FHIRPath Spec: 6.2.1 - 6.2.4
-        registerBinaryOp("add", INTEGER, DECIMAL, QUANTITY, STRING);
-        OPERATIONS.put("add", appendSignature(
-            OPERATIONS.get("add"),
-            binaryOp(DATE_TIME, QUANTITY, DATE_TIME) // DateTime + Quantity → DateTime
-        ));
-
-        registerBinaryOp("sub", INTEGER, DECIMAL, QUANTITY);
-        OPERATIONS.put("sub", appendSignature(
-            OPERATIONS.get("sub"),
-            binaryOp(DATE_TIME, QUANTITY, DATE_TIME) // DateTime - Quantity → DateTime
-        ));
-
-        registerBinaryOp("multiply", INTEGER, DECIMAL, QUANTITY);
-        registerBinaryOp("divide", INTEGER, DECIMAL, QUANTITY);
-        registerBinaryOp("mod", INTEGER, DECIMAL);
-
-        // Comparison operators
-        // FHIRPath Spec: 6.3.1 - 6.3.6
-        registerComparison("gt", INTEGER, DECIMAL, STRING, QUANTITY,
-                          DATE, DATE_TIME, TIME);
-        registerComparison("lt", INTEGER, DECIMAL, STRING, QUANTITY,
-                          DATE, DATE_TIME, TIME);
-        registerComparison("geq", INTEGER, DECIMAL, STRING, QUANTITY,
-                          DATE, DATE_TIME, TIME);
-        registerComparison("leq", INTEGER, DECIMAL, STRING, QUANTITY,
-                          DATE, DATE_TIME, TIME);
-
-        // Math functions
-        // FHIRPath Spec: 6.4.1 - 6.4.5
-        registerUnaryOp("abs", INTEGER, DECIMAL, QUANTITY);
-        registerUnaryOp("ceiling", INTEGER, DECIMAL);
-        registerUnaryOp("floor", INTEGER, DECIMAL);
-        registerUnaryOp("truncate", INTEGER, DECIMAL);
-        registerUnaryOp("exp", INTEGER, DECIMAL);
-        registerUnaryOp("ln", INTEGER, DECIMAL);
-        registerUnaryOp("log", INTEGER, DECIMAL);
-        registerUnaryOp("sqrt", INTEGER, DECIMAL);
-
-        // String functions
-        // FHIRPath Spec: 6.5.1 - 6.5.10
-        register("substring", List.of(
-            // substring(string, start) and substring(string, start, length)
-            variadic(List.of(STRING, INTEGER, INTEGER), STRING, 2)
-        ));
-
-        register("startsWith", List.of(
-            binaryOp(STRING, STRING, BOOLEAN)
-        ));
-
-        register("endsWith", List.of(
-            binaryOp(STRING, STRING, BOOLEAN)
-        ));
-
-        register("contains", List.of(
-            binaryOp(STRING, STRING, BOOLEAN)
-        ));
-
-        register("upper", List.of(
-            stringOp(STRING)
-        ));
-
-        register("lower", List.of(
-            stringOp(STRING)
-        ));
-
-        register("replace", List.of(
-            stringOp(STRING, STRING, STRING)
-        ));
-
-        register("matches", List.of(
-            binaryOp(STRING, STRING, BOOLEAN)
-        ));
-
-        register("length", List.of(
-            unaryOp(STRING, INTEGER)
-        ));
-
-        // Boolean operators
-        // FHIRPath Spec: 6.8.1 - 6.8.4
-        register("and", List.of(binaryOp(BOOLEAN, BOOLEAN, BOOLEAN)));
-        register("or", List.of(binaryOp(BOOLEAN, BOOLEAN, BOOLEAN)));
-        register("xor", List.of(binaryOp(BOOLEAN, BOOLEAN, BOOLEAN)));
-        register("implies", List.of(binaryOp(BOOLEAN, BOOLEAN, BOOLEAN)));
-        register("not", List.of(unaryOp(BOOLEAN, BOOLEAN)));
-
-        // Collection functions
-        // FHIRPath Spec: 6.6.1 - 6.6.5
-
-        // first() returns the first element from a collection
-        // Collection<T> → T (extracts element type)
-        register("first", List.of(
-            elementExtractor(ANY)
-        ));
-
-        // count() returns the number of items in the collection
-        // These work on any type, so we use UNKNOWN as a placeholder
-        register("count", List.of(
-            collectionAggregator(ANY, INTEGER)
-        ));
-
-        // exists() returns true if the collection is not empty
-        register("exists", List.of(
-            collectionAggregator(ANY, BOOLEAN)
-        ));
-
-        // empty() returns true if the collection is empty
-        register("empty", List.of(
-            collectionAggregator(ANY, BOOLEAN)
-        ));
-    }
+    private static final Map<String, List<SignatureDefinition>> OPERATIONS = buildRegistry();
 
     private OperationRegistry() {
-        // Utility class - no instantiation
+        // Singleton - no instantiation
+    }
+
+    private static Map<String, List<SignatureDefinition>> buildRegistry() {
+        return Map.ofEntries(
+
+            // ARITHMETIC OPERATORS (FHIRPath Spec 6.2)
+
+            // Addition: numeric types, strings, and temporal + Quantity
+            // FHIRPath Spec 3740-3809: Date/DateTime/Time + Quantity
+            register("add",
+                forTypes(NUMERIC_WITH_QUANTITY, STRING_LIKE).define(Signatures::binaryOp),
+                forTypes(TEMPORAL).define(Signatures::temporalArithmetic)
+            ),
+
+            // Subtraction: numeric types and temporal - Quantity
+            // FHIRPath Spec 3810-3867: Date/DateTime/Time - Quantity
+            register("sub",
+                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::binaryOp),
+                forTypes(TEMPORAL).define(Signatures::temporalArithmetic)
+            ),
+
+            register("multiply",
+                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::binaryOp)
+            ),
+
+            register("divide",
+                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::binaryOp)
+            ),
+
+            register("mod",
+                forTypes(NUMERIC).define(Signatures::binaryOp)
+            ),
+
+            // COMPARISON OPERATORS (FHIRPath Spec 6.3)
+
+            register("gt",
+                forTypes(COMPARABLE).define(Signatures::comparisonOp)
+            ),
+
+            register("lt",
+                forTypes(COMPARABLE).define(Signatures::comparisonOp)
+            ),
+
+            register("geq",
+                forTypes(COMPARABLE).define(Signatures::comparisonOp)
+            ),
+
+            register("leq",
+                forTypes(COMPARABLE).define(Signatures::comparisonOp)
+            ),
+
+            // MATH FUNCTIONS (FHIRPath Spec 6.4)
+
+            register("abs",
+                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::unaryOp)
+            ),
+
+            register("ceiling",
+                forTypes(NUMERIC).define(Signatures::unaryOp)
+            ),
+
+            register("floor",
+                forTypes(NUMERIC).define(Signatures::unaryOp)
+            ),
+
+            register("truncate",
+                forTypes(NUMERIC).define(Signatures::unaryOp)
+            ),
+
+            register("exp",
+                forTypes(NUMERIC).define(Signatures::unaryOp)
+            ),
+
+            register("ln",
+                forTypes(NUMERIC).define(Signatures::unaryOp)
+            ),
+
+            register("log",
+                forTypes(NUMERIC).define(Signatures::unaryOp)
+            ),
+
+            register("sqrt",
+                forTypes(NUMERIC).define(Signatures::unaryOp)
+            ),
+
+            // STRING FUNCTIONS (FHIRPath Spec 6.5)
+
+            // substring(string, start) and substring(string, start, length)
+            register("substring",
+                Signatures.variadic(List.of(STRING, INTEGER, INTEGER), STRING, 2)
+            ),
+
+            register("startsWith",
+                Signatures.binaryFunc(STRING, STRING, BOOLEAN)
+            ),
+
+            register("endsWith",
+                Signatures.binaryFunc(STRING, STRING, BOOLEAN)
+            ),
+
+            register("contains",
+                Signatures.binaryFunc(STRING, STRING, BOOLEAN)
+            ),
+
+            register("upper",
+                Signatures.unaryOp(STRING)  // T -> T pattern
+            ),
+
+            register("lower",
+                Signatures.unaryOp(STRING)  // T -> T pattern
+            ),
+
+            register("replace",
+                Signatures.ternaryFunc(STRING, STRING, STRING, STRING)
+            ),
+
+            register("matches",
+                Signatures.binaryFunc(STRING, STRING, BOOLEAN)
+            ),
+
+            register("length",
+                Signatures.unaryFunc(STRING, INTEGER)
+            ),
+
+            // BOOLEAN OPERATORS (FHIRPath Spec 6.8)
+
+            register("and",
+                Signatures.binaryOp(BOOLEAN)  // (T, T) -> T pattern
+            ),
+
+            register("or",
+                Signatures.binaryOp(BOOLEAN)  // (T, T) -> T pattern
+            ),
+
+            register("xor",
+                Signatures.binaryOp(BOOLEAN)  // (T, T) -> T pattern
+            ),
+
+            register("implies",
+                Signatures.binaryFunc(BOOLEAN, BOOLEAN, BOOLEAN)
+            ),
+
+            register("not",
+                Signatures.unaryOp(BOOLEAN)  // T -> T pattern
+            ),
+
+            // COLLECTION FUNCTIONS (FHIRPath Spec 6.6)
+
+            // first() returns the first element from a collection
+            // Collection<T> → T (extracts element type)
+            register("first",
+                Signatures.elementExtractor(ANY)
+            ),
+
+            // count() returns the number of items in the collection
+            register("count",
+                Signatures.collectionAggregator(ANY, INTEGER)
+            ),
+
+            // exists() returns true if the collection is not empty
+            register("exists",
+                Signatures.collectionAggregator(ANY, BOOLEAN)
+            ),
+
+            // empty() returns true if the collection is empty
+            register("empty",
+                Signatures.collectionAggregator(ANY, BOOLEAN)
+            )
+        );
+    }
+
+    /**
+     * Varargs register with flatMap for natural composition.
+     * Accepts any number of TypeGroups (including SignatureDefinitions directly).
+     */
+    @Nonnull
+    private static Map.Entry<String, List<SignatureDefinition>> register(
+            @Nonnull final String name,
+            @Nonnull final TypeGroup... groups) {
+        final List<SignatureDefinition> signatures = Stream.of(groups)
+            .flatMap(TypeGroup::expand)
+            .toList();
+        return Map.entry(name, signatures);
     }
 
     /**
@@ -148,60 +219,14 @@ public final class OperationRegistry {
      * Returns empty list if operation is not registered.
      */
     @Nonnull
-    public static List<SignatureDefinition> getSignatures(@Nonnull String name) {
+    public static List<SignatureDefinition> getSignatures(@Nonnull final String name) {
         return OPERATIONS.getOrDefault(name, List.of());
     }
 
     /**
      * Checks if an operation is registered.
      */
-    public static boolean isRegistered(@Nonnull String name) {
+    public static boolean isRegistered(@Nonnull final String name) {
         return OPERATIONS.containsKey(name);
-    }
-
-    /**
-     * Helper: Register a binary operation with same input/output type.
-     */
-    private static void registerBinaryOp(String name, Type... types) {
-        register(name, Stream.of(types)
-            .map(t -> binaryOp(t, t, t))
-            .toList());
-    }
-
-    /**
-     * Helper: Register a unary operation with same input/output type.
-     */
-    private static void registerUnaryOp(String name, Type... types) {
-        register(name, Stream.of(types)
-            .map(t -> unaryOp(t, t))
-            .toList());
-    }
-
-    /**
-     * Helper: Register comparison operations (input types → BOOLEAN).
-     */
-    private static void registerComparison(String name, Type... types) {
-        register(name, Stream.of(types)
-            .map(t -> comparisonOp(t, t))
-            .toList());
-    }
-
-    /**
-     * Core registration method.
-     */
-    private static void register(String name, List<SignatureDefinition> signatures) {
-        if (OPERATIONS.containsKey(name)) {
-            throw new IllegalStateException("Operation already registered: " + name);
-        }
-        OPERATIONS.put(name, signatures);
-    }
-
-    /**
-     * Helper: Append a signature to existing list (for special cases).
-     */
-    private static List<SignatureDefinition> appendSignature(
-            List<SignatureDefinition> existing,
-            SignatureDefinition additional) {
-        return Stream.concat(existing.stream(), Stream.of(additional)).toList();
     }
 }

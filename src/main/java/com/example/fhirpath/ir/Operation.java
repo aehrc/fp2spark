@@ -4,7 +4,7 @@ import com.example.fhirpath.analyzer.ResolvedSignature;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 /**

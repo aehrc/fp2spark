@@ -3,7 +3,7 @@ package com.example.fhirpath.ir;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Base interface for all IR nodes in the FHIRPath expression tree.

@@ -103,6 +103,82 @@ mvn -DskipTests package
 
 ---
 
+## Coding Conventions
+
+This project follows strict coding conventions to ensure code quality, safety, and maintainability:
+
+### Nullability Annotations
+
+**Always use `jakarta.annotation.Nonnull` (or `@Nullable`) on all method return types and parameters.**
+
+```java
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+
+@Nonnull
+public String getName(@Nonnull final String id, @Nullable final String fallback) {
+    return fallback != null ? fallback : "default";
+}
+```
+
+Benefits:
+- Explicit null-safety contracts in APIs
+- IDE and static analysis tool support for null-checking
+- Self-documenting code
+
+### Immutability and Final
+
+**Use `final` on method parameters and local variables whenever possible.**
+
+```java
+// Method parameters - always final
+public void process(@Nonnull final String input, final int count) {
+    // Local variables - final when not reassigned
+    final String processed = input.trim();
+    final List<String> results = new ArrayList<>();
+
+    // Only non-final if reassignment is needed
+    int remaining = count;
+    while (remaining > 0) {
+        results.add(processed);
+        remaining--;
+    }
+}
+```
+
+**Prefer immutable data structures:**
+
+```java
+// Records for immutable data classes (Java 17+)
+public record SignatureDefinition(
+    @Nonnull List<Type> parameterTypes,
+    @Nonnull ResultSpec resultSpec,
+    int minArity
+) implements TypeGroup { }
+
+// Immutable collections
+public static final Set<Type> NUMERIC = Set.of(INTEGER, DECIMAL);
+public static final List<String> KEYWORDS = List.of("and", "or", "not");
+
+// Prefer Collections.unmodifiableList/Set/Map for older patterns
+private final List<String> items = Collections.unmodifiableList(sourceList);
+```
+
+**Benefits:**
+- Thread-safety by default
+- Easier to reason about code behavior
+- Prevents accidental mutations
+- Better performance in some cases (JVM optimizations)
+
+### General Guidelines
+
+1. **Immutability First**: Default to immutable unless mutability is explicitly required
+2. **Final by Default**: Mark everything `final` unless reassignment is needed
+3. **Null Safety**: Annotate all public APIs with `@Nonnull`/`@Nullable`
+4. **Collections**: Use immutable collections (`List.of()`, `Set.of()`, `Map.of()`) or `Collections.unmodifiable*()`
+
+---
+
 ## Roadmap
 
 - Expand FHIRPath coverage: collections (where/select/flatten), string/date ops, quantity arithmetic.

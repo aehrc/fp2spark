@@ -3,7 +3,7 @@ package com.example.fhirpath.ir;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.fhir.FhirType;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public record CastToSystem(IRNode child) implements IRNode {
     @Override

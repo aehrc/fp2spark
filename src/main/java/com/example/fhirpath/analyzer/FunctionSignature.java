@@ -2,7 +2,7 @@ package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.typing.Type;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 public record FunctionSignature(List<Type> parameterTypes, Type resultType, int minArity) {

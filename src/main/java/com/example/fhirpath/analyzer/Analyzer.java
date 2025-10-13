@@ -9,7 +9,7 @@ import com.example.fhirpath.typing.ComplexType;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Type;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.math.BigDecimal;
 import java.util.Optional;
 

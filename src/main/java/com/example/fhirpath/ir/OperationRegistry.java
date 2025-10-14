@@ -1,25 +1,24 @@
 package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.SignatureDefinition;
+import com.example.fhirpath.analyzer.Signatures;
 import com.example.fhirpath.analyzer.TypeGroup;
-import com.example.fhirpath.typing.Type;
-
 import jakarta.annotation.Nonnull;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import com.example.fhirpath.analyzer.Signatures;
 import static com.example.fhirpath.analyzer.TypeGroups.forTypes;
 import static com.example.fhirpath.analyzer.TypeSets.*;
 import static com.example.fhirpath.typing.Type.*;
 
 /**
  * Centralized registry of all FHIRPath functions and operators.
- *
+ * <p>
  * Uses Option 5 design with TypeGroup for zero-overhead single signatures
  * and elegant composition of multi-type patterns.
- *
+ * <p>
  * Each entry maps a function/operator name to its list of supported signatures.
  * The OverloadResolver uses these signatures to find the best match for given arguments.
  */
@@ -168,7 +167,7 @@ public final class OperationRegistry {
             ),
 
             register("implies",
-                Signatures.binaryFunc(BOOLEAN, BOOLEAN, BOOLEAN)
+                Signatures.binaryOp(BOOLEAN)
             ),
 
             register("not",
@@ -223,10 +222,4 @@ public final class OperationRegistry {
         return OPERATIONS.getOrDefault(name, List.of());
     }
 
-    /**
-     * Checks if an operation is registered.
-     */
-    public static boolean isRegistered(@Nonnull final String name) {
-        return OPERATIONS.containsKey(name);
-    }
 }

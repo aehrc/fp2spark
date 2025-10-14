@@ -47,11 +47,15 @@ Replace operation-specific classes (Add, Abs, Subtract, etc.) with one `Operatio
 - Resolved signature (parameter + result types)
 - Argument list
 
-### 2. Centralized Operation Registry
-All function/operator signatures defined in `OperationRegistry`:
+### 2. Centralized Operation Registry (Option 5)
+All function/operator signatures defined in `OperationRegistry` using the **TypeGroup pattern**:
 - Single source of truth for the type system
 - Easy auditing against FHIRPath specification
 - Minimal code to add new functions
+- Zero overhead for single signatures (most common case)
+- Elegant composition of multi-type patterns
+
+**See:** `REGISTRY_DESIGN_OPTIONS.md` for the complete design exploration and rationale for Option 5.
 
 ### 3. Attributed Nodes with Resolved Signatures
 - Store `ResolvedSignature` in each Operation node
@@ -397,54 +401,215 @@ Operation("add", [Literal("Hello"), Literal("World")],
     ResolvedSignature([STRING, STRING], STRING))
 ```
 
-### Operation Registry
+### Operation Registry (Option 5 Design)
+
+The registry uses **minimal abstraction with TypeGroup** for zero overhead on single signatures and elegant composition of multi-type patterns.
+
+**Key Design Principles:**
+1. **Zero overhead for single signatures** - SignatureDefinition IS a TypeGroup, no wrapper needed
+2. **Method references for common patterns** - `forTypes(set).define(Signatures::unaryOp)` is maximally clean
+3. **Natural composition** - Varargs with flatMap composes elegantly
+4. **Predefined type sets** - Reusable constants like `NUMERIC`, `COMPARABLE`
+
+**Core Abstractions:**
+
+```java
+// TypeGroup.java - Minimal sealed interface
+public sealed interface TypeGroup {
+    Stream<SignatureDefinition> expand();
+}
+
+// SignatureDefinition implements TypeGroup directly
+public record SignatureDefinition(
+    List<Type> parameterTypes,
+    ResultSpec resultSpec,
+    int minArity
+) implements TypeGroup {
+    @Override
+    public Stream<SignatureDefinition> expand() {
+        return Stream.of(this);  // A signature expands to itself - zero overhead!
+    }
+}
+
+// TypeMapping.java - Apply function over type set
+public record TypeMapping(
+    Set<Type> types,
+    Function<Type, SignatureDefinition> mapper
+) implements TypeGroup {
+    @Override
+    public Stream<SignatureDefinition> expand() {
+        return types.stream().map(mapper);
+    }
+}
+
+// TypeSets.java - Predefined type collections
+public final class TypeSets {
+    public static final Set<Type> NUMERIC = Set.of(INTEGER, DECIMAL);
+    public static final Set<Type> NUMERIC_WITH_QUANTITY = Set.of(INTEGER, DECIMAL, QUANTITY);
+    public static final Set<Type> COMPARABLE = Set.of(INTEGER, DECIMAL, STRING, QUANTITY,
+                                                       DATE, DATE_TIME, TIME);
+    public static final Set<Type> TEMPORAL = Set.of(DATE, DATE_TIME, TIME);
+    public static final Set<Type> STRING_LIKE = Set.of(STRING);
+}
+
+// TypeGroups.java - Factory for type mapping
+public final class TypeGroups {
+    @SafeVarargs
+    public static ForTypesBuilder forTypes(Set<Type>... typeSets) {
+        Set<Type> combined = Stream.of(typeSets)
+            .flatMap(Set::stream)
+            .collect(Collectors.toSet());
+        return new ForTypesBuilder(combined);
+    }
+
+    public static final class ForTypesBuilder {
+        private final Set<Type> types;
+
+        public TypeMapping define(Function<Type, SignatureDefinition> mapper) {
+            return new TypeMapping(types, mapper);
+        }
+    }
+}
+```
+
+**Registry Implementation:**
 
 ```java
 /**
  * Central registry of all FHIRPath function/operator signatures.
  * Single source of truth for type system.
+ *
+ * Uses Option 5 design: TypeGroup interface for zero-overhead composition.
  */
 public final class OperationRegistry {
 
-    private static final Map<String, List<SignatureDefinition>> REGISTRY = ...;
+    private static final Map<String, List<SignatureDefinition>> OPERATIONS = buildRegistry();
 
-    static {
-        // Arithmetic operators (FHIRPath Spec 6.2)
-        register("add", Signatures.binaryOp(INTEGER, DECIMAL, QUANTITY, STRING));
-        register("add", Signatures.binaryOpLeft(DATE_TIME, QUANTITY));
+    private static Map<String, List<SignatureDefinition>> buildRegistry() {
+        return Map.ofEntries(
 
-        // Math functions (FHIRPath Spec 6.4)
-        register("abs", Signatures.unaryOp(INTEGER, DECIMAL, QUANTITY));
-        register("sqrt", Signatures.unaryOp(DECIMAL));
+            // ARITHMETIC OPERATORS (FHIRPath Spec 6.2)
 
-        // String functions (FHIRPath Spec 6.5)
-        register("substring", Signatures.variadic(
-            List.of(STRING, INTEGER, INTEGER), STRING, 2));
-        register("length", Signatures.unaryOp(STRING, INTEGER));
+            // Single signature - zero overhead (no wrapper)
+            register("multiply",
+                forTypes(TypeSets.NUMERIC_WITH_QUANTITY).define(Signatures::binaryOp)
+            ),
 
-        // Comparison operators (FHIRPath Spec 6.3)
-        register(">", Signatures.comparisonOp(INTEGER, DECIMAL, STRING, DATE));
+            // Combining multiple type sets with varargs
+            register("add",
+                forTypes(TypeSets.NUMERIC_WITH_QUANTITY, TypeSets.STRING_LIKE).define(Signatures::binaryOp),
+                Signatures.binaryFunc(DATE_TIME, QUANTITY, DATE_TIME)  // Direct signature!
+            ),
 
-        // Collection operations (FHIRPath Spec 6.6-6.7)
-        register("first", Signatures.elementExtractor());
-        register("where", Signatures.collectionPreserver(1));
-        register("count", Signatures.collectionAggregator(INTEGER));
+            // MATH FUNCTIONS (FHIRPath Spec 6.4)
+
+            register("abs",
+                forTypes(TypeSets.NUMERIC_WITH_QUANTITY).define(Signatures::unaryOp)
+            ),
+
+            register("sqrt",
+                forTypes(TypeSets.NUMERIC).define(Signatures::unaryOp)
+            ),
+
+            // STRING FUNCTIONS (FHIRPath Spec 6.5)
+
+            register("substring",
+                Signatures.variadic(List.of(STRING, INTEGER, INTEGER), STRING, 2)
+            ),
+
+            register("upper",
+                Signatures.unaryOp(STRING)  // T -> T pattern
+            ),
+
+            register("startsWith",
+                Signatures.binaryFunc(STRING, STRING, BOOLEAN)
+            ),
+
+            // COMPARISON OPERATORS (FHIRPath Spec 6.3)
+
+            register("gt",
+                forTypes(TypeSets.COMPARABLE).define(Signatures::comparisonOp)
+            ),
+
+            // COLLECTION OPERATIONS (FHIRPath Spec 6.6)
+
+            register("first",
+                Signatures.elementExtractor(ANY)
+            ),
+
+            register("count",
+                Signatures.collectionAggregator(ANY, INTEGER)
+            )
+        );
+    }
+
+    // Helper: varargs register with flatMap
+    private static Map.Entry<String, List<SignatureDefinition>> register(
+            String name,
+            TypeGroup... groups) {
+        List<SignatureDefinition> signatures = Stream.of(groups)
+            .flatMap(TypeGroup::expand)
+            .toList();
+        return Map.entry(name, signatures);
     }
 
     public static List<SignatureDefinition> getSignatures(String name) {
-        return REGISTRY.getOrDefault(name, List.of());
+        return OPERATIONS.getOrDefault(name, List.of());
     }
 }
 ```
 
-**Adding a new function:**
+**Constrained vs Unconstrained Signatures:**
+
+The `Signatures` class provides two styles:
+- **Constrained patterns:** `unaryOp(Type)`, `binaryOp(Type)` for T→T and (T,T)→T patterns
+- **Unconstrained patterns:** `unaryFunc(Type, Type)`, `binaryFunc(Type, Type, Type)` for arbitrary types
+
 ```java
-// Just one line in registry!
-register("pow", List.of(
-    new SignatureDefinition(List.of(INTEGER, INTEGER), DECIMAL),
-    new SignatureDefinition(List.of(DECIMAL, DECIMAL), DECIMAL)
-));
+// Constrained: T -> T
+Signatures.unaryOp(Type type) → unaryFunc(type, type)
+
+// Constrained: (T, T) -> T
+Signatures.binaryOp(Type type) → binaryFunc(type, type, type)
+
+// Unconstrained: any types
+Signatures.unaryFunc(Type inputType, Type resultType)
+Signatures.binaryFunc(Type leftType, Type rightType, Type resultType)
 ```
+
+**Adding a new function:**
+
+```java
+// Single signature - direct, no wrapper (most common case)
+register("pow",
+    Signatures.binaryFunc(DECIMAL, DECIMAL, DECIMAL)
+)
+
+// Multi-type with method reference
+register("abs",
+    forTypes(TypeSets.NUMERIC_WITH_QUANTITY).define(Signatures::unaryOp)
+)
+
+// Custom mapping with lambda
+register("customOp",
+    forTypes(TypeSets.COMPARABLE).define(t ->
+        Signatures.unaryFunc(t, STRING)  // All COMPARABLE types → String
+    )
+)
+
+// Combining multiple patterns
+register("add",
+    forTypes(TypeSets.NUMERIC, TypeSets.STRING).define(Signatures::binaryOp),
+    Signatures.binaryFunc(DATE_TIME, QUANTITY, DATE_TIME)
+)
+```
+
+**Design Benefits:**
+- **Zero overhead:** 60-70% of operations have single signatures with no wrapper
+- **Uniform interface:** Everything is a TypeGroup
+- **Natural composition:** Varargs with flatMap handles arbitrary combinations
+- **Minimal abstractions:** Only 2 classes (TypeGroup interface + TypeMapping record)
+- **Readability:** Single signatures look direct; multi-type patterns are explicit
 
 ### IRNodeVisitor Interface
 
@@ -839,6 +1004,13 @@ case "pow" -> "POWER(" + args.get(0) + ", " + args.get(1) + ")";
 
 ---
 
+## Design History
+
+**Current Design:** Registry Option 5 (Minimal Abstraction with TypeGroup)
+- **Implemented:** 2025-10-14
+- **Rationale:** Zero overhead for single signatures, elegant multi-type composition
+- **Details:** See `REGISTRY_DESIGN_OPTIONS.md` for complete design exploration
+
 **Document Status:** Implementation Reference
-**Last Updated:** 2025-10-13
+**Last Updated:** 2025-10-14
 **Questions:** Consult architect or spark-expert agents

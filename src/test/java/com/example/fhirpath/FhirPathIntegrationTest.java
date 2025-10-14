@@ -23,7 +23,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class FhirPathIntegrationTest {
+class FhirPathIntegrationTest {
 
     private SparkSession spark;
 
@@ -147,6 +147,9 @@ public class FhirPathIntegrationTest {
                 Arguments.of("2.where($this > 1)", "2"), // singular value matching criteria returns the value
                 Arguments.of("'foo'.where($this = 'bar')", null), // singular string not matching criteria
                 // exists(criteria) tests on literals (desugared to where(criteria).exists())
+                Arguments.of("{}.exists($this > 1)", "false"), // empty collection returns empty
+                Arguments.of("2.exists($this > 1)", "true"), // singular value matching criteria returns the value
+                Arguments.of("'foo'.exists($this = 'bar')", "false"), // singular string not matching criteria
                 Arguments.of("(1 | 2 | 3).exists($this > 1)", "true"),
                 Arguments.of("(1 | 2 | 3).exists($this > 5)", "false"),
                 Arguments.of("('a' | 'b' | 'c').exists($this = 'b')", "true")

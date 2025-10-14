@@ -1,14 +1,17 @@
 package com.example.fhirpath.analyzer;
 
+import com.example.fhirpath.typing.CollectionType;
+import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.Type;
 
 import jakarta.annotation.Nonnull;
+
 import java.util.Arrays;
 import java.util.List;
 
 /**
  * Factory methods for creating common signature patterns.
- *
+ * <p>
  * This class provides convenience methods for the most common signature patterns
  * in FHIRPath, reducing boilerplate in OperationRegistry.
  */
@@ -23,12 +26,12 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition unaryFunc(
-        @Nonnull final Type paramType,
-        @Nonnull final Type resultType
+            @Nonnull final Type paramType,
+            @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
-            List.of(paramType),
-            new ResultSpec.Static(resultType)
+                List.of(paramType),
+                new ResultSpec.Static(resultType)
         );
     }
 
@@ -47,13 +50,13 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition binaryFunc(
-        @Nonnull final Type leftType,
-        @Nonnull final Type rightType,
-        @Nonnull final Type resultType
+            @Nonnull final Type leftType,
+            @Nonnull final Type rightType,
+            @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
-            List.of(leftType, rightType),
-            new ResultSpec.Static(resultType)
+                List.of(leftType, rightType),
+                new ResultSpec.Static(resultType)
         );
     }
 
@@ -82,14 +85,14 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition ternaryFunc(
-        @Nonnull final Type firstType,
-        @Nonnull final Type secondType,
-        @Nonnull final Type thirdType,
-        @Nonnull final Type resultType
+            @Nonnull final Type firstType,
+            @Nonnull final Type secondType,
+            @Nonnull final Type thirdType,
+            @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
-            List.of(firstType, secondType, thirdType),
-            new ResultSpec.Static(resultType)
+                List.of(firstType, secondType, thirdType),
+                new ResultSpec.Static(resultType)
         );
     }
 
@@ -109,8 +112,8 @@ public final class Signatures {
     @Nonnull
     public static SignatureDefinition elementExtractor(@Nonnull final Type inputType) {
         return new SignatureDefinition(
-            List.of(inputType),
-            ResultSpec.EffectiveInputType.INSTANCE
+                List.of(inputType),
+                ResultSpec.EffectiveInputType.INSTANCE
         );
     }
 
@@ -120,15 +123,15 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition collectionPreserver(
-        @Nonnull final Type inputType,
-        @Nonnull final Type... additionalParams
+            @Nonnull final Type inputType,
+            @Nonnull final Type... additionalParams
     ) {
         final List<Type> params = new java.util.ArrayList<>();
         params.add(inputType);
         params.addAll(Arrays.asList(additionalParams));
         return new SignatureDefinition(
-            params,
-            ResultSpec.InputType.INSTANCE
+                params,
+                ResultSpec.InputType.INSTANCE
         );
     }
 
@@ -139,12 +142,12 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition collectionAggregator(
-        @Nonnull final Type inputType,
-        @Nonnull final Type resultType
+            @Nonnull final Type inputType,
+            @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
-            List.of(inputType),
-            new ResultSpec.Static(resultType)
+                List.of(inputType),
+                new ResultSpec.Static(resultType)
         );
     }
 
@@ -154,9 +157,9 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition variadic(
-        @Nonnull final List<Type> parameterTypes,
-        @Nonnull final Type resultType,
-        final int minArity
+            @Nonnull final List<Type> parameterTypes,
+            @Nonnull final Type resultType,
+            final int minArity
     ) {
         return new SignatureDefinition(parameterTypes, resultType, minArity);
     }
@@ -167,9 +170,9 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition variadic(
-        @Nonnull final List<Type> parameterTypes,
-        @Nonnull final ResultSpec resultSpec,
-        final int minArity
+            @Nonnull final List<Type> parameterTypes,
+            @Nonnull final ResultSpec resultSpec,
+            final int minArity
     ) {
         return new SignatureDefinition(parameterTypes, resultSpec, minArity);
     }
@@ -182,8 +185,8 @@ public final class Signatures {
     @Nonnull
     public static SignatureDefinition typeTest(@Nonnull final Type inputType) {
         return new SignatureDefinition(
-            List.of(inputType, Type.STRING),
-            Type.BOOLEAN
+                List.of(inputType, Type.STRING),
+                Type.BOOLEAN
         );
     }
 
@@ -194,18 +197,27 @@ public final class Signatures {
     @Nonnull
     public static SignatureDefinition fhirValueExtractor(@Nonnull final Type fhirType) {
         return new SignatureDefinition(
-            List.of(fhirType),
-            ResultSpec.FhirSystemType.INSTANCE
+                List.of(fhirType),
+                ResultSpec.FhirSystemType.INSTANCE
         );
     }
 
     /**
-     * Collection operation with predicate - preserves collection type.
-     * Example: Collection<T>.where(Boolean) → Collection<T>
+     * Collection operation with lambda predicate - preserves collection type.
+     * Example: Collection<T>.where(Lambda(T, Boolean)) → Collection<T>
+     * <p>
+     * The lambda takes an element of type T (from collection) and returns Boolean (filter criteria).
      */
     @Nonnull
-    public static SignatureDefinition collectionFilter(@Nonnull final Type collectionType) {
-        return collectionPreserver(collectionType, Type.BOOLEAN);
+    public static SignatureDefinition collectionFilter(@Nonnull final Type elementType) {
+        //final CollectionType collectionType = new CollectionType(elementType);
+        final LambdaType lambdaType = new LambdaType(elementType, Type.BOOLEAN);
+
+        return new SignatureDefinition(
+                // TODO: use CollectionType as first param when we support it in overload resolution
+                List.of(Type.ANY, lambdaType),
+                ResultSpec.InputType.INSTANCE  // Preserve collection type
+        );
     }
 
     /**
@@ -215,13 +227,13 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition collectionMap(
-        @Nonnull final Type inputType,
-        @Nonnull final Type expressionType,
-        @Nonnull final Type resultElementType
+            @Nonnull final Type inputType,
+            @Nonnull final Type expressionType,
+            @Nonnull final Type resultElementType
     ) {
         return new SignatureDefinition(
-            List.of(inputType, expressionType),
-            new ResultSpec.Static(resultElementType)
+                List.of(inputType, expressionType),
+                new ResultSpec.Static(resultElementType)
         );
     }
 
@@ -231,12 +243,12 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition union(
-        @Nonnull final Type leftType,
-        @Nonnull final Type rightType
+            @Nonnull final Type leftType,
+            @Nonnull final Type rightType
     ) {
         return new SignatureDefinition(
-            List.of(leftType, rightType),
-            ResultSpec.InputType.INSTANCE
+                List.of(leftType, rightType),
+                ResultSpec.InputType.INSTANCE
         );
     }
 }

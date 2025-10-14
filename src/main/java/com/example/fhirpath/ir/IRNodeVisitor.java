@@ -63,4 +63,18 @@ public interface IRNodeVisitor<T> {
      */
     @Nonnull
     T visitEquals(@Nonnull Equals node);
+
+    /**
+     * Visit a lambda expression (closure).
+     * Lambdas are not directly evaluated - they are inlined at their call site.
+     */
+    @Nonnull
+    T visitLambda(@Nonnull Lambda node);
+
+    /**
+     * Visit a $this reference in lambda expressions.
+     * $this is substituted with the actual element during lambda inlining.
+     */
+    @Nonnull
+    T visitThisReference(@Nonnull ThisReference node);
 }

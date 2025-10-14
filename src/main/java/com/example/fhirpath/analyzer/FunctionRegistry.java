@@ -74,4 +74,27 @@ public final class FunctionRegistry {
 
         throw new UnsupportedOperationException("Operator '" + operatorSymbol + "' is not supported");
     }
+
+    /**
+     * Resolves function calls with lambda arguments (where, select, etc.).
+     * The target and lambda IRNodes are already resolved by Analyzer.
+     */
+    public static IRNode resolveLambda(
+            Analyzer analyzer,
+            AstFunctionCall call,
+            IRNode targetIR,
+            Lambda lambdaIR
+    ) {
+        String name = call.functionName();
+        List<IRNode> args = List.of(targetIR, lambdaIR);
+
+        // Resolve through OperationRegistry
+        List<SignatureDefinition> signatures = OperationRegistry.getSignatures(name);
+        if (!signatures.isEmpty()) {
+            OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(signatures, args);
+            return new Operation(name, resolvedCall.args(), resolvedCall.signature());
+        }
+
+        throw new UnsupportedOperationException("Function '" + name + "' is not supported");
+    }
 }

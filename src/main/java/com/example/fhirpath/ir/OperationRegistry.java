@@ -195,6 +195,14 @@ public final class OperationRegistry {
             // empty() returns true if the collection is empty
             register("empty",
                 Signatures.collectionAggregator(ANY, BOOLEAN)
+            ),
+
+            // FILTERING AND PROJECTION (FHIRPath Spec 5.2.5)
+
+            // where() filters a collection based on lambda criteria
+            // Collection<T>.where(Lambda(T, Boolean)) → Collection<T>
+            register("where",
+                Signatures.collectionFilter(ANY)
             )
         );
     }

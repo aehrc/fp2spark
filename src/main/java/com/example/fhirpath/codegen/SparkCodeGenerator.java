@@ -4,6 +4,7 @@ import com.example.fhirpath.ir.*;
 import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.SparkTypeMapper;
 import com.example.fhirpath.typing.Type;
+import jakarta.annotation.Nullable;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 import org.apache.spark.sql.types.DataType;
@@ -23,16 +24,49 @@ import static org.apache.spark.sql.functions.*;
  * This visitor implements target-specific code generation for Apache Spark SQL.
  * Each visit method transforms an IR node into a Spark Column that can be
  * executed by the Spark SQL engine.
+ *
+ * Immutable: each instance may have a bound $this column for lambda evaluation.
  */
 public class SparkCodeGenerator implements IRNodeVisitor<Column> {
+
+    @Nullable
+    private final Column thisColumn;
+
+    /**
+     * Default constructor for top-level code generation (no $this binding).
+     */
+    public SparkCodeGenerator() {
+        this(null);
+    }
+
+    /**
+     * Private constructor for creating instances with a bound $this column.
+     */
+    private SparkCodeGenerator(@Nullable Column thisColumn) {
+        this.thisColumn = thisColumn;
+    }
+
+    /**
+     * Creates a new SparkCodeGenerator with $this bound to the specified column.
+     * Used for lambda body evaluation.
+     */
+    @Nonnull
+    private SparkCodeGenerator withThisColumn(@Nonnull Column thisColumn) {
+        return new SparkCodeGenerator(thisColumn);
+    }
 
     @Override
     @Nonnull
     public Column visitOperation(@Nonnull Operation op) {
         // Recursively visit child arguments to generate their columns
         // Handle null arguments (e.g., optional parameters that weren't provided)
+        // Special case: don't evaluate Lambda nodes - they need to be handled specially
         List<Column> argColumns = op.args().stream()
-            .map(arg -> arg == null ? lit(null) : arg.accept(this))
+            .map(arg -> {
+                if (arg == null) return lit(null);
+                if (arg instanceof Lambda) return null; // Lambda is passed as IR node, not evaluated
+                return arg.accept(this);
+            })
             .toList();
 
         // Dispatch to appropriate evaluation method based on operation name
@@ -90,6 +124,9 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             case "count" -> evaluateCount(args.get(0), argNodes.get(0).isSingular());
             case "exists" -> evaluateExists(args.get(0));
             case "empty" -> evaluateEmpty(args.get(0));
+
+            // Filtering and projection
+            case "where" -> evaluateWhere(args.get(0), argNodes.get(1));
 
             default -> throw new UnsupportedOperationException(
                 "Unknown operation: " + name + " with result type: " + resultType);
@@ -349,6 +386,28 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         return when(childColumn.isNull(), lit(true)).otherwise(lit(false));
     }
 
+    // ========== Filtering and Projection ==========
+
+    @Nonnull
+    private Column evaluateWhere(Column collection, IRNode lambdaNode) {
+        if (!(lambdaNode instanceof Lambda lambda)) {
+            throw new IllegalArgumentException(
+                "where() requires a Lambda argument, got: " + lambdaNode.getClass()
+            );
+        }
+
+        // Use Spark's filter function with lambda body inlining
+        Column filtered = functions.filter(collection, elem -> {
+            // Create a new code generator with $this bound to elem
+            SparkCodeGenerator lambdaGen = withThisColumn(elem);
+            return lambda.body().accept(lambdaGen);
+        });
+
+        // Return null if the filtered array is empty (consistent with FHIRPath empty collection semantics)
+        // Use CASE WHEN for efficient single-pass evaluation
+        return when(functions.size(filtered).gt(lit(0)), filtered);
+    }
+
     // ========== Infrastructure Nodes ==========
 
     @Override
@@ -466,5 +525,24 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
      */
     private boolean isNumericType(Type type) {
         return type == Type.INTEGER || type == Type.DECIMAL;
+    }
+
+    @Override
+    @Nonnull
+    public Column visitLambda(@Nonnull Lambda lambda) {
+        throw new UnsupportedOperationException(
+            "Lambdas cannot be evaluated directly - they must be inlined at their call site"
+        );
+    }
+
+    @Override
+    @Nonnull
+    public Column visitThisReference(@Nonnull ThisReference thisRef) {
+        if (thisColumn == null) {
+            throw new UnsupportedOperationException(
+                "$this cannot be evaluated outside of a lambda context"
+            );
+        }
+        return thisColumn;
     }
 }

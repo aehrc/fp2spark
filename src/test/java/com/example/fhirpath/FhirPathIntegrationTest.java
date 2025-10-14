@@ -136,7 +136,10 @@ public class FhirPathIntegrationTest {
                 Arguments.of("count()", "0"),
                 Arguments.of("%resource.exists()", "false"),
                 Arguments.of("%resource.foo", null),
-                Arguments.of("bar", null)
+                Arguments.of("bar", null),
+                // simple where tests
+                Arguments.of("(1 | 2 | 3).where($this > 1)", "[2, 3]"),
+                Arguments.of("('a' | 'bc' | 'cd').where(length() > 1)", "[bc, cd]")
         );
     }
 
@@ -191,7 +194,48 @@ public class FhirPathIntegrationTest {
                 Arguments.of("10.3 + age", "65.3"),
                 Arguments.of("gender = 'male'", "true"),
                 Arguments.of("value", "344.1000"),
-                Arguments.of("value.getValue()", "344.1")
+                Arguments.of("value.getValue()", "344.1"),
+                // where() function tests - FHIRPath Spec 5.2.5
+                // spec: Basic filtering with equality
+                Arguments.of("name.where(use = 'official').family", "[Szul]"),
+                Arguments.of("name.where(use = 'alias').family", "[Brown]"),
+
+                // spec: Filtering that returns empty when no match
+                Arguments.of("name.where(use = 'nonexistent').exists()", "false"),
+                Arguments.of("name.where(family = 'Unknown').count()", "0"),
+
+                // spec: where() with implicit $this in criteria
+                Arguments.of("name.where(family = 'Szul').given", "[Piotr, Jaroslaw]"),
+
+                // edge: where() with explicit $this
+                Arguments.of("name.given.where($this = 'John')", "[John]"),
+                Arguments.of("name.given.where($this > 'K')", "[Piotr, Mark]"),
+
+                // edge: Chained where() clauses
+                Arguments.of("name.where(use = 'official').where(family = 'Szul').exists()", "true"),
+                Arguments.of("name.where(use = 'official').where(family = 'Brown').exists()", "false"),
+
+                // spec: where() on empty input collection returns empty
+                Arguments.of("name.where(family = 'Unknown').where(use = 'official').count()", "0"),
+
+                // edge: where() with nested field access
+                Arguments.of("name.where(given.exists()).count()", "2"),
+                Arguments.of("name.where(given.count() > 1).family", "[Szul, Brown]"),
+
+                // edge: nested where() with implicit $this in both levels
+                Arguments.of("name.where(given.where($this = 'Piotr').exists()).family", "[Szul]"),
+
+                // edge: where() preserves collection structure
+                Arguments.of("name.where(use = 'official').count()", "1"),
+//                Arguments.of("name.where(use = 'official' or use = 'alias').count()", "2"),
+
+                // spec: where() with comparison operators
+                Arguments.of("name.given.where($this < 'K')", "[Jaroslaw, John]"),
+                Arguments.of("name.given.where($this >= 'John').count()", "3")
+
+//                // edge: where() with boolean operations in criteria
+//                Arguments.of("name.where(use = 'official' and family = 'Szul').exists()", "true"),
+//                Arguments.of("name.where(use = 'official' and family = 'Brown').exists()", "false")
         );
     }
 

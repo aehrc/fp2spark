@@ -246,7 +246,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
     // Special invocations
     @Override
     public AstNode visitThisInvocation(FhirPathParser.ThisInvocationContext ctx) {
-        throw new UnsupportedOperationException("$this invocations are not yet supported");
+        return AstIterationVariable.thisVariable();
     }
 
     @Override

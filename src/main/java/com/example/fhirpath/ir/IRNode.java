@@ -13,7 +13,7 @@ import jakarta.annotation.Nonnull;
  */
 public sealed interface IRNode
     permits Operation, Literal, Traversal, Cast, Resource, CastToSystem,
-            Union, Equals {
+            Union, Equals, Lambda, ThisReference {
 
     /**
      * Returns the FHIRPath type of this expression.

@@ -1,15 +1,14 @@
 package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.ast.*;
-import com.example.fhirpath.ir.IRNode;
-import com.example.fhirpath.ir.Literal;
-import com.example.fhirpath.ir.Resource;
-import com.example.fhirpath.ir.Traversal;
+import com.example.fhirpath.ir.*;
+import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.ComplexType;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Type;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.util.Optional;
 
@@ -21,23 +20,44 @@ public class Analyzer {
     private final AstNode contextNode;
     @Nonnull
     private final ResourceType resourceSpec;
+    @Nullable
+    private final Type thisType;  // For lambda analysis
 
     public Analyzer() {
         // by default, no context
-        this(AstVariable.resourceVariable(), ResourceType.EMPTY);
+        this(AstVariable.resourceVariable(), ResourceType.EMPTY, null);
     }
 
     public Analyzer(@Nonnull AstNode contextNode) {
-        this(contextNode, ResourceType.EMPTY);
+        this(contextNode, ResourceType.EMPTY, null);
     }
 
     public Analyzer(@Nonnull ResourceType resourceSpec) {
-        this(AstVariable.resourceVariable(), resourceSpec);
+        this(AstVariable.resourceVariable(), resourceSpec, null);
     }
 
     public Analyzer(@Nonnull AstNode contextNode, @Nonnull ResourceType resourceSpec) {
+        this(contextNode, resourceSpec, null);
+    }
+
+    /**
+     * Private constructor for lambda analysis with $this binding.
+     */
+    private Analyzer(
+        @Nonnull AstNode contextNode,
+        @Nonnull ResourceType resourceSpec,
+        @Nullable Type thisType
+    ) {
         this.contextNode = contextNode;
         this.resourceSpec = resourceSpec;
+        this.thisType = thisType;
+    }
+
+    /**
+     * Creates an analyzer for lambda body with $this bound to elementType.
+     */
+    private Analyzer withThisType(@Nonnull Type elementType) {
+        return new Analyzer(this.contextNode, this.resourceSpec, elementType);
     }
 
     public IRNode analyze(AstNode node) {
@@ -56,6 +76,9 @@ public class Analyzer {
         if (node instanceof AstVariable var) {
             return resolveVariable(var);
         }
+        if (node instanceof AstIterationVariable iterVar) {
+            return resolveIterationVariable(iterVar);
+        }
         throw new IllegalArgumentException("Unsupported AST node: " + node);
     }
 
@@ -64,22 +87,106 @@ public class Analyzer {
             // TODO: the context node should be analyzed with empty context to avoid recursion
             case CONTEXT_VARIABLE -> new Analyzer(resourceSpec).analyze(contextNode);
             case RESOURCE_VARIABLE -> new Resource(resourceSpec);
-            default -> throw new IllegalArgumentException("Unsupported Fhirpath variable " + variable.name());
+            default -> throw new IllegalArgumentException("Unsupported FHIRPath environment variable: " + variable.name());
+        };
+    }
+
+    private IRNode resolveIterationVariable(AstIterationVariable iterVar) {
+        return switch (iterVar.name()) {
+            case AstIterationVariable.THIS -> {
+                if (thisType == null) {
+                    throw new IllegalArgumentException(
+                        "$this can only be used in lambda expressions (e.g., within where() or select())"
+                    );
+                }
+                yield new ThisReference(thisType);
+            }
+            case AstIterationVariable.INDEX -> throw new UnsupportedOperationException(
+                "$index is not yet supported"
+            );
+            case AstIterationVariable.TOTAL -> throw new UnsupportedOperationException(
+                "$total is not yet supported"
+            );
+            default -> throw new IllegalArgumentException("Unknown iteration variable: " + iterVar.name());
         };
     }
 
     private IRNode resolveFunctionCall(AstFunctionCall call) {
-        // If no target is specified, use %context as implicit target
+        // Special handling for lambda-taking functions (where, select, etc.)
+        if (isLambdaFunction(call.functionName())) {
+            return resolveLambdaFunction(call);
+        }
+
+        // If no target is specified, use implicit target
         if (call.target() == null) {
-            // Create implicit context target
-            return FunctionRegistry.resolve(this, call.withTarget(AstVariable.contextVariable()));
+            // Inside a lambda, implicit target is $this
+            // Outside a lambda, implicit target is %context
+            AstNode implicitTarget = (thisType != null)
+                ? AstIterationVariable.thisVariable()
+                : AstVariable.contextVariable();
+            return FunctionRegistry.resolve(this, call.withTarget(implicitTarget));
         }
         return FunctionRegistry.resolve(this, call);
     }
 
+    /**
+     * Checks if a function takes lambda arguments.
+     */
+    private boolean isLambdaFunction(String functionName) {
+        return functionName.equals("where") || functionName.equals("select");
+    }
+
+    /**
+     * Resolves function calls that take lambda arguments (where, select, etc.).
+     */
+    private IRNode resolveLambdaFunction(AstFunctionCall call) {
+        // Resolve target collection
+        AstNode targetAst = call.target() != null ? call.target() : AstVariable.contextVariable();
+        IRNode targetIR = analyze(targetAst);
+
+        // Extract element type from collection
+        Type targetType = targetIR.getType();
+        Type elementType = (targetType instanceof CollectionType ct)
+            ? ct.elementType()
+            : targetType;
+
+        // Resolve lambda argument with $this bound to element type
+        if (call.arguments().isEmpty()) {
+            throw new IllegalArgumentException(
+                call.functionName() + "() requires a criteria/projection expression"
+            );
+        }
+
+        AstNode lambdaBodyAst = call.arguments().get(0);
+        Analyzer lambdaAnalyzer = withThisType(elementType);
+        IRNode lambdaBody = lambdaAnalyzer.analyze(lambdaBodyAst);
+
+        // Create Lambda IR node
+        Lambda lambdaIR = new Lambda(
+            java.util.List.of("$this"),
+            lambdaBody,
+            elementType
+        );
+
+        // Create function call with target and lambda
+        AstFunctionCall callWithLambda = new AstFunctionCall(
+            call.functionName(),
+            targetAst,
+            java.util.List.of(lambdaBodyAst)  // Keep original AST for debugging
+        );
+
+        // Resolve through FunctionRegistry with lambda IR
+        return FunctionRegistry.resolveLambda(this, callWithLambda, targetIR, lambdaIR);
+    }
+
     private IRNode resolveTraversal(AstTraversal traversal) {
-        // add implicit context if no target is specified
-        IRNode targetIR = analyze(traversal.target() != null ? traversal.target() : AstVariable.contextVariable());
+        // Add implicit target if no target is specified
+        // Inside a lambda, implicit target is $this
+        // Outside a lambda, implicit target is %context
+        AstNode implicitTarget = (thisType != null)
+            ? AstIterationVariable.thisVariable()
+            : AstVariable.contextVariable();
+        IRNode targetIR = analyze(traversal.target() != null ? traversal.target() : implicitTarget);
         return Optional.of(targetIR.getType().effectiveType())
                 .filter(ComplexType.class::isInstance)
                 .map(ComplexType.class::cast)

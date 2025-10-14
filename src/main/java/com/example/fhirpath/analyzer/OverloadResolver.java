@@ -3,6 +3,7 @@ package com.example.fhirpath.analyzer;
 import com.example.fhirpath.ir.Cast;
 import com.example.fhirpath.ir.CastToSystem;
 import com.example.fhirpath.ir.IRNode;
+import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.TypeSystem;
@@ -77,6 +78,26 @@ public final class OverloadResolver {
         Type actual = arg.getType();
         if (actual.effectiveType() == target.effectiveType()) {
             return new Adapt(arg, true, 0);
+        }
+
+        // Special handling for LambdaType matching
+        if (actual instanceof LambdaType actualLambda && target instanceof LambdaType targetLambda) {
+            // Lambda types match if:
+            // 1. Parameter types are compatible (target ANY matches any actual parameter)
+            // 2. Return types are compatible (target ANY matches any actual return)
+            boolean paramMatches = targetLambda.parameterType() == Type.ANY
+                || actualLambda.parameterType() == targetLambda.parameterType()
+                || TypeSystem.canCast(actualLambda.parameterType(), targetLambda.parameterType());
+
+            boolean returnMatches = targetLambda.returnType() == Type.ANY
+                || actualLambda.returnType() == targetLambda.returnType()
+                || TypeSystem.canCast(actualLambda.returnType(), targetLambda.returnType());
+
+            if (paramMatches && returnMatches) {
+                // Cost 0 for exact match, cost 1 for ANY wildcard match
+                int cost = (targetLambda.parameterType() == Type.ANY || targetLambda.returnType() == Type.ANY) ? 1 : 0;
+                return new Adapt(arg, true, cost);
+            }
         }
 
         // Allow implicit casts via TypeSystem or from UNKNOWN

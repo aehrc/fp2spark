@@ -39,6 +39,11 @@ Write minimal, focused unit tests that verify FHIRPath-specific behavior while r
 - Out-of-bounds conditions (if spec-defined)
 - Zero/negative values (if spec-defined)
 - Boundary conditions specific to FHIRPath semantics
+- **IMPORTANT:** For functions/operators with collection targets or arguments:
+  - Always include test cases for empty collection input: `{}`
+  - Always include test cases for singular value input: e.g., `2`, `'foo'`
+  - Per FHIRPath spec 2.1, all expressions return collections, even single values
+  - Example: `where()` should be tested with `{}.where(...)`, `2.where(...)`, and `(1|2|3).where(...)`
 
 ❌ **DO NOT test:**
 - Unicode/emoji handling (unless FHIRPath spec explicitly defines it)

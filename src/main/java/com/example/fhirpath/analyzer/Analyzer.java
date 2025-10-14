@@ -60,6 +60,18 @@ public class Analyzer {
         return new Analyzer(this.contextNode, this.resourceSpec, elementType);
     }
 
+    /**
+     * Returns the implicit target for expressions without an explicit target.
+     * Inside a lambda context, returns $this.
+     * Outside a lambda context, returns %context.
+     */
+    @Nonnull
+    private AstNode getImplicitTarget() {
+        return (thisType != null)
+            ? AstIterationVariable.thisVariable()
+            : AstVariable.contextVariable();
+    }
+
     public IRNode analyze(AstNode node) {
         if (node instanceof AstLiteral lit) {
             return new Literal(lit.value(), inferType(lit.value()));
@@ -119,12 +131,7 @@ public class Analyzer {
 
         // If no target is specified, use implicit target
         if (call.target() == null) {
-            // Inside a lambda, implicit target is $this
-            // Outside a lambda, implicit target is %context
-            AstNode implicitTarget = (thisType != null)
-                ? AstIterationVariable.thisVariable()
-                : AstVariable.contextVariable();
-            return FunctionRegistry.resolve(this, call.withTarget(implicitTarget));
+            return FunctionRegistry.resolve(this, call.withTarget(getImplicitTarget()));
         }
         return FunctionRegistry.resolve(this, call);
     }
@@ -181,12 +188,7 @@ public class Analyzer {
 
     private IRNode resolveTraversal(AstTraversal traversal) {
         // Add implicit target if no target is specified
-        // Inside a lambda, implicit target is $this
-        // Outside a lambda, implicit target is %context
-        AstNode implicitTarget = (thisType != null)
-            ? AstIterationVariable.thisVariable()
-            : AstVariable.contextVariable();
-        IRNode targetIR = analyze(traversal.target() != null ? traversal.target() : implicitTarget);
+        IRNode targetIR = analyze(traversal.target() != null ? traversal.target() : getImplicitTarget());
         return Optional.of(targetIR.getType().effectiveType())
                 .filter(ComplexType.class::isInstance)
                 .map(ComplexType.class::cast)

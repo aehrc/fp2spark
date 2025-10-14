@@ -139,7 +139,12 @@ public class FhirPathIntegrationTest {
                 Arguments.of("bar", null),
                 // simple where tests
                 Arguments.of("(1 | 2 | 3).where($this > 1)", "[2, 3]"),
-                Arguments.of("('a' | 'bc' | 'cd').where(length() > 1)", "[bc, cd]")
+                Arguments.of("('a' | 'bc' | 'cd').where(length() > 1)", "[bc, cd]"),
+                // exists(criteria) tests on literals (desugared to where(criteria).exists())
+                // Note: only works on collections, not singular values or empty collections (limitation of where())
+                Arguments.of("(1 | 2 | 3).exists($this > 1)", "true"),
+                Arguments.of("(1 | 2 | 3).exists($this > 5)", "false"),
+                Arguments.of("('a' | 'b' | 'c').exists($this = 'b')", "true")
         );
     }
 
@@ -231,11 +236,33 @@ public class FhirPathIntegrationTest {
 
                 // spec: where() with comparison operators
                 Arguments.of("name.given.where($this < 'K')", "[Jaroslaw, John]"),
-                Arguments.of("name.given.where($this >= 'John').count()", "3")
+                Arguments.of("name.given.where($this >= 'John').count()", "3"),
 
 //                // edge: where() with boolean operations in criteria
 //                Arguments.of("name.where(use = 'official' and family = 'Szul').exists()", "true"),
 //                Arguments.of("name.where(use = 'official' and family = 'Brown').exists()", "false")
+
+                // exists(criteria) function tests - FHIRPath Spec 5.2.1 (desugared to where().exists())
+                // spec: exists(criteria) with equality - equivalent to where(criteria).exists()
+                Arguments.of("name.exists(use = 'official')", "true"),
+                Arguments.of("name.exists(use = 'nonexistent')", "false"),
+                Arguments.of("name.exists(family = 'Szul')", "true"),
+                Arguments.of("name.exists(family = 'Unknown')", "false"),
+
+                // edge: exists(criteria) with comparison operators
+                Arguments.of("name.given.exists($this > 'K')", "true"),
+                Arguments.of("name.given.exists($this > 'Z')", "false"),
+                Arguments.of("name.given.exists($this = 'Piotr')", "true"),
+
+                // edge: exists(criteria) on empty collection
+                Arguments.of("name.where(family = 'Unknown').exists(use = 'official')", "false"),
+
+                // edge: Nested exists(criteria) - exists with nested exists
+                Arguments.of("name.exists(given.exists())", "true"),
+                Arguments.of("name.exists(given.count() > 1)", "true"),
+
+                // spec: exists(criteria) finds any matching element
+                Arguments.of("name.given.exists($this = 'John')", "true")
         );
     }
 

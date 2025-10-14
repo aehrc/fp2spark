@@ -89,7 +89,58 @@ public class Analyzer {
         return node.target() == null ? node.withTarget(getImplicitTarget()) : node;
     }
 
-    public IRNode analyze(AstNode node) {
+    /**
+     * Analyzes an AST node and produces an IR node.
+     * Two-phase process:
+     * 1. Desugar: AST → AST (syntactic transformations)
+     * 2. Resolve: AST → IR (semantic resolution with types)
+     */
+    @Nonnull
+    public IRNode analyze(@Nonnull final AstNode node) {
+        // Phase 1: Apply syntactic transformations (desugaring)
+        final AstNode desugared = desugar(node);
+
+        // Phase 2: Resolve to typed IR
+        return resolveToIR(desugared);
+    }
+
+    /**
+     * Applies AST-level transformations (desugaring) before resolution.
+     * Returns the transformed node, or the original if no transformation applies.
+     */
+    @Nonnull
+    private AstNode desugar(@Nonnull final AstNode node) {
+        if (node instanceof AstFunctionCall call) {
+            return desugarFunctionCall(call);
+        }
+        return node;
+    }
+
+    /**
+     * Desugars function calls with known equivalences.
+     *
+     * Current transformations:
+     * - exists(criteria) → where(criteria).exists()
+     */
+    @Nonnull
+    private AstNode desugarFunctionCall(@Nonnull final AstFunctionCall call) {
+        // exists(criteria) → where(criteria).exists()
+        if ("exists".equals(call.functionName()) && call.arguments().size() == 1) {
+            final AstFunctionCall whereCall = new AstFunctionCall(
+                "where", call.target(), call.arguments()
+            );
+            return new AstFunctionCall("exists", whereCall, List.of());
+        }
+
+        return call;
+    }
+
+    /**
+     * Resolves a (possibly desugared) AST node to a typed IR node.
+     * This is the core AST → IR transformation with type resolution.
+     */
+    @Nonnull
+    private IRNode resolveToIR(@Nonnull final AstNode node) {
         if (node instanceof AstLiteral lit) {
             return new Literal(lit.value(), inferType(lit.value()));
         }

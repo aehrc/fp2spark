@@ -140,8 +140,13 @@ public class FhirPathIntegrationTest {
                 // simple where tests
                 Arguments.of("(1 | 2 | 3).where($this > 1)", "[2, 3]"),
                 Arguments.of("('a' | 'bc' | 'cd').where(length() > 1)", "[bc, cd]"),
+                // Edge cases: where() on empty collections and singular values
+                // Per FHIRPath spec 5.2.5: "If the input collection is empty ({ }), the result is empty"
+                // Per FHIRPath spec 2.1: All expressions return collections, even single values
+                Arguments.of("{}.where($this > 1)", null), // empty collection returns empty
+                Arguments.of("2.where($this > 1)", "2"), // singular value matching criteria returns the value
+                Arguments.of("'foo'.where($this = 'bar')", null), // singular string not matching criteria
                 // exists(criteria) tests on literals (desugared to where(criteria).exists())
-                // Note: only works on collections, not singular values or empty collections (limitation of where())
                 Arguments.of("(1 | 2 | 3).exists($this > 1)", "true"),
                 Arguments.of("(1 | 2 | 3).exists($this > 5)", "false"),
                 Arguments.of("('a' | 'b' | 'c').exists($this = 'b')", "true")

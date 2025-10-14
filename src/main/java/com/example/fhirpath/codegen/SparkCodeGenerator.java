@@ -126,7 +126,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             case "empty" -> evaluateEmpty(args.get(0));
 
             // Filtering and projection
-            case "where" -> evaluateWhere(args.get(0), argNodes.get(1));
+            case "where" -> evaluateWhere(args.get(0), argNodes.get(0).isSingular(), argNodes.get(1));
 
             default -> throw new UnsupportedOperationException(
                 "Unknown operation: " + name + " with result type: " + resultType);
@@ -389,23 +389,33 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     // ========== Filtering and Projection ==========
 
     @Nonnull
-    private Column evaluateWhere(Column collection, IRNode lambdaNode) {
+    private Column evaluateWhere(final Column collection, final boolean isSingular, @Nonnull final IRNode lambdaNode) {
         if (!(lambdaNode instanceof Lambda lambda)) {
             throw new IllegalArgumentException(
                 "where() requires a Lambda argument, got: " + lambdaNode.getClass()
             );
         }
 
-        // Use Spark's filter function with lambda body inlining
-        Column filtered = functions.filter(collection, elem -> {
-            // Create a new code generator with $this bound to elem
-            SparkCodeGenerator lambdaGen = withThisColumn(elem);
-            return lambda.body().accept(lambdaGen);
-        });
+        // FHIRPath semantics:
+        // - Empty collection (NULL) returns empty (NULL)
+        // - Singular values are treated as single-element collections
+        // - Multi-element collections are filtered
 
-        // Return null if the filtered array is empty (consistent with FHIRPath empty collection semantics)
-        // Use CASE WHEN for efficient single-pass evaluation
-        return when(functions.size(filtered).gt(lit(0)), filtered);
+        if (isSingular) {
+            // Singular value: evaluate lambda directly with the value as $this
+            // Return the value if criteria matches, NULL otherwise
+            final SparkCodeGenerator singularGen = withThisColumn(collection);
+            final Column criteriaResult = lambda.body().accept(singularGen);
+            return when(criteriaResult, collection);
+        } else {
+            // Collection: use Spark's filter function
+            final Column filtered = functions.filter(collection, elem -> {
+                final SparkCodeGenerator lambdaGen = withThisColumn(elem);
+                return lambda.body().accept(lambdaGen);
+            });
+            // Return null if the filtered array is empty (consistent with FHIRPath empty collection semantics)
+            return when(functions.size(filtered).gt(lit(0)), filtered);
+        }
     }
 
     // ========== Infrastructure Nodes ==========

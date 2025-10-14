@@ -31,13 +31,14 @@ public record Lambda(
     }
 
     /**
-     * Returns the lambda's type signature (parameterType -> returnType).
+     * Returns the lambda's type signature (returnType only).
+     * The parameter type is implicit and determined by the collection element type.
      * This allows the OverloadResolver to match against LambdaType signatures.
      */
     @Override
     @Nonnull
     public Type getType() {
-        return new LambdaType(parameterType, body.getType());
+        return new LambdaType(body.getType());
     }
 
     /**

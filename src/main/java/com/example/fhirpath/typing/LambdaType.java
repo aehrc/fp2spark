@@ -4,25 +4,28 @@ import jakarta.annotation.Nonnull;
 
 /**
  * Represents a lambda type in the FHIRPath type system.
- * Lambdas are functions that take parameters and return a result.
+ * Lambdas are expressions that are evaluated with an implicit $this binding.
  *
- * Used by collection operations like where(), select(), repeat() that accept criteria or projection expressions.
+ * In FHIRPath, lambda parameter types are always implicit - determined by the
+ * collection element type. There is no syntax to declare parameter types.
+ * The lambda is checked for compatibility during type resolution.
  *
- * Example: where() takes Lambda(T, Boolean) - a function from element type T to Boolean
- * Example: select() takes Lambda(T, R) - a function from element type T to result type R
+ * Used by collection operations like where(), select(), repeat() that accept
+ * criteria or projection expressions.
  *
- * @param parameterType The type of the lambda parameter ($this)
+ * Example: Collection<T>.where(criteria) expects Lambda(Boolean)
+ * Example: Collection<T>.select(projection) expects Lambda(R)
+ *
  * @param returnType The type of the lambda body evaluation result
  */
 public record LambdaType(
-    @Nonnull Type parameterType,
     @Nonnull Type returnType
 ) implements Type {
 
     @Override
     @Nonnull
     public String getName() {
-        return "Lambda(" + parameterType.getName() + " -> " + returnType.getName() + ")";
+        return "Lambda(" + returnType.getName() + ")";
     }
 
     @Override
@@ -49,6 +52,6 @@ public record LambdaType(
 
     @Override
     public String toString() {
-        return "Lambda(" + parameterType + " -> " + returnType + ")";
+        return "Lambda(" + returnType + ")";
     }
 }

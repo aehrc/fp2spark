@@ -204,14 +204,15 @@ public final class Signatures {
 
     /**
      * Collection operation with lambda predicate - preserves collection type.
-     * Example: Collection<T>.where(Lambda(T, Boolean)) → Collection<T>
+     * Example: Collection<T>.where(Lambda(Boolean)) → Collection<T>
      * <p>
-     * The lambda takes an element of type T (from collection) and returns Boolean (filter criteria).
+     * The lambda takes an implicit element of type T (from collection) and returns Boolean (filter criteria).
+     * The lambda parameter type is implicit and determined by the collection element type.
      */
     @Nonnull
     public static SignatureDefinition collectionFilter(@Nonnull final Type elementType) {
         //final CollectionType collectionType = new CollectionType(elementType);
-        final LambdaType lambdaType = new LambdaType(elementType, Type.BOOLEAN);
+        final LambdaType lambdaType = new LambdaType(Type.BOOLEAN);
 
         return new SignatureDefinition(
                 // TODO: use CollectionType as first param when we support it in overload resolution

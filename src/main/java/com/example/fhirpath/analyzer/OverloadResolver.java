@@ -82,20 +82,16 @@ public final class OverloadResolver {
 
         // Special handling for LambdaType matching
         if (actual instanceof LambdaType actualLambda && target instanceof LambdaType targetLambda) {
-            // Lambda types match if:
-            // 1. Parameter types are compatible (target ANY matches any actual parameter)
-            // 2. Return types are compatible (target ANY matches any actual return)
-            boolean paramMatches = targetLambda.parameterType() == Type.ANY
-                || actualLambda.parameterType() == targetLambda.parameterType()
-                || TypeSystem.canCast(actualLambda.parameterType(), targetLambda.parameterType());
-
+            // Lambda types match if return types are compatible.
+            // Parameter types are always implicit in FHIRPath (determined by collection element type),
+            // so we only check return type compatibility.
             boolean returnMatches = targetLambda.returnType() == Type.ANY
                 || actualLambda.returnType() == targetLambda.returnType()
                 || TypeSystem.canCast(actualLambda.returnType(), targetLambda.returnType());
 
-            if (paramMatches && returnMatches) {
+            if (returnMatches) {
                 // Cost 0 for exact match, cost 1 for ANY wildcard match
-                int cost = (targetLambda.parameterType() == Type.ANY || targetLambda.returnType() == Type.ANY) ? 1 : 0;
+                int cost = (targetLambda.returnType() == Type.ANY) ? 1 : 0;
                 return new Adapt(arg, true, cost);
             }
         }

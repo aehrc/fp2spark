@@ -72,6 +72,19 @@ public class Analyzer {
             : AstVariable.contextVariable();
     }
 
+    /**
+     * Resolves a node with implicit target handling.
+     * If the node has no explicit target, applies the implicit target before resolution.
+     *
+     * @param node A node that may have an implicit target (AstFunctionCall or AstTraversal)
+     * @param <T> The concrete type of WithTarget
+     * @return The node with implicit target resolved (returns node with target set)
+     */
+    @Nonnull
+    private <T extends WithTarget<T>> T resolveWithImplicitTarget(@Nonnull T node) {
+        return node.target() == null ? node.withTarget(getImplicitTarget()) : node;
+    }
+
     public IRNode analyze(AstNode node) {
         if (node instanceof AstLiteral lit) {
             return new Literal(lit.value(), inferType(lit.value()));
@@ -129,11 +142,8 @@ public class Analyzer {
             return resolveLambdaFunction(call);
         }
 
-        // If no target is specified, use implicit target
-        if (call.target() == null) {
-            return FunctionRegistry.resolve(this, call.withTarget(getImplicitTarget()));
-        }
-        return FunctionRegistry.resolve(this, call);
+        // Resolve implicit target if needed
+        return FunctionRegistry.resolve(this, resolveWithImplicitTarget(call));
     }
 
     /**
@@ -187,12 +197,13 @@ public class Analyzer {
     }
 
     private IRNode resolveTraversal(AstTraversal traversal) {
-        // Add implicit target if no target is specified
-        IRNode targetIR = analyze(traversal.target() != null ? traversal.target() : getImplicitTarget());
+        // Resolve implicit target if needed
+        AstTraversal resolvedTraversal = resolveWithImplicitTarget(traversal);
+        IRNode targetIR = analyze(resolvedTraversal.target());
         return Optional.of(targetIR.getType().effectiveType())
                 .filter(ComplexType.class::isInstance)
                 .map(ComplexType.class::cast)
-                .flatMap(ct -> ct.getField(traversal.path()))
+                .flatMap(ct -> ct.getField(resolvedTraversal.path()))
                 // for ComplexTypes with required field create a Traversal
                 .map(fieldSpec -> (IRNode) new Traversal(targetIR, fieldSpec))
                 // otherwise an empty collection

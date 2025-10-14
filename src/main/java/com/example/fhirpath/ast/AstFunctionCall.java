@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public record AstFunctionCall(String functionName, @Nullable AstNode target,
-                              List<AstNode> arguments) implements AstNode {
+                              List<AstNode> arguments) implements WithTarget<AstFunctionCall> {
     // Constructor for function calls without a target (traditional function calls)
     public AstFunctionCall(String functionName, List<AstNode> arguments) {
         this(functionName, null, arguments);
@@ -28,6 +28,7 @@ public record AstFunctionCall(String functionName, @Nullable AstNode target,
      * @return a new AstFunctionCall instance with the updated target
      */
     @Nonnull
+    @Override
     public AstFunctionCall withTarget(@Nonnull AstNode newTarget) {
         return new AstFunctionCall(this.functionName, newTarget, this.arguments);
     }

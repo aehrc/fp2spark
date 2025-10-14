@@ -1,7 +1,6 @@
 package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.ast.AstBinaryOperator;
-import com.example.fhirpath.ast.AstFunctionCall;
 import com.example.fhirpath.ir.*;
 
 import java.util.List;
@@ -25,26 +24,6 @@ public final class FunctionRegistry {
     );
 
     private FunctionRegistry() {
-    }
-
-    public static IRNode resolve(Analyzer analyzer, AstFunctionCall call) {
-        List<IRNode> args = call.children().map(analyzer::analyze).toList();
-        String name = call.functionName();
-
-        // Try OperationRegistry first (for functions with signatures)
-        List<SignatureDefinition> signatures = OperationRegistry.getSignatures(name);
-        if (!signatures.isEmpty()) {
-            OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(signatures, args);
-            return new Operation(name, resolvedCall.args(), resolvedCall.signature());
-        }
-
-        // Special handling for infrastructure functions (not yet in registry)
-        return switch (name) {
-            case "getValue" -> new CastToSystem(args.get(0));
-            case "equals" -> new Equals(args.get(0), args.get(1));
-            case "union", "|" -> new Union(args.get(0), args.get(1));
-            default -> throw new UnsupportedOperationException("Function '" + name + "' is not supported");
-        };
     }
 
     public static IRNode resolve(Analyzer analyzer, AstBinaryOperator biOperator) {
@@ -73,28 +52,5 @@ public final class FunctionRegistry {
         }
 
         throw new UnsupportedOperationException("Operator '" + operatorSymbol + "' is not supported");
-    }
-
-    /**
-     * Resolves function calls with lambda arguments (where, select, etc.).
-     * The target and lambda IRNodes are already resolved by Analyzer.
-     */
-    public static IRNode resolveLambda(
-            Analyzer analyzer,
-            AstFunctionCall call,
-            IRNode targetIR,
-            Lambda lambdaIR
-    ) {
-        String name = call.functionName();
-        List<IRNode> args = List.of(targetIR, lambdaIR);
-
-        // Resolve through OperationRegistry
-        List<SignatureDefinition> signatures = OperationRegistry.getSignatures(name);
-        if (!signatures.isEmpty()) {
-            OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(signatures, args);
-            return new Operation(name, resolvedCall.args(), resolvedCall.signature());
-        }
-
-        throw new UnsupportedOperationException("Function '" + name + "' is not supported");
     }
 }

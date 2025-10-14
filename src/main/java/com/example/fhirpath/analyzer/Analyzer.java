@@ -4,13 +4,17 @@ import com.example.fhirpath.ast.*;
 import com.example.fhirpath.ir.*;
 import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.ComplexType;
+import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Type;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import static com.example.fhirpath.ast.AstVariable.CONTEXT_VARIABLE;
 import static com.example.fhirpath.ast.AstVariable.RESOURCE_VARIABLE;
@@ -136,60 +140,114 @@ public class Analyzer {
         };
     }
 
-    private IRNode resolveFunctionCall(AstFunctionCall call) {
-        // Special handling for lambda-taking functions (where, select, etc.)
-        if (isLambdaFunction(call.functionName())) {
-            return resolveLambdaFunction(call);
+    /**
+     * Extracts the element type from a collection type.
+     * If the type is not a collection, returns the type itself.
+     */
+    @Nonnull
+    private Type extractElementType(@Nonnull final Type collectionType) {
+        return (collectionType instanceof CollectionType ct)
+            ? ct.elementType()
+            : collectionType;
+    }
+
+    /**
+     * Handles special infrastructure functions not yet in OperationRegistry.
+     * These will eventually be migrated to the registry.
+     */
+    @Nonnull
+    private IRNode handleInfrastructureFunctions(
+        @Nonnull final AstFunctionCall call,
+        @Nonnull final IRNode targetIR
+    ) {
+        // Analyze remaining arguments normally (none of these take lambdas)
+        final List<IRNode> args = Stream.concat(
+            Stream.of(targetIR),
+            call.arguments().stream().map(this::analyze)
+        ).toList();
+
+        return switch (call.functionName()) {
+            case "getValue" -> new CastToSystem(args.get(0));
+            case "equals" -> new Equals(args.get(0), args.get(1));
+            case "union", "|" -> new Union(args.get(0), args.get(1));
+            default -> throw new UnsupportedOperationException(
+                "Function '" + call.functionName() + "' is not supported"
+            );
+        };
+    }
+
+    @Nonnull
+    private IRNode resolveFunctionCall(@Nonnull final AstFunctionCall call) {
+        // Resolve implicit target if needed
+        final AstFunctionCall resolvedCall = resolveWithImplicitTarget(call);
+
+        // Resolve target (always needed, even for lambdas)
+        final IRNode targetIR = analyze(resolvedCall.target());
+
+        // Get all signatures for this function
+        final List<SignatureDefinition> signatures = OperationRegistry.getSignatures(call.functionName());
+
+        if (signatures.isEmpty()) {
+            // Fallback to special handling for infrastructure functions
+            return handleInfrastructureFunctions(call, targetIR);
         }
 
-        // Resolve implicit target if needed
-        return FunctionRegistry.resolve(this, resolveWithImplicitTarget(call));
-    }
+        // Filter signatures by arity (number of arguments + 1 for target)
+        final int actualArgCount = call.arguments().size() + 1; // +1 for target
+        final List<SignatureDefinition> matchingSignatures = signatures.stream()
+            .filter(sig -> sig.canApplyToArgumentCount(actualArgCount))
+            .toList();
 
-    /**
-     * Checks if a function takes lambda arguments.
-     */
-    private boolean isLambdaFunction(String functionName) {
-        return functionName.equals("where") || functionName.equals("select");
-    }
-
-    /**
-     * Resolves function calls that take lambda arguments (where, select, etc.).
-     */
-    private IRNode resolveLambdaFunction(AstFunctionCall call) {
-        // Resolve target collection
-        AstNode targetAst = call.target() != null ? call.target() : AstVariable.contextVariable();
-        IRNode targetIR = analyze(targetAst);
-
-        // Extract element type from collection
-        Type targetType = targetIR.getType();
-        Type elementType = (targetType instanceof CollectionType ct)
-            ? ct.elementType()
-            : targetType;
-
-        // Resolve lambda argument with $this bound to element type
-        if (call.arguments().isEmpty()) {
+        if (matchingSignatures.isEmpty()) {
             throw new IllegalArgumentException(
-                call.functionName() + "() requires a criteria/projection expression"
+                "No signature for '" + call.functionName() + "' matches " +
+                actualArgCount + " arguments"
             );
         }
 
-        AstNode lambdaBodyAst = call.arguments().get(0);
-        Analyzer lambdaAnalyzer = withThisType(elementType);
-        IRNode lambdaBody = lambdaAnalyzer.analyze(lambdaBodyAst);
+        // Check lambda signature invariant:
+        // If multiple matching signatures AND any has lambdas → illegal state
+        if (matchingSignatures.size() > 1 &&
+            matchingSignatures.stream().anyMatch(SignatureDefinition::hasLambdaParameters)) {
+            throw new IllegalStateException(
+                "Function '" + call.functionName() + "' has " + matchingSignatures.size() +
+                " matching signatures with lambda parameters. " +
+                "Lambda signatures cannot be overloaded."
+            );
+        }
 
-        // Create Lambda IR node
-        Lambda lambdaIR = new Lambda(lambdaBody);
+        // Get the signature (now guaranteed to be unambiguous for arity)
+        final SignatureDefinition sig = matchingSignatures.get(0);
 
-        // Create function call with target and lambda
-        AstFunctionCall callWithLambda = new AstFunctionCall(
-            call.functionName(),
-            targetAst,
-            java.util.List.of(lambdaBodyAst)  // Keep original AST for debugging
-        );
+        // Eagerly create lambda analyzer (even if not needed - cheap operation)
+        final Type elementType = extractElementType(targetIR.getType());
+        final Analyzer thisAnalyzer = withThisType(elementType);
 
-        // Resolve through FunctionRegistry with lambda IR
-        return FunctionRegistry.resolveLambda(this, callWithLambda, targetIR, lambdaIR);
+        // Analyze arguments based on signature parameter types using streams
+        final List<IRNode> args = Stream.concat(
+            Stream.of(targetIR),
+            IntStream.range(0, call.arguments().size())
+                .mapToObj(i -> {
+                    final Type paramType = sig.parameterTypes().get(i + 1); // +1 for target
+                    final AstNode argAst = call.arguments().get(i);
+
+                    if (paramType instanceof LambdaType) {
+                        // Use thisAnalyzer for lambda context
+                        final IRNode lambdaBody = thisAnalyzer.analyze(argAst);
+                        return new Lambda(lambdaBody);
+                    } else {
+                        // Use current analyzer for normal arguments
+                        return analyze(argAst);
+                    }
+                })
+        ).toList();
+
+        // Resolve with OverloadResolver (will pick best match)
+        final OverloadResolver.ResolvedCall resolvedCallResult =
+            OverloadResolver.resolveCall(matchingSignatures, args);
+
+        return new Operation(call.functionName(), resolvedCallResult.args(),
+            resolvedCallResult.signature());
     }
 
     private IRNode resolveTraversal(AstTraversal traversal) {

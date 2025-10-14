@@ -45,6 +45,64 @@ For writing or reviewing unit tests for FHIRPath functions and operators, use th
 
 The detailed design is in @DESIGN.md. Use it both when writing the code and also to record new or modified design choices.
 
+### Java Coding Style
+
+1. **Use `final` modifier whenever possible**
+  - Mark all local variables as `final` if they are not reassigned
+  - Mark method parameters as `final`
+  - Mark class fields as `final` when they are initialized once
+  - Example:
+    ```java
+    public static void processData(@Nonnull final String input) {
+      final List<String> items = parseInput(input);
+      final String result = transform(items);
+      return result;
+    }
+    ```
+
+2. **Use `jakarta.annotation.Nonnull` annotations**
+  - Annotate all non-null method parameters with `@Nonnull`
+  - Annotate all non-null return types with `@Nonnull`
+  - This helps with static analysis and makes nullability explicit
+  - Example:
+    ```java
+    @Nonnull
+    public static Column structProduct(@Nonnull final Column... columns) {
+      // implementation
+    }
+    ```
+
+3. **Prefer Java Streams for collection operations**
+  - Use streams for functional-style operations on collections
+  - Example:
+    ```java
+    final List<Expression> expressions = Arrays.stream(columns)
+        .map(ExpressionUtils::expression)
+        .collect(Collectors.toList());
+    ```
+
+4. **Prefer immutable collections and streams over imperative loops:**
+- Use `List.of()`, `Set.of()`, `Map.of()` for immutable collections
+- Use Stream API (`map`, `filter`, `collect`) instead of for/while loops when possible
+- Use `Stream.concat()` for combining streams
+- Favor functional transformations over mutation
+
+**Examples:**
+```java
+// Good: immutable collection with stream
+List<IRNode> args = Stream.concat(
+    Stream.of(targetIR),
+    call.arguments().stream().map(this::analyze)
+).toList();
+
+// Avoid: mutable collection with loop
+List<IRNode> args = new ArrayList<>();
+args.add(targetIR);
+for (AstNode arg : call.arguments()) {
+    args.add(analyze(arg));
+}
+```
+
 ### Commit Messages
 
 Keep commit messages succinct and focused:

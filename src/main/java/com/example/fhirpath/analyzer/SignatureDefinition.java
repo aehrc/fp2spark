@@ -1,5 +1,6 @@
 package com.example.fhirpath.analyzer;
 
+import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.Type;
 
 import jakarta.annotation.Nonnull;
@@ -61,5 +62,20 @@ public record SignatureDefinition(
     @Override
     public Stream<SignatureDefinition> expand() {
         return Stream.of(this);
+    }
+
+    /**
+     * Returns true if any parameter type is a LambdaType.
+     */
+    public boolean hasLambdaParameters() {
+        return parameterTypes.stream().anyMatch(t -> t instanceof LambdaType);
+    }
+
+    /**
+     * Returns true if this signature can be applied to the given number of arguments.
+     * A signature matches if argCount is within [minArity, arity].
+     */
+    public boolean canApplyToArgumentCount(final int argCount) {
+        return argCount >= minArity && argCount <= arity();
     }
 }

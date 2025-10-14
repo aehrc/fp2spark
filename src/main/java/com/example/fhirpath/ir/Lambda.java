@@ -5,30 +5,20 @@ import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
 
-import java.util.List;
-
 /**
  * IR node representing a lambda expression (closure).
  * Used by functions like where(), select(), repeat() that take criteria/projection expressions.
  *
  * The lambda body can reference special variables like $this (current element) and $index (position).
+ * Parameter binding is handled dynamically during code generation - the Lambda doesn't store parameter
+ * names or types, only the body expression.
  *
  * Example: name.where(use = 'official')
- * - parameters: ["$this"]
  * - body: Operation("equals", [Traversal($this, "use"), Literal("official")])
- * - parameterType: HumanName
  */
 public record Lambda(
-    @Nonnull List<String> parameters,
-    @Nonnull IRNode body,
-    @Nonnull Type parameterType
+    @Nonnull IRNode body
 ) implements IRNode {
-
-    public Lambda {
-        if (parameters.isEmpty()) {
-            throw new IllegalArgumentException("Lambda must have at least one parameter");
-        }
-    }
 
     /**
      * Returns the lambda's type signature (returnType only).
@@ -65,6 +55,6 @@ public record Lambda(
 
     @Override
     public String toString() {
-        return "Lambda(" + String.join(", ", parameters) + " -> " + body + ")";
+        return "Lambda($this -> " + body + ")";
     }
 }

@@ -179,11 +179,7 @@ public class Analyzer {
         IRNode lambdaBody = lambdaAnalyzer.analyze(lambdaBodyAst);
 
         // Create Lambda IR node
-        Lambda lambdaIR = new Lambda(
-            java.util.List.of("$this"),
-            lambdaBody,
-            elementType
-        );
+        Lambda lambdaIR = new Lambda(lambdaBody);
 
         // Create function call with target and lambda
         AstFunctionCall callWithLambda = new AstFunctionCall(

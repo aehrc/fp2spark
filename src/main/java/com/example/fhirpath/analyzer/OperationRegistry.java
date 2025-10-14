@@ -1,8 +1,5 @@
-package com.example.fhirpath.ir;
+package com.example.fhirpath.analyzer;
 
-import com.example.fhirpath.analyzer.SignatureDefinition;
-import com.example.fhirpath.analyzer.Signatures;
-import com.example.fhirpath.analyzer.TypeGroup;
 import jakarta.annotation.Nonnull;
 
 import java.util.List;

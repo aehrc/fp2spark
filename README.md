@@ -45,6 +45,38 @@ Key properties:
 
 ---
 
+## Implementation Notes
+
+### iif() Function Design
+
+The `iif()` function implements collection-level conditional logic with the following signature:
+
+```
+Collection<T>.iif(criterion: Lambda<Boolean>, trueResult: Lambda<R>) → R
+```
+
+**Key Design Choice:** The `trueResult` lambda can return **any expression type** (Collection<R> or scalar R), not strictly a collection. This matches real-world FHIRPath implementations where scalar results are implicitly treated as singleton collections when needed.
+
+**Examples:**
+```java
+// Scalar result (implicit singleton)
+(1 | 2 | 3).iif(count() > 2, 'found')  // → 'found'
+
+// Collection result
+(1 | 2).iif(exists(), $this)  // → [1, 2]
+
+// Expression operating on collection
+(5 | 10 | 15).iif(exists(), count())  // → 3
+```
+
+**Implementation Details:**
+- Both lambda parameters use `COLLECTION_WISE` binding: `$this` refers to the entire input collection, not individual elements
+- This differs from `where()` which uses `ELEMENT_WISE` binding
+- Lambda binding strategy is function-level metadata in `SignatureDefinition`
+- The type system uses `LambdaType(Type.ANY)` for flexible result types with `CollectionType<ANY>` wildcard matching
+
+---
+
 ## Usage
 
 High-level API:

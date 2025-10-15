@@ -10,7 +10,7 @@ public enum PrimitiveType implements Type {
     BOOLEAN("boolean"),
     STRING("string"),
     NULL("null"),
-    UNKNOWN("unknown");
+    ANY("unknown");
 
     private final String name;
 

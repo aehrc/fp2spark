@@ -622,7 +622,7 @@ package com.example.fhirpath.codegen;
 
 import com.example.fhirpath.ir.*;
 import com.example.fhirpath.typing.PrimitiveType;
-import com.example.fhirpath.typing.SparkTypeMapper;
+import com.example.fhirpath.codegen.spark.SparkTypeMapper;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;

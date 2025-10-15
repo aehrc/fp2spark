@@ -4,7 +4,7 @@ import com.example.fhirpath.typing.Type;
 
 import java.util.List;
 
-import static com.example.fhirpath.typing.Type.*;
+import static com.example.fhirpath.typing.Types.*;
 
 /**
  * Predefined type sets for common signature patterns in FHIRPath.

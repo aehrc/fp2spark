@@ -4,11 +4,7 @@ import com.example.fhirpath.ir.Cast;
 import com.example.fhirpath.ir.CastToSystem;
 import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.ir.Lambda;
-import com.example.fhirpath.typing.CollectionType;
-import com.example.fhirpath.typing.LambdaType;
-import com.example.fhirpath.typing.PrimitiveType;
-import com.example.fhirpath.typing.Type;
-import com.example.fhirpath.typing.TypeSystem;
+import com.example.fhirpath.typing.*;
 import com.example.fhirpath.typing.fhir.FhirType;
 
 import java.util.ArrayList;
@@ -82,17 +78,17 @@ public final class OverloadResolver {
             // Parameter types are implicit (determined by binding strategy),
             // so we only check return type compatibility.
             Type lambdaBodyType = lambda.body().getType();
-            boolean returnMatches = targetLambda.returnType() == Type.ANY
+            boolean returnMatches = targetLambda.returnType() == Types.ANY
                 || lambdaBodyType == targetLambda.returnType()
                 || (targetLambda.returnType() instanceof CollectionType targetColl
-                    && targetColl.elementType() == Type.ANY
+                    && targetColl.elementType() == Types.ANY
                     && lambdaBodyType instanceof CollectionType)
                 || TypeSystem.canCast(lambdaBodyType, targetLambda.returnType());
 
             if (returnMatches) {
                 // Cost 0 for exact match, cost 1 for ANY wildcard match
-                int cost = (targetLambda.returnType() == Type.ANY
-                    || (targetLambda.returnType() instanceof CollectionType tc && tc.elementType() == Type.ANY)) ? 1 : 0;
+                int cost = (targetLambda.returnType() == Types.ANY
+                    || (targetLambda.returnType() instanceof CollectionType tc && tc.elementType() == Types.ANY)) ? 1 : 0;
                 return new Adapt(arg, true, cost);
             }
             // Lambda doesn't match expected return type
@@ -117,19 +113,19 @@ public final class OverloadResolver {
 
         // NULL (empty collection {}) matches any expected type
         // FHIRPath semantics: empty collections are polymorphic
-        if (actual == Type.NULL) {
+        if (actual == Types.NULL) {
             return new Adapt(arg, true, 1);
         }
 
         // Allow implicit casts via TypeSystem or from UNKNOWN
-        if (target == Type.ANY) {
+        if (target == Types.ANY) {
             return new Adapt(arg, true, 1);
-        } else if (target instanceof CollectionType targetColl && targetColl.elementType() == Type.ANY) {
+        } else if (target instanceof CollectionType targetColl && targetColl.elementType() == Types.ANY) {
             // CollectionType<ANY> matches:
             // - NULL (empty collection)
             // - Any CollectionType (regardless of element type)
             // - Any scalar type (implicitly a singleton collection in FHIRPath)
-            if (actual == Type.NULL || actual instanceof CollectionType) {
+            if (actual == Types.NULL || actual instanceof CollectionType) {
                 return new Adapt(arg, true, 1);
             }
             // Scalar types implicitly match CollectionType<ANY> (singleton collections)

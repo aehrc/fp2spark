@@ -2,8 +2,8 @@ package com.example.fhirpath.codegen.spark;
 
 import com.example.fhirpath.ir.*;
 import com.example.fhirpath.typing.PrimitiveType;
-import com.example.fhirpath.typing.SparkTypeMapper;
 import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nullable;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
@@ -12,9 +12,9 @@ import org.apache.spark.sql.types.DataType;
 import javax.annotation.Nonnull;
 import java.util.List;
 
+import static com.example.fhirpath.codegen.spark.Date.date;
 import static com.example.fhirpath.codegen.spark.DateTime.dateTime;
 import static com.example.fhirpath.codegen.spark.Quantity.quantity;
-import static com.example.fhirpath.codegen.spark.Date.date;
 import static com.example.fhirpath.codegen.spark.Time.time;
 import static org.apache.spark.sql.functions.*;
 
@@ -205,11 +205,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
-        // Handle NULL type (empty collection {})
-        if (inputType == Type.NULL) {
-            return lit(null).cast(org.apache.spark.sql.types.DataTypes.BooleanType);
-        }
-
         // Get input type from first argument's type (before comparison)
         // Note: resultType is always BOOLEAN for comparisons
         return switch((PrimitiveType) inputType) {
@@ -228,11 +223,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
-        // Handle NULL type (empty collection {})
-        if (inputType == Type.NULL) {
-            return lit(null).cast(org.apache.spark.sql.types.DataTypes.BooleanType);
-        }
-
         return switch((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.lt(right);
             case QUANTITY -> quantity(left).lt(quantity(right));
@@ -249,11 +239,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
-        // Handle NULL type (empty collection {})
-        if (inputType == Type.NULL) {
-            return lit(null).cast(org.apache.spark.sql.types.DataTypes.BooleanType);
-        }
-
         return switch((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.geq(right);
             case QUANTITY -> quantity(left).geq(quantity(right));
@@ -269,11 +254,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     private Column evaluateLessEqual(List<Column> args, Type inputType) {
         Column left = args.get(0);
         Column right = args.get(1);
-
-        // Handle NULL type (empty collection {})
-        if (inputType == Type.NULL) {
-            return lit(null).cast(org.apache.spark.sql.types.DataTypes.BooleanType);
-        }
 
         return switch((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.leq(right);
@@ -591,7 +571,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             : rightType;
 
         // Handle null types
-        if (normalizedLeftType == Type.NULL || normalizedRightType == Type.NULL) {
+        if (normalizedLeftType == Types.NULL || normalizedRightType == Types.NULL) {
             return lit(null);
         }
 
@@ -613,7 +593,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
      * Check if a type is numeric (INTEGER or DECIMAL).
      */
     private boolean isNumericType(Type type) {
-        return type == Type.INTEGER || type == Type.DECIMAL;
+        return type == Types.INTEGER || type == Types.DECIMAL;
     }
 
     @Override

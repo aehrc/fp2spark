@@ -2,14 +2,11 @@ package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.ast.*;
 import com.example.fhirpath.ir.*;
-import com.example.fhirpath.typing.CollectionType;
-import com.example.fhirpath.typing.ComplexType;
-import com.example.fhirpath.typing.LambdaType;
-import com.example.fhirpath.typing.ResourceType;
-import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.*;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -48,9 +45,9 @@ public class Analyzer {
      * Private constructor for lambda analysis with $this binding.
      */
     private Analyzer(
-        @Nonnull AstNode contextNode,
-        @Nonnull ResourceType resourceSpec,
-        @Nullable Type thisType
+            @Nonnull AstNode contextNode,
+            @Nonnull ResourceType resourceSpec,
+            @Nullable Type thisType
     ) {
         this.contextNode = contextNode;
         this.resourceSpec = resourceSpec;
@@ -72,8 +69,8 @@ public class Analyzer {
     @Nonnull
     private AstNode getImplicitTarget() {
         return (thisType != null)
-            ? AstIterationVariable.thisVariable()
-            : AstVariable.contextVariable();
+                ? AstIterationVariable.thisVariable()
+                : AstVariable.contextVariable();
     }
 
     /**
@@ -81,7 +78,7 @@ public class Analyzer {
      * If the node has no explicit target, applies the implicit target before resolution.
      *
      * @param node A node that may have an implicit target (AstFunctionCall or AstTraversal)
-     * @param <T> The concrete type of WithTarget
+     * @param <T>  The concrete type of WithTarget
      * @return The node with implicit target resolved (returns node with target set)
      */
     @Nonnull
@@ -118,7 +115,7 @@ public class Analyzer {
 
     /**
      * Desugars function calls with known equivalences.
-     *
+     * <p>
      * Current transformations:
      * - exists(criteria) → where(criteria).exists()
      */
@@ -127,7 +124,7 @@ public class Analyzer {
         // exists(criteria) → where(criteria).exists()
         if ("exists".equals(call.functionName()) && call.arguments().size() == 1) {
             final AstFunctionCall whereCall = new AstFunctionCall(
-                "where", call.target(), call.arguments()
+                    "where", call.target(), call.arguments()
             );
             return new AstFunctionCall("exists", whereCall, List.of());
         }
@@ -167,7 +164,8 @@ public class Analyzer {
             // TODO: the context node should be analyzed with empty context to avoid recursion
             case CONTEXT_VARIABLE -> new Analyzer(resourceSpec).analyze(contextNode);
             case RESOURCE_VARIABLE -> new Resource(resourceSpec);
-            default -> throw new IllegalArgumentException("Unsupported FHIRPath environment variable: " + variable.name());
+            default ->
+                    throw new IllegalArgumentException("Unsupported FHIRPath environment variable: " + variable.name());
         };
     }
 
@@ -176,16 +174,16 @@ public class Analyzer {
             case AstIterationVariable.THIS -> {
                 if (thisType == null) {
                     throw new IllegalArgumentException(
-                        "$this can only be used in lambda expressions (e.g., within where() or select())"
+                            "$this can only be used in lambda expressions (e.g., within where() or select())"
                     );
                 }
                 yield new ThisReference(thisType);
             }
             case AstIterationVariable.INDEX -> throw new UnsupportedOperationException(
-                "$index is not yet supported"
+                    "$index is not yet supported"
             );
             case AstIterationVariable.TOTAL -> throw new UnsupportedOperationException(
-                "$total is not yet supported"
+                    "$total is not yet supported"
             );
             default -> throw new IllegalArgumentException("Unknown iteration variable: " + iterVar.name());
         };
@@ -198,8 +196,8 @@ public class Analyzer {
     @Nonnull
     private Type extractElementType(@Nonnull final Type collectionType) {
         return (collectionType instanceof CollectionType ct)
-            ? ct.elementType()
-            : collectionType;
+                ? ct.elementType()
+                : collectionType;
     }
 
     /**
@@ -208,13 +206,13 @@ public class Analyzer {
      */
     @Nonnull
     private IRNode handleInfrastructureFunctions(
-        @Nonnull final AstFunctionCall call,
-        @Nonnull final IRNode targetIR
+            @Nonnull final AstFunctionCall call,
+            @Nonnull final IRNode targetIR
     ) {
         // Analyze remaining arguments normally (none of these take lambdas)
         final List<IRNode> args = Stream.concat(
-            Stream.of(targetIR),
-            call.arguments().stream().map(this::analyze)
+                Stream.of(targetIR),
+                call.arguments().stream().map(this::analyze)
         ).toList();
 
         return switch (call.functionName()) {
@@ -222,7 +220,7 @@ public class Analyzer {
             case "equals" -> new Equals(args.get(0), args.get(1));
             case "union", "|" -> new Union(args.get(0), args.get(1));
             default -> throw new UnsupportedOperationException(
-                "Function '" + call.functionName() + "' is not supported"
+                    "Function '" + call.functionName() + "' is not supported"
             );
         };
     }
@@ -246,24 +244,24 @@ public class Analyzer {
         // Filter signatures by arity (number of arguments + 1 for target)
         final int actualArgCount = call.arguments().size() + 1; // +1 for target
         final List<SignatureDefinition> matchingSignatures = signatures.stream()
-            .filter(sig -> sig.canApplyToArgumentCount(actualArgCount))
-            .toList();
+                .filter(sig -> sig.canApplyToArgumentCount(actualArgCount))
+                .toList();
 
         if (matchingSignatures.isEmpty()) {
             throw new IllegalArgumentException(
-                "No signature for '" + call.functionName() + "' matches " +
-                actualArgCount + " arguments"
+                    "No signature for '" + call.functionName() + "' matches " +
+                            actualArgCount + " arguments"
             );
         }
 
         // Check lambda signature invariant:
         // If multiple matching signatures AND any has lambdas → illegal state
         if (matchingSignatures.size() > 1 &&
-            matchingSignatures.stream().anyMatch(SignatureDefinition::hasLambdaParameters)) {
+                matchingSignatures.stream().anyMatch(SignatureDefinition::hasLambdaParameters)) {
             throw new IllegalStateException(
-                "Function '" + call.functionName() + "' has " + matchingSignatures.size() +
-                " matching signatures with lambda parameters. " +
-                "Lambda signatures cannot be overloaded."
+                    "Function '" + call.functionName() + "' has " + matchingSignatures.size() +
+                            " matching signatures with lambda parameters. " +
+                            "Lambda signatures cannot be overloaded."
             );
         }
 
@@ -284,46 +282,46 @@ public class Analyzer {
 
         // Create lambda analyzer if needed
         final Analyzer thisAnalyzer = thisBindingType != null
-            ? withThisType(thisBindingType)
-            : null;
+                ? withThisType(thisBindingType)
+                : null;
 
         // Analyze arguments based on signature parameter types
         // For variadic functions, pad missing arguments with AstLiteral.NULL
         final List<IRNode> args = Stream.concat(
-            Stream.of(targetIR),
-            IntStream.range(1, sig.parameterTypes().size())  // Start at 1 (skip target at index 0)
-                .mapToObj(i -> {
-                    final Type paramType = sig.parameterTypes().get(i);
+                Stream.of(targetIR),
+                IntStream.range(1, sig.parameterTypes().size())  // Start at 1 (skip target at index 0)
+                        .mapToObj(i -> {
+                            final Type paramType = sig.parameterTypes().get(i);
 
-                    // Get AST argument, or use null literal if exhausted (variadic padding)
-                    final AstNode argAst = (i - 1) < call.arguments().size()
-                        ? call.arguments().get(i - 1)
-                        : AstLiteral.NULL;
+                            // Get AST argument, or use null literal if exhausted (variadic padding)
+                            final AstNode argAst = (i - 1) < call.arguments().size()
+                                    ? call.arguments().get(i - 1)
+                                    : AstLiteral.NULL;
 
-                    if (paramType instanceof LambdaType) {
-                        if (thisAnalyzer == null) {
-                            throw new IllegalStateException(
-                                "Lambda parameter found but no binding strategy specified for function: " +
-                                call.functionName()
-                            );
-                        }
-                        // Use thisAnalyzer for lambda context
-                        final IRNode lambdaBody = thisAnalyzer.analyze(argAst);
-                        return new Lambda(lambdaBody);
-                    } else {
-                        // Use current analyzer for normal arguments
-                        // AstLiteral.NULL → Literal(null, Type.NULL)
-                        return analyze(argAst);
-                    }
-                })
+                            if (paramType instanceof LambdaType) {
+                                if (thisAnalyzer == null) {
+                                    throw new IllegalStateException(
+                                            "Lambda parameter found but no binding strategy specified for function: " +
+                                                    call.functionName()
+                                    );
+                                }
+                                // Use thisAnalyzer for lambda context
+                                final IRNode lambdaBody = thisAnalyzer.analyze(argAst);
+                                return new Lambda(lambdaBody);
+                            } else {
+                                // Use current analyzer for normal arguments
+                                // AstLiteral.NULL → Literal(null, Type.NULL)
+                                return analyze(argAst);
+                            }
+                        })
         ).toList();
 
         // Resolve with OverloadResolver (will pick best match)
         final OverloadResolver.ResolvedCall resolvedCallResult =
-            OverloadResolver.resolveCall(matchingSignatures, args);
+                OverloadResolver.resolveCall(matchingSignatures, args);
 
         return new Operation(call.functionName(), resolvedCallResult.args(),
-            resolvedCallResult.signature());
+                resolvedCallResult.signature());
     }
 
     private IRNode resolveTraversal(AstTraversal traversal) {
@@ -337,7 +335,7 @@ public class Analyzer {
                 // for ComplexTypes with required field create a Traversal
                 .map(fieldSpec -> (IRNode) new Traversal(targetIR, fieldSpec))
                 // otherwise an empty collection
-                .orElseGet(() -> new Literal(null, Type.NULL));
+                .orElseGet(() -> new Literal(null, Types.NULL));
     }
 
     private IRNode resolveBinaryOp(AstBinaryOperator binaryOp) {
@@ -345,11 +343,11 @@ public class Analyzer {
     }
 
     private Type inferType(Object value) {
-        if (value == null) return Type.NULL;
-        if (value instanceof Integer) return Type.INTEGER;
-        if (value instanceof BigDecimal) return Type.DECIMAL;
-        if (value instanceof Boolean) return Type.BOOLEAN;
-        if (value instanceof String) return Type.STRING;
+        if (value == null) return Types.NULL;
+        if (value instanceof Integer) return Types.INTEGER;
+        if (value instanceof BigDecimal) return Types.DECIMAL;
+        if (value instanceof Boolean) return Types.BOOLEAN;
+        if (value instanceof String) return Types.STRING;
         throw new IllegalArgumentException("Unsupported literal value: " + value);
     }
 }

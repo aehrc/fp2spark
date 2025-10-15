@@ -1,5 +1,8 @@
-package com.example.fhirpath.typing;
+package com.example.fhirpath.codegen.spark;
 
+import com.example.fhirpath.typing.CollectionType;
+import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.DecimalType;

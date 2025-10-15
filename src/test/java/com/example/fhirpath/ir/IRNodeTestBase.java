@@ -2,6 +2,7 @@ package com.example.fhirpath.ir;
 
 import com.example.fhirpath.codegen.spark.SparkCodeGenerator;
 import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.Types;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -112,28 +113,28 @@ public abstract class IRNodeTestBase {
      * Helper to create a String Literal IRNode
      */
     protected IRNode str(@Nullable String value) {
-        return new Literal(value, Type.STRING);
+        return new Literal(value, Types.STRING);
     }
 
     /**
      * Helper to create an Integer Literal IRNode
      */
     protected IRNode integer(@Nullable Integer value) {
-        return new Literal(value, Type.INTEGER);
+        return new Literal(value, Types.INTEGER);
     }
 
     /**
      * Helper to create a Decimal Literal IRNode
      */
     protected IRNode decimal(@Nullable Double value) {
-        return new Literal(value, Type.DECIMAL);
+        return new Literal(value, Types.DECIMAL);
     }
 
     /**
      * Helper to create a Boolean Literal IRNode
      */
     protected IRNode bool(@Nullable Boolean value) {
-        return new Literal(value, Type.BOOLEAN);
+        return new Literal(value, Types.BOOLEAN);
     }
 
     /**

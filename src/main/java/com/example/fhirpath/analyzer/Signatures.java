@@ -4,6 +4,7 @@ import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.Type;
 
+import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 
 import java.util.Arrays;
@@ -76,7 +77,7 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition temporalArithmetic(@Nonnull final Type temporalType) {
-        return binaryFunc(temporalType, Type.QUANTITY, temporalType);
+        return binaryFunc(temporalType, Types.QUANTITY, temporalType);
     }
 
     /**
@@ -102,7 +103,7 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition comparisonOp(@Nonnull final Type type) {
-        return binaryFunc(type, type, Type.BOOLEAN);
+        return binaryFunc(type, type, Types.BOOLEAN);
     }
 
     /**
@@ -185,8 +186,8 @@ public final class Signatures {
     @Nonnull
     public static SignatureDefinition typeTest(@Nonnull final Type inputType) {
         return new SignatureDefinition(
-                List.of(inputType, Type.STRING),
-                Type.BOOLEAN
+                List.of(inputType, Types.STRING),
+                Types.BOOLEAN
         );
     }
 
@@ -213,11 +214,11 @@ public final class Signatures {
     @Nonnull
     public static SignatureDefinition collectionFilter(@Nonnull final Type elementType) {
         //final CollectionType collectionType = new CollectionType(elementType);
-        final LambdaType lambdaType = new LambdaType(Type.BOOLEAN);
+        final LambdaType lambdaType = new LambdaType(Types.BOOLEAN);
 
         return new SignatureDefinition(
                 // TODO: use CollectionType as first param when we support it in overload resolution
-                List.of(Type.ANY, lambdaType),
+                List.of(Types.ANY, lambdaType),
                 ResultSpec.InputType.INSTANCE,  // Preserve collection type
                 2,  // minArity
                 LambdaBindingStrategy.ELEMENT_WISE  // $this = element
@@ -272,9 +273,9 @@ public final class Signatures {
     public static SignatureDefinition conditionalIif() {
         return new SignatureDefinition(
                 List.of(
-                        new CollectionType(Type.ANY),      // Collection<T>
-                        new LambdaType(Type.BOOLEAN),      // criterion lambda returns Boolean
-                        new LambdaType(Type.ANY)           // true-result lambda returns R (any type)
+                        new CollectionType(Types.ANY),      // Collection<T>
+                        new LambdaType(Types.BOOLEAN),      // criterion lambda returns Boolean
+                        new LambdaType(Types.ANY)           // true-result lambda returns R (any type)
                 ),
                 new ResultSpec.ArgumentType(2),  // Result is type of arg[2] (unwrapped from lambda)
                 3,  // minArity = 3 (all required for non-variadic version)

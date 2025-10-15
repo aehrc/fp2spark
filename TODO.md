@@ -1,6 +1,7 @@
 
 To do list:
 
+- Fix NULL and null evaluation for functions and operators.
 - Further refactor Analyzer and FunctionRegistry to reduce code duplication. 
   Most likely hide the details of function call resolution from the Analyzer 
   and unify function and operator resolution.

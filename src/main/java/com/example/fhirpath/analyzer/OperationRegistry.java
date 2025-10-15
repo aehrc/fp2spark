@@ -8,7 +8,7 @@ import java.util.stream.Stream;
 
 import static com.example.fhirpath.analyzer.TypeGroups.forTypes;
 import static com.example.fhirpath.analyzer.TypeSets.*;
-import static com.example.fhirpath.typing.Type.*;
+import static com.example.fhirpath.typing.Types.*;
 
 /**
  * Centralized registry of all FHIRPath functions and operators.

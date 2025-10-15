@@ -3,6 +3,8 @@ package com.example.fhirpath.analyzer;
 import com.example.fhirpath.typing.Type;
 
 import jakarta.annotation.Nonnull;
+
+import java.util.Collection;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -31,9 +33,9 @@ public final class TypeGroups {
      */
     @SafeVarargs
     @Nonnull
-    public static ForTypesBuilder forTypes(@Nonnull final Set<Type>... typeSets) {
+    public static ForTypesBuilder forTypes(@Nonnull final Collection<Type>... typeSets) {
         final Set<Type> combined = Stream.of(typeSets)
-            .flatMap(Set::stream)
+            .flatMap(Collection::stream)
             .collect(Collectors.toSet());
         return new ForTypesBuilder(combined);
     }

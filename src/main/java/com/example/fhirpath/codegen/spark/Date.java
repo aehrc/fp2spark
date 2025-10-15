@@ -1,4 +1,4 @@
-package com.example.fhirpath.sql;
+package com.example.fhirpath.codegen.spark;
 
 import org.apache.spark.sql.Column;
 

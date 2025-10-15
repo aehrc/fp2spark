@@ -2,7 +2,6 @@ package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.ResolvedSignature;
 import com.example.fhirpath.typing.Type;
-import org.apache.spark.sql.Column;
 
 import jakarta.annotation.Nonnull;
 import java.util.List;
@@ -38,17 +37,6 @@ public record Operation(
     @Nonnull
     public Type getType() {
         return signature.resultType();
-    }
-
-    /**
-     * Delegates evaluation to SparkCodeGenerator visitor.
-     * This method is deprecated and will be removed once visitor pattern is fully adopted.
-     */
-    @Override
-    @Nonnull
-    public Column eval() {
-        // Temporary delegation to visitor - will be removed in final refactoring
-        return accept(new com.example.fhirpath.codegen.SparkCodeGenerator());
     }
 
     /**

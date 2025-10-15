@@ -1,4 +1,4 @@
-package com.example.fhirpath.codegen;
+package com.example.fhirpath.codegen.spark;
 
 import com.example.fhirpath.ir.*;
 import com.example.fhirpath.typing.PrimitiveType;
@@ -12,10 +12,10 @@ import org.apache.spark.sql.types.DataType;
 import javax.annotation.Nonnull;
 import java.util.List;
 
-import static com.example.fhirpath.sql.DateTime.dateTime;
-import static com.example.fhirpath.sql.Quantity.quantity;
-import static com.example.fhirpath.sql.Date.date;
-import static com.example.fhirpath.sql.Time.time;
+import static com.example.fhirpath.codegen.spark.DateTime.dateTime;
+import static com.example.fhirpath.codegen.spark.Quantity.quantity;
+import static com.example.fhirpath.codegen.spark.Date.date;
+import static com.example.fhirpath.codegen.spark.Time.time;
 import static org.apache.spark.sql.functions.*;
 
 /**

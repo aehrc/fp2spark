@@ -1,9 +1,7 @@
 package com.example.fhirpath.ir;
 
-import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
-import org.apache.spark.sql.Column;
 
 /**
  * IR node representing a lambda expression (closure).
@@ -29,14 +27,6 @@ public record Lambda(
     @Nonnull
     public Type getType() {
         return body.getType();
-    }
-
-    @Override
-    @Nonnull
-    public Column eval() {
-        throw new UnsupportedOperationException(
-                "Lambdas cannot be evaluated directly - they must be inlined at call site"
-        );
     }
 
     @Override

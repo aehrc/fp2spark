@@ -2,7 +2,6 @@ package com.example.fhirpath.ir;
 
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
-import org.apache.spark.sql.Column;
 
 /**
  * IR node representing $this reference in lambda expressions.
@@ -24,14 +23,6 @@ public record ThisReference(
     @Nonnull
     public Type getType() {
         return type;
-    }
-
-    @Override
-    @Nonnull
-    public Column eval() {
-        throw new UnsupportedOperationException(
-            "$this cannot be evaluated directly - it must be substituted during lambda inlining"
-        );
     }
 
     @Override

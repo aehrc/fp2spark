@@ -631,11 +631,11 @@ import org.apache.spark.sql.types.DataType;
 import javax.annotation.Nonnull;
 import java.util.List;
 
-import static com.example.fhirpath.eval.EvalHelper.*;
-import static com.example.fhirpath.sql.DateTime.dateTime;
-import static com.example.fhirpath.sql.Quantity.quantity;
-import static com.example.fhirpath.sql.Date.date;
-import static com.example.fhirpath.sql.Time.time;
+import static com.example.fhirpath.codegen.spark.EvalHelper.*;
+import static com.example.fhirpath.codegen.spark.DateTime.dateTime;
+import static com.example.fhirpath.codegen.spark.Quantity.quantity;
+import static com.example.fhirpath.codegen.spark.Date.date;
+import static com.example.fhirpath.codegen.spark.Time.time;
 import static org.apache.spark.sql.functions.*;
 
 /**
@@ -1713,15 +1713,15 @@ public class SqlServerCodeGenerator implements IRNodeVisitor<String> {
     @Nonnull
     public String visitOperation(@Nonnull Operation op) {
         List<String> argExprs = op.args().stream()
-            .map(arg -> arg.accept(this))
-            .toList();
+                .map(arg -> arg.accept(this))
+                .toList();
 
         return evaluateOperation(op.name(), argExprs, op.getType());
     }
 
     @Nonnull
     private String evaluateOperation(String name, List<String> args, Type resultType) {
-        return switch(name) {
+        return switch (name) {
             // Arithmetic
             case "add" -> evaluateAdd(args, resultType);
             case "sub" -> evaluateSub(args, resultType);
@@ -1761,7 +1761,7 @@ public class SqlServerCodeGenerator implements IRNodeVisitor<String> {
             case "not" -> "(NOT " + args.get(0) + ")";
 
             default -> throw new UnsupportedOperationException(
-                "Unknown operation: " + name);
+                    "Unknown operation: " + name);
         };
     }
 
@@ -1770,12 +1770,12 @@ public class SqlServerCodeGenerator implements IRNodeVisitor<String> {
         String left = args.get(0);
         String right = args.get(1);
 
-        return switch((PrimitiveType) resultType) {
+        return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> "(" + left + " + " + right + ")";
             case STRING -> "CONCAT(" + left + ", " + right + ")";
             // DATE_TIME and QUANTITY would need custom handling
             default -> throw new IllegalArgumentException(
-                "Unsupported result type for add: " + resultType);
+                    "Unsupported result type for add: " + resultType);
         };
     }
 
@@ -1828,7 +1828,7 @@ public class SqlServerCodeGenerator implements IRNodeVisitor<String> {
     // ... implement other visit methods
 
     private String toSqlServerType(Type type) {
-        return switch((PrimitiveType) type) {
+        return switch ((PrimitiveType) type) {
             case INTEGER -> "INT";
             case DECIMAL -> "DECIMAL(18,6)";
             case STRING -> "NVARCHAR(MAX)";
@@ -2144,8 +2144,7 @@ sparkCodeGen.visitOperation(add)
 ```java
 package com.example.fhirpath.ir;
 
-import com.example.fhirpath.analyzer.FunctionSignature;
-import com.example.fhirpath.codegen.SparkCodeGenerator;
+import com.example.fhirpath.codegen.spark.SparkCodeGenerator;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
 import org.junit.jupiter.api.Test;
@@ -2174,7 +2173,7 @@ class OperationTest extends IRNodeTestBase {
         IRNode right = new Literal(3, Type.INTEGER);
         Operation add = new Operation("add", List.of(left, right), biOperator(Type.INTEGER));
 
-        Column result = add.accept(new SparkCodeGenerator());
+        Column result = add.accept(new com.example.fhirpath.codegen.spark.SparkCodeGenerator());
 
         // Execute with Spark and verify result
         Object value = evaluateColumn(result);
@@ -2199,13 +2198,13 @@ class OperationTest extends IRNodeTestBase {
         IRNode innerLeft = new Literal(5, Type.INTEGER);
         IRNode innerRight = new Literal(3, Type.INTEGER);
         Operation innerAdd = new Operation("add",
-            List.of(innerLeft, innerRight),
-            biOperator(Type.INTEGER));
+                List.of(innerLeft, innerRight),
+                biOperator(Type.INTEGER));
 
         IRNode outerRight = new Literal(2, Type.INTEGER);
         Operation outerMul = new Operation("multiply",
-            List.of(innerAdd, outerRight),
-            biOperator(Type.INTEGER));
+                List.of(innerAdd, outerRight),
+                biOperator(Type.INTEGER));
 
         Column result = outerMul.accept(new SparkCodeGenerator());
         Object value = evaluateColumn(result);

@@ -2,6 +2,7 @@ package com.example.fhirpath;
 
 import com.example.fhirpath.analyzer.Analyzer;
 import com.example.fhirpath.ast.AstNode;
+import com.example.fhirpath.codegen.spark.SparkCodeGenerator;
 import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.parser.ParserFacade;
 import com.example.fhirpath.typing.ResourceType;
@@ -21,7 +22,7 @@ public final class FhirPath {
     public static Column toColumn(@Nonnull final String expr) {
         AstNode ast = ParserFacade.parse(expr);
         IRNode ir = new Analyzer().analyze(ast);
-        return ir.eval();
+        return ir.accept(new SparkCodeGenerator());
     }
 
     /**
@@ -37,7 +38,7 @@ public final class FhirPath {
     public static Column toColumn(@Nonnull final String expr, @Nonnull final String context) {
         AstNode ast = ParserFacade.parse(expr);
         IRNode ir = new Analyzer(ParserFacade.parse(context)).analyze(ast);
-        return ir.eval();
+        return ir.accept(new SparkCodeGenerator());
     }
 
     /**
@@ -52,7 +53,8 @@ public final class FhirPath {
     public static Column toColumn(@Nonnull final String expr, @Nonnull final ResourceType resourceSpec) {
         AstNode ast = ParserFacade.parse(expr);
         IRNode ir = new Analyzer(resourceSpec).analyze(ast);
-        return ir.eval();
+        return ir.accept(new SparkCodeGenerator());
+
     }
 
     /**
@@ -67,6 +69,6 @@ public final class FhirPath {
     public static Column toColumn(@Nonnull final String expr, @Nonnull final String context, @Nonnull final ResourceType resourceSpec) {
         AstNode ast = ParserFacade.parse(expr);
         IRNode ir = new Analyzer(ParserFacade.parse(context), resourceSpec).analyze(ast);
-        return ir.eval();
+        return ir.accept(new SparkCodeGenerator());
     }
 }

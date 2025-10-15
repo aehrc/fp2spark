@@ -1,4 +1,4 @@
-package com.example.fhirpath.eval;
+package com.example.fhirpath.codegen.spark;
 
 
 import com.example.fhirpath.ir.IRNode;
@@ -12,11 +12,6 @@ import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
 public record EvalHelper(Column column, boolean isSingular) {
-    @Nonnull
-    public static EvalHelper valueOf(IRNode node) {
-        return new EvalHelper(node.eval(), node.isSingular());
-    }
-
     /**
      * Apply different functions based on whether the column is singular or an array.
      *

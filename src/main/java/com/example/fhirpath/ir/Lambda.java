@@ -8,42 +8,34 @@ import org.apache.spark.sql.Column;
 /**
  * IR node representing a lambda expression (closure).
  * Used by functions like where(), select(), repeat() that take criteria/projection expressions.
- *
+ * <p>
  * The lambda body can reference special variables like $this (current element) and $index (position).
  * Parameter binding is handled dynamically during code generation - the Lambda doesn't store parameter
  * names or types, only the body expression.
- *
+ * <p>
  * Example: name.where(use = 'official')
  * - body: Operation("equals", [Traversal($this, "use"), Literal("official")])
  */
 public record Lambda(
-    @Nonnull IRNode body
+        @Nonnull IRNode body
 ) implements IRNode {
 
     /**
-     * Returns the lambda's type signature (returnType only).
-     * The parameter type is implicit and determined by the collection element type.
-     * This allows the OverloadResolver to match against LambdaType signatures.
+     * Returns the type of the lambda body (what it evaluates to).
+     * Does NOT return LambdaType - that's only used in signatures for matching.
+     * The OverloadResolver uses instanceof Lambda to detect lambda nodes.
      */
     @Override
     @Nonnull
     public Type getType() {
-        return new LambdaType(body.getType());
-    }
-
-    /**
-     * Lambdas are always singular - they represent a function, not a collection.
-     */
-    @Override
-    public boolean isSingular() {
-        return true;
+        return body.getType();
     }
 
     @Override
     @Nonnull
     public Column eval() {
         throw new UnsupportedOperationException(
-            "Lambdas cannot be evaluated directly - they must be inlined at call site"
+                "Lambdas cannot be evaluated directly - they must be inlined at call site"
         );
     }
 

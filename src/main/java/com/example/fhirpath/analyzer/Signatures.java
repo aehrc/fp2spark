@@ -208,6 +208,7 @@ public final class Signatures {
      * <p>
      * The lambda takes an implicit element of type T (from collection) and returns Boolean (filter criteria).
      * The lambda parameter type is implicit and determined by the collection element type.
+     * Uses ELEMENT_WISE binding strategy: $this = element type.
      */
     @Nonnull
     public static SignatureDefinition collectionFilter(@Nonnull final Type elementType) {
@@ -217,7 +218,9 @@ public final class Signatures {
         return new SignatureDefinition(
                 // TODO: use CollectionType as first param when we support it in overload resolution
                 List.of(Type.ANY, lambdaType),
-                ResultSpec.InputType.INSTANCE  // Preserve collection type
+                ResultSpec.InputType.INSTANCE,  // Preserve collection type
+                2,  // minArity
+                LambdaBindingStrategy.ELEMENT_WISE  // $this = element
         );
     }
 
@@ -250,6 +253,32 @@ public final class Signatures {
         return new SignatureDefinition(
                 List.of(leftType, rightType),
                 ResultSpec.InputType.INSTANCE
+        );
+    }
+
+    /**
+     * Conditional iif operation - collection-level conditional with lambda parameters.
+     * Example: Collection<T>.iif(Lambda<Boolean>, Lambda<R>) → R
+     * <p>
+     * Both lambda parameters operate on the entire collection (not elements):
+     * - criterion: $this = Collection<T>, returns Boolean
+     * - true-result: $this = Collection<T>, returns R (any type - collection or scalar)
+     * <p>
+     * Uses COLLECTION_WISE binding strategy: $this = entire collection type.
+     * Result type is extracted from the true-result lambda's body type.
+     * Scalar results are implicitly treated as singleton collections when needed.
+     */
+    @Nonnull
+    public static SignatureDefinition conditionalIif() {
+        return new SignatureDefinition(
+                List.of(
+                        new CollectionType(Type.ANY),      // Collection<T>
+                        new LambdaType(Type.BOOLEAN),      // criterion lambda returns Boolean
+                        new LambdaType(Type.ANY)           // true-result lambda returns R (any type)
+                ),
+                new ResultSpec.ArgumentType(2),  // Result is type of arg[2] (unwrapped from lambda)
+                3,  // minArity = 3 (all required for non-variadic version)
+                LambdaBindingStrategy.COLLECTION_WISE  // $this = entire collection
         );
     }
 }

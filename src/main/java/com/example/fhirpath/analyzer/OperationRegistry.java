@@ -200,6 +200,15 @@ public final class OperationRegistry {
             // Collection<T>.where(Lambda(T, Boolean)) → Collection<T>
             register("where",
                 Signatures.collectionFilter(ANY)
+            ),
+
+            // CONDITIONAL OPERATIONS (FHIRPath Spec 6.7)
+
+            // iif() evaluates collection-level conditional with lambda parameters
+            // Collection<T>.iif(Lambda<Boolean>, Lambda<Collection<R>>) → Collection<R>
+            // Both lambdas operate on entire collection (COLLECTION_WISE binding)
+            register("iif",
+                Signatures.conditionalIif()
             )
         );
     }

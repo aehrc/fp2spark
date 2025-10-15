@@ -152,7 +152,32 @@ class FhirPathIntegrationTest {
                 Arguments.of("'foo'.exists($this = 'bar')", "false"), // singular string not matching criteria
                 Arguments.of("(1 | 2 | 3).exists($this > 1)", "true"),
                 Arguments.of("(1 | 2 | 3).exists($this > 5)", "false"),
-                Arguments.of("('a' | 'b' | 'c').exists($this = 'b')", "true")
+                Arguments.of("('a' | 'b' | 'c').exists($this = 'b')", "true"),
+                // iif() conditional tests - FHIRPath Spec 6.7
+                // Basic: iif with literal boolean criterion
+                Arguments.of("{}.iif(true, 'true')", "true"),          // empty collection, true criterion returns result
+                Arguments.of("{}.iif(false, 'true')", null),           // empty collection, false criterion returns empty
+                Arguments.of("5.iif(true, 'found')", "found"),         // singular value, true criterion
+                Arguments.of("5.iif(false, 'found')", null),           // singular value, false criterion
+                // Collection-level criterion: $this refers to entire collection (implicit $this)
+                Arguments.of("(1 | 2).iif(exists(), $this)", "[1, 2]"),               // implicit $this.exists()
+                Arguments.of("(1 | 2).iif(empty(), $this)", null),                    // implicit $this.empty()
+                Arguments.of("(1 | 2 | 3).iif(count() > 2, $this)", "[1, 2, 3]"),   // implicit $this.count()
+                Arguments.of("(1 | 2).iif(count() > 2, $this)", null),               // count criterion false
+                // no first(): Arguments.of("(1 | 2 | 3).iif(count() = 3, first())", "1"),         // implicit in both lambdas
+                // True-result as lambda: operates on collection (implicit $this)
+                Arguments.of("(5 | 10 | 15).iif(exists(), count())", "3"),                      // implicit in both
+                Arguments.of("(1 | 2 | 3 | 4).iif(count() > 2, where($this > 2))", "[3, 4]"), // implicit count(), explicit $this in where
+                // Nested iif: iif within criterion or result (implicit $this)
+                Arguments.of("(1 | 2).iif(iif(exists(), true), 'nested')", "nested"),  // nested in criterion, implicit
+                Arguments.of("(1 | 2).iif(true, iif(count() = 2, 'match'))", "match"), // nested in result, implicit
+                Arguments.of("5.iif(true, 10.iif(true, 'deep'))", "deep"),             // double nested result
+                // Edge: Different result types (implicit $this)
+                Arguments.of("(1 | 2 | 3).iif(count() > 2, 'found')", "found"),       // implicit, returns string
+                Arguments.of("('a' | 'b').iif(exists(), 999)", "999"),                 // implicit, returns integer
+                // Edge: Combining with other operations (implicit $this)
+                Arguments.of("(1 | 2 | 3).iif(exists(), $this).count()", "3")        // implicit in criterion
+                // no first(): Arguments.of("(5 | 10).iif(count() = 2, first()) + 3", "8")           // implicit in both lambdas
         );
     }
 

@@ -27,11 +27,6 @@ public record ThisReference(
     }
 
     @Override
-    public boolean isSingular() {
-        return true;  // $this refers to a single element
-    }
-
-    @Override
     @Nonnull
     public Column eval() {
         throw new UnsupportedOperationException(

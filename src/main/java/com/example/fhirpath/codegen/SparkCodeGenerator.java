@@ -128,6 +128,9 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             // Filtering and projection
             case "where" -> evaluateWhere(args.get(0), argNodes.get(0).isSingular(), argNodes.get(1));
 
+            // Conditional operations
+            case "iif" -> evaluateIif(args.get(0), argNodes.get(1), argNodes.get(2));
+
             default -> throw new UnsupportedOperationException(
                 "Unknown operation: " + name + " with result type: " + resultType);
         };
@@ -416,6 +419,45 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             // Return null if the filtered array is empty (consistent with FHIRPath empty collection semantics)
             return when(functions.size(filtered).gt(lit(0)), filtered);
         }
+    }
+
+    // ========== Conditional Operations ==========
+
+    /**
+     * Evaluates iif() collection-level conditional.
+     *
+     * FHIRPath semantics:
+     * - Both lambdas are evaluated with $this bound to the entire collection
+     * - If criterion returns true, return true-result
+     * - Otherwise, return empty (null in Spark representation)
+     *
+     * Example: (1 | 2).iif(exists(), $this) → [1, 2]
+     * Example: (1 | 2 | 3).iif(count() > 2, first()) → 1
+     */
+    @Nonnull
+    private Column evaluateIif(
+        final Column collection,
+        @Nonnull final IRNode criterionLambda,
+        @Nonnull final IRNode trueResultLambda
+    ) {
+        if (!(criterionLambda instanceof Lambda criterion)) {
+            throw new IllegalArgumentException(
+                "iif() criterion must be a Lambda, got: " + criterionLambda.getClass()
+            );
+        }
+        if (!(trueResultLambda instanceof Lambda trueResult)) {
+            throw new IllegalArgumentException(
+                "iif() true-result must be a Lambda, got: " + trueResultLambda.getClass()
+            );
+        }
+
+        // Evaluate both lambdas with $this bound to entire collection
+        final SparkCodeGenerator collectionGen = withThisColumn(collection);
+        final Column criterionResult = criterion.body().accept(collectionGen);
+        final Column trueValue = trueResult.body().accept(collectionGen);
+
+        // Runtime short-circuit via Spark's when()
+        return when(criterionResult, trueValue);
     }
 
     // ========== Infrastructure Nodes ==========

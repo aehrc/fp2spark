@@ -4,6 +4,7 @@ import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.Type;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -20,16 +21,28 @@ import java.util.stream.Stream;
 public record SignatureDefinition(
     @Nonnull List<Type> parameterTypes,
     @Nonnull ResultSpec resultSpec,
-    int minArity
+    int minArity,
+    @Nullable LambdaBindingStrategy lambdaBinding
 ) implements TypeGroup {
     /**
-     * Constructor for fixed arity signatures.
+     * Constructor for non-lambda signatures with fixed arity.
      */
     public SignatureDefinition(
         @Nonnull final List<Type> parameterTypes,
         @Nonnull final ResultSpec resultSpec
     ) {
-        this(parameterTypes, resultSpec, parameterTypes.size());
+        this(parameterTypes, resultSpec, parameterTypes.size(), null);
+    }
+
+    /**
+     * Constructor for non-lambda signatures with variable arity.
+     */
+    public SignatureDefinition(
+        @Nonnull final List<Type> parameterTypes,
+        @Nonnull final ResultSpec resultSpec,
+        final int minArity
+    ) {
+        this(parameterTypes, resultSpec, minArity, null);
     }
 
     /**
@@ -40,14 +53,14 @@ public record SignatureDefinition(
         @Nonnull final Type resultType,
         final int minArity
     ) {
-        this(parameterTypes, new ResultSpec.Static(resultType), minArity);
+        this(parameterTypes, new ResultSpec.Static(resultType), minArity, null);
     }
 
     public SignatureDefinition(
         @Nonnull final List<Type> parameterTypes,
         @Nonnull final Type resultType
     ) {
-        this(parameterTypes, new ResultSpec.Static(resultType));
+        this(parameterTypes, new ResultSpec.Static(resultType), parameterTypes.size(), null);
     }
 
     public int arity() {

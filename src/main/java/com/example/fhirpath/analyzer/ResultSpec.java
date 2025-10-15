@@ -1,6 +1,7 @@
 package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.ir.IRNode;
+import com.example.fhirpath.ir.Lambda;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.fhir.FhirType;
 
@@ -10,14 +11,15 @@ import java.util.List;
 /**
  * Specifies how to determine the result type of a FHIRPath operation.
  *
- * This is a sealed hierarchy with exactly four implementations corresponding
- * to the four type resolution patterns in FHIRPath.
+ * This is a sealed hierarchy with five implementations corresponding
+ * to the type resolution patterns in FHIRPath.
  */
 public sealed interface ResultSpec
     permits ResultSpec.Static,
             ResultSpec.InputType,
             ResultSpec.EffectiveInputType,
-            ResultSpec.FhirSystemType {
+            ResultSpec.FhirSystemType,
+            ResultSpec.ArgumentType {
 
     /**
      * Resolve the actual result type given resolved argument nodes.
@@ -102,6 +104,39 @@ public sealed interface ResultSpec
                     "FhirSystemType requires FhirType input, got: " + inputType);
             }
             return fhirType.systemType();
+        }
+    }
+
+    /**
+     * Result type is the type of the argument at the specified index.
+     * Intelligently extracts type from both Lambda and non-Lambda nodes.
+     *
+     * - Lambda node: returns body.getType() (unwraps the lambda)
+     * - Other node: returns node.getType()
+     *
+     * Used by iif() to return the type of the true-result argument.
+     *
+     * Example: iif(criterion, trueResult) returns type of trueResult
+     */
+    record ArgumentType(int argIndex) implements ResultSpec {
+        @Override
+        @Nonnull
+        public Type resolve(@Nonnull final List<IRNode> resolvedArgs) {
+            if (argIndex < 0 || argIndex >= resolvedArgs.size()) {
+                throw new IllegalArgumentException(
+                    "ArgumentType index " + argIndex + " out of bounds for " +
+                    resolvedArgs.size() + " arguments");
+            }
+
+            final IRNode arg = resolvedArgs.get(argIndex);
+
+            // Unwrap Lambda nodes - we want the body type, not "Lambda" as a type
+            if (arg instanceof Lambda lambda) {
+                return lambda.body().getType();
+            }
+
+            // For all other nodes, just get their type
+            return arg.getType();
         }
     }
 }

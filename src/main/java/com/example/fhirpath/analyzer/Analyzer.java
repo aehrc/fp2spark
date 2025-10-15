@@ -270,9 +270,22 @@ public class Analyzer {
         // Get the signature (now guaranteed to be unambiguous for arity)
         final SignatureDefinition sig = matchingSignatures.get(0);
 
-        // Eagerly create lambda analyzer (even if not needed - cheap operation)
-        final Type elementType = extractElementType(targetIR.getType());
-        final Analyzer thisAnalyzer = withThisType(elementType);
+        // Determine $this binding type based on lambda binding strategy
+        final Type thisBindingType;
+        if (sig.lambdaBinding() != null) {
+            thisBindingType = switch (sig.lambdaBinding()) {
+                case ELEMENT_WISE -> extractElementType(targetIR.getType());
+                case COLLECTION_WISE -> targetIR.getType();  // Entire collection
+            };
+        } else {
+            // No lambda parameters - thisBindingType won't be used
+            thisBindingType = null;
+        }
+
+        // Create lambda analyzer if needed
+        final Analyzer thisAnalyzer = thisBindingType != null
+            ? withThisType(thisBindingType)
+            : null;
 
         // Analyze arguments based on signature parameter types using streams
         final List<IRNode> args = Stream.concat(
@@ -283,6 +296,12 @@ public class Analyzer {
                     final AstNode argAst = call.arguments().get(i);
 
                     if (paramType instanceof LambdaType) {
+                        if (thisAnalyzer == null) {
+                            throw new IllegalStateException(
+                                "Lambda parameter found but no binding strategy specified for function: " +
+                                call.functionName()
+                            );
+                        }
                         // Use thisAnalyzer for lambda context
                         final IRNode lambdaBody = thisAnalyzer.analyze(argAst);
                         return new Lambda(lambdaBody);

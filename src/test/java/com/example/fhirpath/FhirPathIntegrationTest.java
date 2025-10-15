@@ -164,7 +164,7 @@ class FhirPathIntegrationTest {
                 Arguments.of("(1 | 2).iif(empty(), $this)", null),                    // implicit $this.empty()
                 Arguments.of("(1 | 2 | 3).iif(count() > 2, $this)", "[1, 2, 3]"),   // implicit $this.count()
                 Arguments.of("(1 | 2).iif(count() > 2, $this)", null),               // count criterion false
-                // no first(): Arguments.of("(1 | 2 | 3).iif(count() = 3, first())", "1"),         // implicit in both lambdas
+                Arguments.of("(1 | 2 | 3).iif(count() = 3, first())", "1"),         // implicit in both lambdas
                 // True-result as lambda: operates on collection (implicit $this)
                 Arguments.of("(5 | 10 | 15).iif(exists(), count())", "3"),                      // implicit in both
                 Arguments.of("(1 | 2 | 3 | 4).iif(count() > 2, where($this > 2))", "[3, 4]"), // implicit count(), explicit $this in where
@@ -176,8 +176,18 @@ class FhirPathIntegrationTest {
                 Arguments.of("(1 | 2 | 3).iif(count() > 2, 'found')", "found"),       // implicit, returns string
                 Arguments.of("('a' | 'b').iif(exists(), 999)", "999"),                 // implicit, returns integer
                 // Edge: Combining with other operations (implicit $this)
-                Arguments.of("(1 | 2 | 3).iif(exists(), $this).count()", "3")        // implicit in criterion
-                // no first(): Arguments.of("(5 | 10).iif(count() = 2, first()) + 3", "8")           // implicit in both lambdas
+                Arguments.of("(1 | 2 | 3).iif(exists(), $this).count()", "3"),        // implicit in criterion
+                Arguments.of("(5 | 10).iif(count() = 2, first()) + 3", "8"),           // implicit in both lambdas
+                // first() function tests - FHIRPath Spec 6.6
+                // spec: Returns first element from multi-element collection
+                Arguments.of("(1 | 2 | 3).first()", "1"),
+                Arguments.of("('a' | 'b' | 'c').first()", "a"),
+                Arguments.of("(5.2 | 10.5 | 15.3).first()", "5.2"),
+                // spec: Returns empty for empty collection (equivalent to {}[0])
+                Arguments.of("{}.first()", null),
+                // edge: Singular value returns that value (single-element collection)
+                Arguments.of("5.first()", "5"),
+                Arguments.of("'hello'.first()", "hello")
         );
     }
 
@@ -295,7 +305,13 @@ class FhirPathIntegrationTest {
                 Arguments.of("name.exists(given.count() > 1)", "true"),
 
                 // spec: exists(criteria) finds any matching element
-                Arguments.of("name.given.exists($this = 'John')", "true")
+                Arguments.of("name.given.exists($this = 'John')", "true"),
+                // first() function tests - FHIRPath Spec 6.6
+                // spec: Returns first element from collection field
+                Arguments.of("name.first().family", "Szul"),
+                Arguments.of("name.first().given", "[Piotr, Jaroslaw]"),
+                // edge: Chaining first() on nested collections
+                Arguments.of("name.first().given.first()", "Piotr")
         );
     }
 

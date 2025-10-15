@@ -124,6 +124,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             case "count" -> evaluateCount(args.get(0), argNodes.get(0).isSingular());
             case "exists" -> evaluateExists(args.get(0));
             case "empty" -> evaluateEmpty(args.get(0));
+            case "first" -> evaluateFirst(args.get(0), argNodes.get(0).isSingular());
 
             // Filtering and projection
             case "where" -> evaluateWhere(args.get(0), argNodes.get(0).isSingular(), argNodes.get(1));
@@ -387,6 +388,23 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     @Nonnull
     private Column evaluateEmpty(Column childColumn) {
         return when(childColumn.isNull(), lit(true)).otherwise(lit(false));
+    }
+
+    @Nonnull
+    private Column evaluateFirst(final Column childColumn, final boolean isSingular) {
+        // FHIRPath semantics:
+        // - Empty collection (NULL) returns empty (NULL)
+        // - Singular values return themselves (they ARE the first element)
+        // - Multi-element collections return element at index 0
+
+        if (isSingular) {
+            // Singular value: return the value itself
+            return childColumn;
+        } else {
+            // Collection: extract first element using get() with 0-based index
+            // Returns null if array is null or empty
+            return functions.get(childColumn, lit(0));
+        }
     }
 
     // ========== Filtering and Projection ==========

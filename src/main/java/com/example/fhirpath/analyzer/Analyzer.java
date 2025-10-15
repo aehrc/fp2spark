@@ -287,13 +287,18 @@ public class Analyzer {
             ? withThisType(thisBindingType)
             : null;
 
-        // Analyze arguments based on signature parameter types using streams
+        // Analyze arguments based on signature parameter types
+        // For variadic functions, pad missing arguments with AstLiteral.NULL
         final List<IRNode> args = Stream.concat(
             Stream.of(targetIR),
-            IntStream.range(0, call.arguments().size())
+            IntStream.range(1, sig.parameterTypes().size())  // Start at 1 (skip target at index 0)
                 .mapToObj(i -> {
-                    final Type paramType = sig.parameterTypes().get(i + 1); // +1 for target
-                    final AstNode argAst = call.arguments().get(i);
+                    final Type paramType = sig.parameterTypes().get(i);
+
+                    // Get AST argument, or use null literal if exhausted (variadic padding)
+                    final AstNode argAst = (i - 1) < call.arguments().size()
+                        ? call.arguments().get(i - 1)
+                        : AstLiteral.NULL;
 
                     if (paramType instanceof LambdaType) {
                         if (thisAnalyzer == null) {
@@ -307,6 +312,7 @@ public class Analyzer {
                         return new Lambda(lambdaBody);
                     } else {
                         // Use current analyzer for normal arguments
+                        // AstLiteral.NULL → Literal(null, Type.NULL)
                         return analyze(argAst);
                     }
                 })

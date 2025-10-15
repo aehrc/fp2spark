@@ -205,6 +205,11 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
+        // Handle NULL type (empty collection {})
+        if (inputType == Type.NULL) {
+            return lit(null).cast(org.apache.spark.sql.types.DataTypes.BooleanType);
+        }
+
         // Get input type from first argument's type (before comparison)
         // Note: resultType is always BOOLEAN for comparisons
         return switch((PrimitiveType) inputType) {
@@ -223,6 +228,11 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
+        // Handle NULL type (empty collection {})
+        if (inputType == Type.NULL) {
+            return lit(null).cast(org.apache.spark.sql.types.DataTypes.BooleanType);
+        }
+
         return switch((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.lt(right);
             case QUANTITY -> quantity(left).lt(quantity(right));
@@ -239,6 +249,11 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
+        // Handle NULL type (empty collection {})
+        if (inputType == Type.NULL) {
+            return lit(null).cast(org.apache.spark.sql.types.DataTypes.BooleanType);
+        }
+
         return switch((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.geq(right);
             case QUANTITY -> quantity(left).geq(quantity(right));
@@ -254,6 +269,11 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     private Column evaluateLessEqual(List<Column> args, Type inputType) {
         Column left = args.get(0);
         Column right = args.get(1);
+
+        // Handle NULL type (empty collection {})
+        if (inputType == Type.NULL) {
+            return lit(null).cast(org.apache.spark.sql.types.DataTypes.BooleanType);
+        }
 
         return switch((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.leq(right);
@@ -351,8 +371,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         final Column posColumn = args.get(1).plus(lit(1));
 
         // Handle optional length parameter
-        final Column lengthColumn = args.size() > 2 ? args.get(2) : lit(null);
-        final Column nonNullLengthColumn = coalesce(lengthColumn, lit(Integer.MAX_VALUE));
+        final Column nonNullLengthColumn = coalesce(args.get(2), lit(Integer.MAX_VALUE));
 
         // FHIRPath null propagation rules
         final Column nullPropagationCondition = targetColumn.isNull()

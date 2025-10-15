@@ -54,11 +54,10 @@ public final class OverloadResolver {
 
             if (cost < bestCost) {
                 bestCost = cost;
-                List<IRNode> adaptedArgs = Stream.concat(
-                        adaptations.stream().map(a -> a.node),
-                        // pad with nulls for varargs
-                        Stream.generate(() -> (IRNode) null).limit(sig.arity() - adaptations.size())
-                ).toList();
+                // No padding needed - Analyzer handles variadic argument padding with AstLiteral.NULL
+                List<IRNode> adaptedArgs = adaptations.stream()
+                    .map(a -> a.node)
+                    .toList();
 
                 // Resolve the signature to get concrete result type
                 ResolvedSignature resolvedSig = ResolvedSignature.resolve(sig, adaptedArgs);
@@ -114,6 +113,12 @@ public final class OverloadResolver {
         Type actual = arg.getType();
         if (actual.effectiveType() == target.effectiveType()) {
             return new Adapt(arg, true, 0);
+        }
+
+        // NULL (empty collection {}) matches any expected type
+        // FHIRPath semantics: empty collections are polymorphic
+        if (actual == Type.NULL) {
+            return new Adapt(arg, true, 1);
         }
 
         // Allow implicit casts via TypeSystem or from UNKNOWN

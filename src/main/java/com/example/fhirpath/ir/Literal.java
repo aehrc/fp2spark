@@ -1,11 +1,10 @@
 package com.example.fhirpath.ir;
 
 import com.example.fhirpath.typing.Type;
-import org.apache.spark.sql.Column;
-
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
-public record Literal(Object value, Type type) implements IRNode {
+public record Literal(@Nullable Object value, @Nonnull Type type) implements IRNode {
     @Override
     @Nonnull
     public Type getType() {

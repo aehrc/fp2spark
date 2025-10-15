@@ -1,15 +1,11 @@
 package com.example.fhirpath.analyzer;
 
-import com.example.fhirpath.ir.Cast;
-import com.example.fhirpath.ir.CastToSystem;
-import com.example.fhirpath.ir.IRNode;
-import com.example.fhirpath.ir.Lambda;
+import com.example.fhirpath.ir.*;
 import com.example.fhirpath.typing.*;
 import com.example.fhirpath.typing.fhir.FhirType;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 public final class OverloadResolver {
 
@@ -52,8 +48,8 @@ public final class OverloadResolver {
                 bestCost = cost;
                 // No padding needed - Analyzer handles variadic argument padding with AstLiteral.NULL
                 List<IRNode> adaptedArgs = adaptations.stream()
-                    .map(a -> a.node)
-                    .toList();
+                        .map(a -> a.node)
+                        .toList();
 
                 // Resolve the signature to get concrete result type
                 ResolvedSignature resolvedSig = ResolvedSignature.resolve(sig, adaptedArgs);
@@ -79,16 +75,16 @@ public final class OverloadResolver {
             // so we only check return type compatibility.
             Type lambdaBodyType = lambda.body().getType();
             boolean returnMatches = targetLambda.returnType() == Types.ANY
-                || lambdaBodyType == targetLambda.returnType()
-                || (targetLambda.returnType() instanceof CollectionType targetColl
+                    || lambdaBodyType == targetLambda.returnType()
+                    || (targetLambda.returnType() instanceof CollectionType targetColl
                     && targetColl.elementType() == Types.ANY
                     && lambdaBodyType instanceof CollectionType)
-                || TypeSystem.canCast(lambdaBodyType, targetLambda.returnType());
+                    || TypeSystem.canCast(lambdaBodyType, targetLambda.returnType());
 
             if (returnMatches) {
                 // Cost 0 for exact match, cost 1 for ANY wildcard match
                 int cost = (targetLambda.returnType() == Types.ANY
-                    || (targetLambda.returnType() instanceof CollectionType tc && tc.elementType() == Types.ANY)) ? 1 : 0;
+                        || (targetLambda.returnType() instanceof CollectionType tc && tc.elementType() == Types.ANY)) ? 1 : 0;
                 return new Adapt(arg, true, cost);
             }
             // Lambda doesn't match expected return type
@@ -113,13 +109,15 @@ public final class OverloadResolver {
 
         // NULL (empty collection {}) matches any expected type
         // FHIRPath semantics: empty collections are polymorphic
-        if (actual == Types.NULL) {
-            return new Adapt(arg, true, 1);
-        }
+
 
         // Allow implicit casts via TypeSystem or from UNKNOWN
         if (target == Types.ANY) {
             return new Adapt(arg, true, 1);
+        } else if (actual == Types.NULL) {
+            return new Adapt(new Literal(null, target.effectiveType() != Types.ANY ? target : Types.NULL), true, 1);
+            // can also be a ThisRefernce in case this is {{}
+
         } else if (target instanceof CollectionType targetColl && targetColl.elementType() == Types.ANY) {
             // CollectionType<ANY> matches:
             // - NULL (empty collection)

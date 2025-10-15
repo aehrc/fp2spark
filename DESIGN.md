@@ -12,10 +12,11 @@
 2. [Design Principles](#design-principles)
 3. [Architecture Overview](#architecture-overview)
 4. [Type Resolution System](#type-resolution-system)
-5. [Core Components](#core-components)
-6. [Multi-Target Support](#multi-target-support)
-7. [Examples](#examples)
-8. [Benefits](#benefits)
+5. [Empty Literal Handling and Catalyst Optimization](#empty-literal-handling-and-catalyst-optimization)
+6. [Core Components](#core-components)
+7. [Multi-Target Support](#multi-target-support)
+8. [Examples](#examples)
+9. [Benefits](#benefits)
 
 ---
 
@@ -322,6 +323,69 @@ Signatures.collectionAggregator(INTEGER)
 // substring(String, Integer, Integer) with minArity=2
 Signatures.variadic(List.of(STRING, INTEGER, INTEGER), STRING, 2)
 ```
+
+---
+
+## Empty Literal Handling and Catalyst Optimization
+
+### Design Decision: No Special Empty Literal Optimization
+
+**Context:** FHIRPath uses `{}` to represent empty collections. When these appear in expressions, they need to be translated to SQL.
+
+**Decision:** We do NOT perform special optimization or short-circuit handling of empty literals (`{}`) at the IR or code generation level. Instead, we rely on Spark's Catalyst optimizer to handle these cases.
+
+**Rationale:**
+
+1. **Type Adaptation Only:** The Analyzer's responsibility is limited to ensuring empty literals are adapted to the required argument types for proper type checking and signature resolution.
+
+2. **Catalyst Handles Optimization:** Spark's Catalyst optimizer is highly effective at optimizing expressions containing NULL literals. For example:
+   - **Generated code:** `a > {}` produces `Column(CAST(a AS STRING) > CAST(NULL AS STRING))`
+   - **Physical plan:** Catalyst optimizes this to `Project [null AS result#757]`
+
+3. **Separation of Concerns:**
+   - **IR layer:** Represents the logical structure of FHIRPath expressions
+   - **Code generation:** Produces correct but potentially unoptimized Spark expressions
+   - **Catalyst:** Performs sophisticated optimizations including constant folding, NULL propagation, and dead code elimination
+
+4. **Avoid Premature Optimization:** Implementing special handling for empty literals would:
+   - Add complexity to the IR and code generation layers
+   - Duplicate optimization logic that Catalyst already provides
+   - Require maintaining our own optimization rules
+   - Potentially miss optimization opportunities that Catalyst would catch
+
+**Implementation:**
+
+```java
+// In Analyzer: Empty literals are typed based on context
+IRNode emptyLiteral = new Literal(null, requiredType);
+
+// In SparkCodeGenerator: Generate straightforward code
+Column result = lit(null).cast(toSparkType(requiredType));
+
+// Catalyst optimizes the physical plan automatically
+// No special handling needed in our code
+```
+
+**Examples:**
+
+| FHIRPath Expression | Generated Spark Column | Catalyst Optimized |
+|---------------------|------------------------|-------------------|
+| `a > {}` | `CAST(a AS STRING) > CAST(NULL AS STRING)` | `Project [null AS result]` |
+| `{} + 5` | `CAST(NULL AS INTEGER) + 5` | `Project [null AS result]` |
+| `name.where($this = {})` | `filter(name, x => x = NULL)` | `Project [array() AS result]` |
+
+**Benefits:**
+
+- **Simpler code:** No special case handling in IR or codegen
+- **Leverages Spark expertise:** Catalyst team maintains optimization rules
+- **Consistent behavior:** All NULL-related optimizations handled uniformly
+- **Future-proof:** Automatically benefits from Catalyst improvements
+
+**Trade-offs:**
+
+- Generated Column expressions may appear unoptimized in debugging
+- Physical plan inspection required to verify actual execution efficiency
+- Trust placed in Catalyst's optimization capabilities
 
 ---
 

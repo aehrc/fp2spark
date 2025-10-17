@@ -29,7 +29,7 @@ Type
 - **OrdinaryType**: Union of ValueType, CollectionType, and NULL (all non-functional types)
 - **Lambda[T]**: Functional type with return type T (where T is OrdinaryType)
 - **NULL**: Special empty/bottom type representing `{}` (empty collection)
-- **ANY**: Wildcard that matches any DefinedType (not NULL or Lambda)
+- **ANY**: Wildcard that matches any OrdinaryType (ValueType or CollectionType, but not NULL or Lambda)
 
 ### Important Properties
 
@@ -96,6 +96,8 @@ T ⇒ ANY = T  for all T in OrdinaryType
 - `INTEGER ⇒ ANY`
 - `ComplexType ⇒ ANY`
 - `FhirType ⇒ ANY`
+- `[INTEGER] ⇒ ANY`
+- `[ComplexType] ⇒ ANY`
 
 ### NULL Polymorphism (cost: 0)
 
@@ -207,7 +209,7 @@ If A → B (transtive cast exists), then A ⇒ B with cost 1
 - `INTEGER ⇒ QUANTITY` (cost: 1, via DECIMAL)
 | **Identity** | `T ⇒ T` | 0 |
 | **NULL Polymorphism** | `NULL ⇒ T` | 0 |
-| **Wildcard Matching** | `T ⇒ ANY`, `[T] ⇒ [ANY]` | 0 |
+| **Wildcard Matching** | `T ⇒ ANY`, `[T] ⇒ ANY` | 0 |
 | **Element Promotion (exact)** | `T ⇒ [T]` | 0 |
 | **Element Promotion (cast)** | `INTEGER ⇒ [DECIMAL]` | 1 |
 | **Primitive Cast** | `INTEGER ⇒ DECIMAL` | 1 |

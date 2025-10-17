@@ -125,6 +125,7 @@ class FhirPathIntegrationTest {
                 Arguments.of("'a' | 'b' | 'c'", "[a, b, c]"),
                 Arguments.of("1 | {}", "[1]"),
                 Arguments.of("{} | 1", "[1]"),
+                // DISABLE: Arguments.of("{} | {}", null),
                 Arguments.of("true | false | true", "[true, false]"),
                 // NOTE: this may not be the correct behavior in general
                 // but because we do not support polymorphic collection this seem to be reasonable
@@ -146,6 +147,7 @@ class FhirPathIntegrationTest {
                 Arguments.of("{}.where($this > 1)", null), // empty collection returns empty
                 Arguments.of("2.where($this > 1)", "2"), // singular value matching criteria returns the value
                 Arguments.of("'foo'.where($this = 'bar')", null), // singular string not matching criteria
+                Arguments.of("(1 | 2 | 3).where({})", null), // where with empty lambda
                 // exists(criteria) tests on literals (desugared to where(criteria).exists())
                 Arguments.of("{}.exists($this > 1)", "false"), // empty collection returns empty
                 Arguments.of("2.exists($this > 1)", "true"), // singular value matching criteria returns the value

@@ -483,7 +483,11 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     @Override
     @Nonnull
     public Column visitLiteral(@Nonnull Literal lit) {
-        DataType sparkType = toSparkDataType(lit.type());
+        // Empty literal {} should be NULL, not an empty array
+        if (lit.type() == Types.NULL || lit.value() == null) {
+            return lit(null);
+        }
+        DataType sparkType = toSparkDataType(lit.getShape());
         return lit(lit.value()).cast(sparkType);
     }
 
@@ -506,15 +510,10 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     @Override
     @Nonnull
     public Column visitCast(@Nonnull Cast cast) {
-        DataType sparkType = toSparkDataType(cast.targetType());
+        DataType sparkType = toSparkDataType(cast.getShape());
         // Get the child column
         Column childColumn = cast.child().accept(this);
-        // Apply cast based on singularity
-        if (cast.isSingular()) {
-            return childColumn.cast(sparkType);
-        } else {
-            return childColumn.cast(org.apache.spark.sql.types.DataTypes.createArrayType(sparkType));
-        }
+        return childColumn.cast(sparkType);
     }
 
     @Override
@@ -530,14 +529,8 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     public Column visitCastToSystem(@Nonnull CastToSystem castToSystem) {
         // GetValue converts FHIR types to system types by casting
         Column childColumn = castToSystem.child().accept(this);
-        DataType sparkType = toSparkDataType(castToSystem.getType());
-
-        // Handle both singular and collection cases
-        if (castToSystem.isSingular()) {
-            return childColumn.cast(sparkType);
-        } else {
-            return childColumn.cast(org.apache.spark.sql.types.DataTypes.createArrayType(sparkType));
-        }
+        DataType sparkType = toSparkDataType(castToSystem.getShape());
+        return childColumn.cast(sparkType);
     }
 
     @Override
@@ -546,17 +539,22 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column leftColumn = union.left().accept(this);
         Column rightColumn = union.right().accept(this);
 
-        // Convert to arrays if singular
+        // FHIRPath union semantics: {} | x = x, x | {} = x
+        // Empty collections (NULL) should be treated as empty arrays
+
+        // Convert to arrays if singular, NULL stays NULL (will be coalesced to empty array)
         Column leftArray = union.left().isSingular()
                 ? when(leftColumn.isNotNull(), functions.array(leftColumn))
-                .otherwise(functions.array().cast(toSparkDataType(union.getType())))
                 : leftColumn;
         Column rightArray = union.right().isSingular()
                 ? when(rightColumn.isNotNull(), functions.array(rightColumn))
-                .otherwise(functions.array().cast(toSparkDataType(union.getType())))
                 : rightColumn;
 
-        return array_union(leftArray, rightArray);
+        // array_union handles NULL properly: array_union(NULL, arr) = arr
+        return array_union(
+                coalesce(leftArray, functions.array()),
+                coalesce(rightArray, functions.array())
+        );
     }
 
     @Override

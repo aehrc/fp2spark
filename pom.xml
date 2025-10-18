@@ -10,12 +10,12 @@
     <description>Parse, analyze, and evaluate FHIRPath expressions directly to Spark SQL Column expressions.</description>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <antlr4.version>4.9.3</antlr4.version>
-        <spark.version>3.5.6</spark.version>
-        <scala.binary.version>2.12</scala.binary.version>
+        <antlr4.version>4.13.1</antlr4.version>
+        <spark.version>4.0.1</spark.version>
+        <scala.binary.version>2.13</scala.binary.version>
     </properties>
 
     <dependencies>
@@ -48,9 +48,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.13.0</version>
                 <configuration>
-                    <release>17</release>
+                    <release>21</release>
                 </configuration>
             </plugin>
             <plugin>
@@ -91,10 +91,10 @@
                         --add-opens=java.base/sun.security.action=ALL-UNNAMED
                         --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
                         --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
+                        -Djava.security.manager=allow
                     </argLine>
                 </configuration>
             </plugin>
         </plugins>
     </build>
 </project>
-

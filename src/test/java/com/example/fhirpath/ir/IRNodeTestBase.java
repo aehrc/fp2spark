@@ -13,7 +13,6 @@ import org.junit.jupiter.api.TestInstance;
 
 import javax.annotation.Nullable;
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -143,8 +142,10 @@ public abstract class IRNodeTestBase {
     protected String valueToString(Object value) {
         if (value instanceof BigDecimal bd) {
             return bd.stripTrailingZeros().toString();
-        } else if (value instanceof scala.collection.mutable.WrappedArray<?> wa) {
-            final List<String> elements = Arrays.stream((Object[]) wa.array())
+        } else if (value instanceof scala.collection.Seq<?> seq) {
+            // Scala 2.13: Use javaapi.CollectionConverters for Java interop
+            final java.util.List<?> javaList = scala.jdk.javaapi.CollectionConverters.asJava(seq);
+            final List<String> elements = javaList.stream()
                     .map(this::valueToString)
                     .toList();
             return "[" + String.join(", ", elements) + "]";

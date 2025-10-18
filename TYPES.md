@@ -20,7 +20,7 @@ Goal: Provide a simple, precise, and implementable static type model for `FHIRPa
   - `{}` : `?⊥` (principal type)
   - Zero‑cost arity swap for bottom: `?⊥ ⇄ *⊥` (matching convenience only)
 - Lambdas:
-  - `Lambda[S_in ⇒ S_out]`, where `S` are shapes (``?T`` or ``*T``)
+  - `(S_in ⇒ S_out)`, where `S` are shapes (``?T`` or ``*T``)
 
 Notes:
 - We intentionally model arity explicitly even though FHIRPath treats all values as collections; this aids IR and codegen decisions.
@@ -52,9 +52,10 @@ If multiple matches tie on minimal cost, treat as ambiguity (error) unless a det
 ## Signature notation (Haskell‑style)
 
 - Quantification: `∀ T, U, K, L` (element types), `α, β ∈ {?, *}` (arity variables)
-- Constraints: `[ … ] ⇒ …`
+- Constraints: `[ … ] ⇒ …` (constraints appear before the arrow)
 - Shapes in arguments/results: `α T` means a shape (``?T`` or ``*T``)
-- Lambdas: `[S1 ⇒ S2]`
+- Lambdas: `(S1 ⇒ S2)` (parentheses for lambdas in this document)
+- Optional parameters (doc notation): trailing `[arg : S]` desugars to two overloads: with and without that argument; optional parameters must be trailing (no mandatory params after an optional)
 - Cardinality lattice (join): `? ⊔ ? = ?`, `? ⊔ * = *`, `* ⊔ ? = *`, `* ⊔ * = *`
 
 Examples use FHIRPath names; equality is written `equals(…)` for clarity.
@@ -66,10 +67,10 @@ Examples use FHIRPath names; equality is written `equals(…)` for clarity.
 ∀ T, α. first(α T) → ?T
 
 -- where (per‑element predicate)
-∀ T, α. where(α T, [?T ⇒ ?BOOLEAN]) → α T
+∀ T, α. where(α T, (?T ⇒ ?BOOLEAN)) → α T
 
 -- select/map (per‑element)
-∀ T, U, α. select(α T, [?T ⇒ ?U]) → α U
+∀ T, U, α. select(α T, (?T ⇒ ?U)) → α U
 
 -- union
 ∀ K, L, α, β. [LUB(K, L) defined] ⇒ union(α K, β L) → *LUB(K, L)
@@ -88,7 +89,22 @@ Examples use FHIRPath names; equality is written `equals(…)` for clarity.
 
 -- iif (per‑collection lambda only; branches may differ in arity)
 ∀ T, M, K, α, b, c ∈ {?, *}. [LUB(M, K) defined] ⇒
-  iif(α T, [α T ⇒ ?BOOLEAN], [α T ⇒ b M], [α T ⇒ c K]) → (b ⊔ c) LUB(M, K)
+  iif(α T, (α T ⇒ ?BOOLEAN), (α T ⇒ b M), (α T ⇒ c K)) → (b ⊔ c) LUB(M, K)
+```
+
+## Optional and variadic forms
+
+```text
+-- substring with optional length (indices are Integers)
+∀ α. substring(α STRING, ?INTEGER, [?INTEGER]) → α STRING
+
+-- exists with optional per‑element criteria (lambda)
+∀ T, α. exists(α T, [ (?T ⇒ ?BOOLEAN) ]) → ?BOOLEAN
+
+-- iif without else branch (else defaults to empty `{}`)
+∀ T, M, α, b ∈ {?, *}.
+  iif(α T, (α T ⇒ ?BOOLEAN), (α T ⇒ b M)) → b M
+-- Equivalent to using the 3‑arg form with K = ⊥ and c = ? (since LUB(M, ⊥) = M and (b ⊔ ?) = b)
 ```
 
 ## Laws and examples
@@ -111,12 +127,12 @@ contains(*STRING, ?INTEGER) ⇒ error -- no LUB
 {} ∪ *DECIMAL ⇒ *DECIMAL           -- use ?⊥ → *⊥ for matching
 
 -- where/select (arity‑preserving)
-*T.where([?T ⇒ ?BOOLEAN]) ⇒ *T
-?T.select([?T ⇒ ?U]) ⇒ ?U
+*T.where((?T ⇒ ?BOOLEAN)) ⇒ *T
+?T.select((?T ⇒ ?U)) ⇒ ?U
 
 -- iif (examples)
-iif(*T, [*T ⇒ ?BOOLEAN], [*T ⇒ ?U], [*T ⇒ *V]) ⇒ *LUB(U, V)
-iif(?T, [?T ⇒ ?BOOLEAN], [?T ⇒ ?U], [?T ⇒ ?V]) ⇒ ?LUB(U, V)
+iif(*T, (*T ⇒ ?BOOLEAN), (*T ⇒ ?U), (*T ⇒ *V)) ⇒ *LUB(U, V)
+iif(?T, (?T ⇒ ?BOOLEAN), (?T ⇒ ?U), (?T ⇒ ?V)) ⇒ ?LUB(U, V)
 
 -- equality
 *K = *L ⇒ ?BOOLEAN if LUB(K, L) exists; else error
@@ -138,6 +154,10 @@ Optional refinement: For strict operators (e.g., arithmetic, comparisons), if an
 - Overload resolution binds `(T, U, …)` and `(α, β)` with adapters; compute LUBs; pick least‑cost plan.
 - Cardinality derives from signatures directly (e.g., `first ⇒ ?`, `where/select ⇒ preserve`, `union ⇒ *`).
 - IR nodes should carry element type and cardinality; adapters become explicit IR steps (e.g., `Fhir[String] → String`, `Integer → Decimal`).
+
+## Assumptions and differences from the FHIRPath spec
+
+- `iif` branch semantics: We assume the true and false branches are lambdas over the input collection shape (per‑collection), i.e., `(α T ⇒ b M)` and `(α T ⇒ c K)`. The FHIRPath specification text is not explicit; this choice aligns with collection‑centric semantics and makes cardinality and typing predictable.
 
 ## Out of scope (for now)
 

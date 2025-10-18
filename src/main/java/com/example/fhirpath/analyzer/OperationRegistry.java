@@ -114,7 +114,11 @@ public final class OperationRegistry {
 
             // substring(string, start) and substring(string, start, length)
             register("substring",
-                Signatures.variadic(List.of(STRING, INTEGER, INTEGER), STRING, 2)
+                Signatures.variadic(
+                    List.of(ParamSpec.single(STRING), ParamSpec.single(INTEGER), ParamSpec.single(INTEGER)),
+                    ResultTypeSpec.single(STRING),
+                    2
+                )
             ),
 
             register("startsWith",
@@ -207,8 +211,9 @@ public final class OperationRegistry {
             // iif() evaluates collection-level conditional with lambda parameters
             // Collection<T>.iif(Lambda<Boolean>, Lambda<Collection<R>>) → Collection<R>
             // Both lambdas operate on entire collection (COLLECTION_WISE binding)
+            // Phase 1: Use ANY for generic types (Phase 2 will add type variables)
             register("iif",
-                Signatures.conditionalIif()
+                Signatures.conditionalIif(ANY, ANY)
             )
         );
     }

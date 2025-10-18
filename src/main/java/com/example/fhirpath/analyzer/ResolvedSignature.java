@@ -10,7 +10,7 @@ import java.util.List;
  * A resolved signature with concrete, statically-known result shape.
  *
  * <p>This is stored in Operation nodes after type resolution is complete.
- * All ResultSpecs have been evaluated, and the result shape is concrete.
+ * All type variables have been substituted, and the result shape is concrete.
  */
 public record ResolvedSignature(
     @Nonnull List<Type> parameterTypes,
@@ -41,21 +41,19 @@ public record ResolvedSignature(
     }
 
     /**
-     * Create a resolved signature from a definition and resolved arguments.
+     * Create a resolved signature from a Phase 1 signature definition.
+     * In Phase 1, the result shape is directly specified (no type variable substitution).
      */
     @Nonnull
-    public static ResolvedSignature resolve(
-        @Nonnull SignatureDefinition definition,
-        @Nonnull List<com.example.fhirpath.ir.IRNode> resolvedArgs
-    ) {
-        Type concreteResultType = definition.resultSpec().resolve(resolvedArgs);
-        // TODO: Get cardinality from ResultSpec when implementing Phase 2
-        // For now, assume single cardinality
-        Shape resultShape = Shape.single(concreteResultType);
-        return new ResolvedSignature(
-            definition.parameterTypes(),
-            resultShape,
-            definition.minArity()
-        );
+    public static ResolvedSignature fromDefinition(@Nonnull SignatureDefinition definition) {
+        // Extract parameter types (without cardinality)
+        List<Type> paramTypes = definition.parameters().stream()
+            .map(ParamSpec::type)
+            .toList();
+
+        // Get result shape from definition
+        Shape resultShape = definition.resultSpec().toShape();
+
+        return new ResolvedSignature(paramTypes, resultShape, definition.minArity());
     }
 }

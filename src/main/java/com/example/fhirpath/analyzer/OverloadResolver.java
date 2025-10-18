@@ -34,7 +34,7 @@ public final class OverloadResolver {
             List<Adapt> adaptations = new ArrayList<>();
 
             for (int i = 0; i < args.size(); i++) {
-                Type t1 = sig.parameterTypes().get(i);
+                Type t1 = sig.parameter(i).type();
 
                 Adapt a1 = adapt(args.get(i), t1);
                 if (!a1.ok) break;
@@ -51,8 +51,8 @@ public final class OverloadResolver {
                         .map(a -> a.node)
                         .toList();
 
-                // Resolve the signature to get concrete result type
-                ResolvedSignature resolvedSig = ResolvedSignature.resolve(sig, adaptedArgs);
+                // In Phase 1, result shape is directly specified in signature (no type variables)
+                ResolvedSignature resolvedSig = ResolvedSignature.fromDefinition(sig);
                 best = new ResolvedCall(resolvedSig, adaptedArgs);
             }
         }

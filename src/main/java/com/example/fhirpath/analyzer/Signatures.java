@@ -6,14 +6,16 @@ import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 
-import java.util.Arrays;
 import java.util.List;
 
+import static com.example.fhirpath.analyzer.ParamSpec.many;
+import static com.example.fhirpath.analyzer.ParamSpec.single;
+
 /**
- * Factory methods for creating common signature patterns.
- * <p>
- * This class provides convenience methods for the most common signature patterns
- * in FHIRPath, reducing boilerplate in OperationRegistry.
+ * Phase 1 signature factory methods with explicit cardinality.
+ *
+ * <p>Phase 1 uses ParamSpec and ResultTypeSpec to explicitly specify
+ * type and cardinality for each parameter and result.
  */
 public final class Signatures {
     private Signatures() {
@@ -21,8 +23,8 @@ public final class Signatures {
     }
 
     /**
-     * Unary function with arbitrary types (unconstrained).
-     * Example: length(String) → Integer
+     * Unary function: ?T → ?R
+     * Example: length(?STRING) → ?INTEGER
      */
     @Nonnull
     public static SignatureDefinition unaryFunc(
@@ -30,14 +32,14 @@ public final class Signatures {
             @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
-                List.of(paramType),
-                new ResultSpec.Static(resultType)
+                List.of(single(paramType)),
+                ResultTypeSpec.single(resultType)
         );
     }
 
     /**
-     * Unary operation where input type = result type (T → T).
-     * Example: abs(Integer) → Integer
+     * Unary operation where input type = result type: ?T → ?T
+     * Example: abs(?INTEGER) → ?INTEGER
      */
     @Nonnull
     public static SignatureDefinition unaryOp(@Nonnull final Type type) {
@@ -45,8 +47,8 @@ public final class Signatures {
     }
 
     /**
-     * Binary function with arbitrary types (unconstrained).
-     * Example: startsWith(String, String) → Boolean
+     * Binary function: (?T1, ?T2) → ?R
+     * Example: startsWith(?STRING, ?STRING) → ?BOOLEAN
      */
     @Nonnull
     public static SignatureDefinition binaryFunc(
@@ -55,14 +57,14 @@ public final class Signatures {
             @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
-                List.of(leftType, rightType),
-                new ResultSpec.Static(resultType)
+                List.of(single(leftType), single(rightType)),
+                ResultTypeSpec.single(resultType)
         );
     }
 
     /**
-     * Binary operation where all types are the same ((T, T) → T).
-     * Example: add(Integer, Integer) → Integer
+     * Binary operation where all types are the same: (?T, ?T) → ?T
+     * Example: add(?INTEGER, ?INTEGER) → ?INTEGER
      */
     @Nonnull
     public static SignatureDefinition binaryOp(@Nonnull final Type type) {
@@ -70,9 +72,8 @@ public final class Signatures {
     }
 
     /**
-     * Temporal arithmetic operation ((Temporal, Quantity) → Temporal).
-     * Example: Date + Quantity → Date, DateTime + Quantity → DateTime
-     * Used for FHIRPath date/time arithmetic operations.
+     * Temporal arithmetic operation: (?Temporal, ?Quantity) → ?Temporal
+     * Example: ?DATE + ?QUANTITY → ?DATE
      */
     @Nonnull
     public static SignatureDefinition temporalArithmetic(@Nonnull final Type temporalType) {
@@ -80,8 +81,8 @@ public final class Signatures {
     }
 
     /**
-     * Ternary function with arbitrary types (unconstrained).
-     * Example: replace(String, String, String) → String
+     * Ternary function: (?T1, ?T2, ?T3) → ?R
+     * Example: replace(?STRING, ?STRING, ?STRING) → ?STRING
      */
     @Nonnull
     public static SignatureDefinition ternaryFunc(
@@ -91,14 +92,14 @@ public final class Signatures {
             @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
-                List.of(firstType, secondType, thirdType),
-                new ResultSpec.Static(resultType)
+                List.of(single(firstType), single(secondType), single(thirdType)),
+                ResultTypeSpec.single(resultType)
         );
     }
 
     /**
-     * Comparison operation - always returns Boolean ((T, T) → Boolean).
-     * Example: gt(Integer, Integer) → Boolean
+     * Comparison operation: (?T, ?T) → ?BOOLEAN
+     * Example: gt(?INTEGER, ?INTEGER) → ?BOOLEAN
      */
     @Nonnull
     public static SignatureDefinition comparisonOp(@Nonnull final Type type) {
@@ -106,39 +107,40 @@ public final class Signatures {
     }
 
     /**
-     * Element extractor - returns effective type of input collection.
-     * Example: Collection<T>.first() → T
+     * Element extractor from collection: *T → ?T
+     * Example: *T.first() → ?T
      */
     @Nonnull
-    public static SignatureDefinition elementExtractor(@Nonnull final Type inputType) {
+    public static SignatureDefinition elementExtractor(@Nonnull final Type elementType) {
         return new SignatureDefinition(
-                List.of(inputType),
-                ResultSpec.EffectiveInputType.INSTANCE
+                List.of(many(elementType)),
+                ResultTypeSpec.single(elementType)
         );
     }
 
     /**
-     * Collection preserver - returns same type as input.
-     * Example: Collection<T>.where(...) → Collection<T>
+     * Collection preserver: (*T, ...) → *T
+     * Preserves MANY cardinality.
+     * Example: *T.where(Lambda) → *T
      */
     @Nonnull
     public static SignatureDefinition collectionPreserver(
-            @Nonnull final Type inputType,
-            @Nonnull final Type... additionalParams
+            @Nonnull final Type elementType,
+            @Nonnull final ParamSpec... additionalParams
     ) {
-        final List<Type> params = new java.util.ArrayList<>();
-        params.add(inputType);
-        params.addAll(Arrays.asList(additionalParams));
+        final List<ParamSpec> params = new java.util.ArrayList<>();
+        params.add(many(elementType));
+        params.addAll(java.util.Arrays.asList(additionalParams));
         return new SignatureDefinition(
                 params,
-                ResultSpec.InputType.INSTANCE
+                ResultTypeSpec.many(elementType)
         );
     }
 
     /**
-     * Collection aggregator - reduces collection to a single value.
-     * Example: Collection<T>.count() → Integer
-     * Works on any input type (uses UNKNOWN as placeholder).
+     * Collection aggregator: *T → ?R
+     * Reduces collection to single value.
+     * Example: *T.count() → ?INTEGER
      */
     @Nonnull
     public static SignatureDefinition collectionAggregator(
@@ -146,69 +148,41 @@ public final class Signatures {
             @Nonnull final Type resultType
     ) {
         return new SignatureDefinition(
-                List.of(inputType),
-                new ResultSpec.Static(resultType)
+                List.of(many(inputType)),
+                ResultTypeSpec.single(resultType)
         );
     }
 
     /**
      * Variadic operation with optional parameters.
-     * Example: substring(String, Integer, Integer?) - 2 or 3 args
+     * Example: substring(?STRING, ?INTEGER, ?INTEGER) with minArity=2
      */
     @Nonnull
     public static SignatureDefinition variadic(
-            @Nonnull final List<Type> parameterTypes,
-            @Nonnull final Type resultType,
+            @Nonnull final List<ParamSpec> parameters,
+            @Nonnull final ResultTypeSpec resultSpec,
             final int minArity
     ) {
-        return new SignatureDefinition(parameterTypes, resultType, minArity);
+        return new SignatureDefinition(parameters, resultSpec, minArity);
     }
 
     /**
-     * Variadic operation with optional parameters and ResultSpec.
-     * Example: select(Collection<T>, Expression, Expression?) - 1 or 2 additional args
-     */
-    @Nonnull
-    public static SignatureDefinition variadic(
-            @Nonnull final List<Type> parameterTypes,
-            @Nonnull final ResultSpec resultSpec,
-            final int minArity
-    ) {
-        return new SignatureDefinition(parameterTypes, resultSpec, minArity);
-    }
-
-
-    /**
-     * Type test operation - always returns Boolean.
-     * Example: is(T, Type) → Boolean
+     * Type test operation: (?T, ?STRING) → ?BOOLEAN
+     * Example: is(?T, ?STRING) → ?BOOLEAN
      */
     @Nonnull
     public static SignatureDefinition typeTest(@Nonnull final Type inputType) {
         return new SignatureDefinition(
-                List.of(inputType, Types.STRING),
-                Types.BOOLEAN
+                List.of(single(inputType), single(Types.STRING)),
+                ResultTypeSpec.single(Types.BOOLEAN)
         );
     }
 
     /**
-     * FHIR getValue operation - converts FHIR type to system type.
-     * Example: FhirType(STRING).getValue() → String
-     */
-    @Nonnull
-    public static SignatureDefinition fhirValueExtractor(@Nonnull final Type fhirType) {
-        return new SignatureDefinition(
-                List.of(fhirType),
-                ResultSpec.FhirSystemType.INSTANCE
-        );
-    }
-
-    /**
-     * Collection operation with lambda predicate - preserves collection type.
-     * Example: Collection<T>.where(Lambda(Boolean)) → Collection<T>
-     * <p>
-     * The lambda takes an implicit element of type T (from collection) and returns Boolean (filter criteria).
-     * The lambda parameter type is implicit and determined by the collection element type.
-     * Uses ELEMENT_WISE binding strategy: $this = element type.
+     * Collection filter with lambda: (*T, ?Lambda(?BOOLEAN)) → *T
+     * Example: *T.where(?Lambda(?BOOLEAN)) → *T
+     *
+     * <p>Uses ELEMENT_WISE binding: $this = T (element type)
      */
     @Nonnull
     public static SignatureDefinition collectionFilter(@Nonnull final Type elementType) {
@@ -216,68 +190,47 @@ public final class Signatures {
         final LambdaType lambdaType = new LambdaType(Shape.single(Types.BOOLEAN));
 
         return new SignatureDefinition(
-                List.of(Types.ANY, lambdaType),
-                ResultSpec.InputType.INSTANCE,  // Preserve collection type
+                List.of(many(elementType), single(lambdaType)),
+                ResultTypeSpec.many(elementType),
                 2,  // minArity
                 LambdaBindingStrategy.ELEMENT_WISE  // $this = element
         );
     }
 
     /**
-     * Collection transformation - maps elements to new type.
-     * Example: Collection<T>.select(Expression) → Collection<U>
-     * The result type depends on the expression parameter.
+     * Union operation: (*T, *T) → *T
+     * Example: *INTEGER | *INTEGER → *INTEGER
+     *
+     * <p>Phase 1 limitation: both sides must have same type.
+     * Phase 2 will add type variable support for mixed types.
      */
     @Nonnull
-    public static SignatureDefinition collectionMap(
-            @Nonnull final Type inputType,
-            @Nonnull final Type expressionType,
-            @Nonnull final Type resultElementType
-    ) {
+    public static SignatureDefinition union(@Nonnull final Type elementType) {
         return new SignatureDefinition(
-                List.of(inputType, expressionType),
-                new ResultSpec.Static(resultElementType)
+                List.of(many(elementType), many(elementType)),
+                ResultTypeSpec.many(elementType)
         );
     }
 
     /**
-     * Union operation - combines two collections.
-     * Example: Collection<T> | Collection<T> → Collection<T>
+     * Conditional iif operation: (*T, ?Lambda(?BOOLEAN), ?Lambda(?R)) → ?R
+     *
+     * <p>Uses COLLECTION_WISE binding: $this = *T (entire collection)
+     *
+     * <p>Phase 1 limitation: Result is always SINGLE cardinality.
+     * Phase 2 will properly compute result cardinality from lambda body.
      */
     @Nonnull
-    public static SignatureDefinition union(
-            @Nonnull final Type leftType,
-            @Nonnull final Type rightType
-    ) {
-        return new SignatureDefinition(
-                List.of(leftType, rightType),
-                ResultSpec.InputType.INSTANCE
-        );
-    }
-
-    /**
-     * Conditional iif operation - collection-level conditional with lambda parameters.
-     * Example: Collection<T>.iif(Lambda<Boolean>, Lambda<R>) → R
-     * <p>
-     * Both lambda parameters operate on the entire collection (not elements):
-     * - criterion: $this = Collection<T>, returns Boolean
-     * - true-result: $this = Collection<T>, returns R (any type - collection or scalar)
-     * <p>
-     * Uses COLLECTION_WISE binding strategy: $this = entire collection type.
-     * Result type is extracted from the true-result lambda's body type.
-     * Scalar results are implicitly treated as singleton collections when needed.
-     */
-    @Nonnull
-    public static SignatureDefinition conditionalIif() {
+    public static SignatureDefinition conditionalIif(@Nonnull final Type inputType, @Nonnull final Type resultType) {
         return new SignatureDefinition(
                 List.of(
-                        Types.ANY,                                  // T (any type)
-                        new LambdaType(Shape.single(Types.BOOLEAN)), // criterion lambda returns Boolean
-                        new LambdaType(Shape.single(Types.ANY))      // true-result lambda returns R (any type)
+                        many(inputType),
+                        single(new LambdaType(Shape.single(Types.BOOLEAN))),
+                        single(new LambdaType(Shape.single(resultType)))
                 ),
-                new ResultSpec.ArgumentType(2),  // Result is type of arg[2] (unwrapped from lambda)
-                3,  // minArity = 3 (all required for non-variadic version)
-                LambdaBindingStrategy.COLLECTION_WISE  // $this = entire collection
+                ResultTypeSpec.single(resultType),  // Phase 1: assume SINGLE
+                3,
+                LambdaBindingStrategy.COLLECTION_WISE
         );
     }
 }

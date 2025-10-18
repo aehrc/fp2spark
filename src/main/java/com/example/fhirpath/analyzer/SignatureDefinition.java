@@ -1,5 +1,6 @@
 package com.example.fhirpath.analyzer;
 
+import com.example.fhirpath.typing.Cardinality;
 import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.Type;
 
@@ -9,18 +10,20 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Signature definition for registration purposes.
- * Contains parameter types and a ResultSpec for determining result type.
+ * Phase 1 signature definition: parameters and result with explicit cardinality.
  *
- * This is used in the registry to define available function overloads.
- * During resolution, this is converted to a ResolvedSignature with concrete type.
+ * <p>In Phase 1, we enumerate types explicitly without type variables.
+ * Each parameter has a concrete type + cardinality via ParamSpec.
+ * Result type + cardinality is specified via ResultTypeSpec.
  *
- * Implements TypeGroup to enable zero-overhead usage in registry:
+ * <p>Phase 2 will add support for type variables and constraints.
+ *
+ * <p>Implements TypeGroup to enable zero-overhead usage in registry:
  * a SignatureDefinition IS a TypeGroup that expands to itself.
  */
 public record SignatureDefinition(
-    @Nonnull List<Type> parameterTypes,
-    @Nonnull ResultSpec resultSpec,
+    @Nonnull List<ParamSpec> parameters,
+    @Nonnull ResultTypeSpec resultSpec,
     int minArity,
     @Nullable LambdaBindingStrategy lambdaBinding
 ) implements TypeGroup {
@@ -28,43 +31,25 @@ public record SignatureDefinition(
      * Constructor for non-lambda signatures with fixed arity.
      */
     public SignatureDefinition(
-        @Nonnull final List<Type> parameterTypes,
-        @Nonnull final ResultSpec resultSpec
+        @Nonnull final List<ParamSpec> parameters,
+        @Nonnull final ResultTypeSpec resultSpec
     ) {
-        this(parameterTypes, resultSpec, parameterTypes.size(), null);
+        this(parameters, resultSpec, parameters.size(), null);
     }
 
     /**
      * Constructor for non-lambda signatures with variable arity.
      */
     public SignatureDefinition(
-        @Nonnull final List<Type> parameterTypes,
-        @Nonnull final ResultSpec resultSpec,
+        @Nonnull final List<ParamSpec> parameters,
+        @Nonnull final ResultTypeSpec resultSpec,
         final int minArity
     ) {
-        this(parameterTypes, resultSpec, minArity, null);
-    }
-
-    /**
-     * Convenience constructor for static result types (most common case).
-     */
-    public SignatureDefinition(
-        @Nonnull final List<Type> parameterTypes,
-        @Nonnull final Type resultType,
-        final int minArity
-    ) {
-        this(parameterTypes, new ResultSpec.Static(resultType), minArity, null);
-    }
-
-    public SignatureDefinition(
-        @Nonnull final List<Type> parameterTypes,
-        @Nonnull final Type resultType
-    ) {
-        this(parameterTypes, new ResultSpec.Static(resultType), parameterTypes.size(), null);
+        this(parameters, resultSpec, minArity, null);
     }
 
     public int arity() {
-        return parameterTypes.size();
+        return parameters.size();
     }
 
     /**
@@ -81,7 +66,7 @@ public record SignatureDefinition(
      * Returns true if any parameter type is a LambdaType.
      */
     public boolean hasLambdaParameters() {
-        return parameterTypes.stream().anyMatch(t -> t instanceof LambdaType);
+        return parameters.stream().anyMatch(p -> p.type() instanceof LambdaType);
     }
 
     /**
@@ -90,5 +75,50 @@ public record SignatureDefinition(
      */
     public boolean canApplyToArgumentCount(final int argCount) {
         return argCount >= minArity && argCount <= arity();
+    }
+
+    /**
+     * Gets the parameter spec at the given index.
+     */
+    @Nonnull
+    public ParamSpec parameter(int index) {
+        return parameters.get(index);
+    }
+
+    /**
+     * Gets all parameter types (without cardinality).
+     * Convenience method for backward compatibility.
+     */
+    @Nonnull
+    public List<Type> parameterTypes() {
+        return parameters.stream()
+            .map(ParamSpec::type)
+            .toList();
+    }
+
+    /**
+     * Gets the result type (element type without cardinality).
+     * Convenience method for compatibility.
+     */
+    @Nonnull
+    public Type resultType() {
+        return resultSpec.type();
+    }
+
+    /**
+     * Gets the result cardinality.
+     */
+    @Nonnull
+    public Cardinality resultCardinality() {
+        return resultSpec.cardinality();
+    }
+
+    @Override
+    public String toString() {
+        return parameters.stream()
+            .map(ParamSpec::toString)
+            .reduce((a, b) -> a + ", " + b)
+            .map(params -> "(" + params + ") → " + resultSpec)
+            .orElse("() → " + resultSpec);
     }
 }

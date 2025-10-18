@@ -55,6 +55,7 @@ If multiple matches tie on minimal cost, treat as ambiguity (error) unless a det
 - Constraints: `[ … ] ⇒ …`
 - Shapes in arguments/results: `α T` means a shape (``?T`` or ``*T``)
 - Lambdas: `[S1 ⇒ S2]`
+- Cardinality lattice (join): `? ⊔ ? = ?`, `? ⊔ * = *`, `* ⊔ ? = *`, `* ⊔ * = *`
 
 Examples use FHIRPath names; equality is written `equals(…)` for clarity.
 
@@ -85,8 +86,9 @@ Examples use FHIRPath names; equality is written `equals(…)` for clarity.
 -- arithmetic (example: plus)
 ∀ M, N. [Arithmetic M, Arithmetic N, P = LUB(M, N)] ⇒ plus(?M, ?N) → ?P
 
--- iif (per‑collection variant; per‑element is analogous with ?T in lambdas)
-∀ T, M, K, α. iif(α T, [α T ⇒ ?BOOLEAN], [α T ⇒ α M], [α T ⇒ α K]) → α LUB(M, K)
+-- iif (per‑collection lambda only; branches may differ in arity)
+∀ T, M, K, α, b, c ∈ {?, *}. [LUB(M, K) defined] ⇒
+  iif(α T, [α T ⇒ ?BOOLEAN], [α T ⇒ b M], [α T ⇒ c K]) → (b ⊔ c) LUB(M, K)
 ```
 
 ## Laws and examples
@@ -111,6 +113,10 @@ contains(*STRING, ?INTEGER) ⇒ error -- no LUB
 -- where/select (arity‑preserving)
 *T.where([?T ⇒ ?BOOLEAN]) ⇒ *T
 ?T.select([?T ⇒ ?U]) ⇒ ?U
+
+-- iif (examples)
+iif(*T, [*T ⇒ ?BOOLEAN], [*T ⇒ ?U], [*T ⇒ *V]) ⇒ *LUB(U, V)
+iif(?T, [?T ⇒ ?BOOLEAN], [?T ⇒ ?U], [?T ⇒ ?V]) ⇒ ?LUB(U, V)
 
 -- equality
 *K = *L ⇒ ?BOOLEAN if LUB(K, L) exists; else error

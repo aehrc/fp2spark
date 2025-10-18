@@ -32,9 +32,4 @@ public enum PrimitiveType implements Type {
     public boolean isComplex() {
         return false;
     }
-
-    @Override
-    public boolean isCollection() {
-        return false;
-    }
 }

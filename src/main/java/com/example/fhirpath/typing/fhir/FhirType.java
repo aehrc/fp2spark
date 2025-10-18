@@ -5,6 +5,10 @@ import com.example.fhirpath.typing.Type;
 
 import javax.annotation.Nonnull;
 
+/**
+ * Represents a FHIR primitive type (e.g., FhirString, FhirInteger).
+ * Maps to a corresponding system type via getValue().
+ */
 public record FhirType(@Nonnull PrimitiveType systemType) implements Type {
 
     @Override
@@ -20,10 +24,5 @@ public record FhirType(@Nonnull PrimitiveType systemType) implements Type {
     @Override
     public boolean isComplex() {
         return systemType.isComplex();
-    }
-
-    @Override
-    public boolean isCollection() {
-        return systemType.isCollection();
     }
 }

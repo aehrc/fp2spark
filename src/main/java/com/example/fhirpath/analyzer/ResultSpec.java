@@ -78,7 +78,7 @@ public sealed interface ResultSpec
                 throw new IllegalArgumentException(
                     "EffectiveInputType requires at least one argument");
             }
-            return resolvedArgs.get(0).getType().effectiveType();
+            return resolvedArgs.get(0).getType();
         }
     }
 

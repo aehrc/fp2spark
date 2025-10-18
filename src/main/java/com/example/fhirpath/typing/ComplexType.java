@@ -35,11 +35,6 @@ public class ComplexType implements Type {
         return true;
     }
 
-    @Override
-    public boolean isCollection() {
-        return false;
-    }
-
     public Set<String> getFieldNames() {
         return fields.keySet();
     }

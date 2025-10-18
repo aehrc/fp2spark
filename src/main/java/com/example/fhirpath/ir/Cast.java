@@ -1,19 +1,20 @@
 package com.example.fhirpath.ir;
 
+import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.Type;
 
 import jakarta.annotation.Nonnull;
 
+/**
+ * Represents a type cast operation.
+ * Preserves the cardinality of the child while changing the element type.
+ */
 public record Cast(IRNode child, Type targetType) implements IRNode {
     @Override
     @Nonnull
-    public Type getType() {
-        return targetType;
-    }
-
-    @Override
-    public boolean isSingular() {
-        return !targetType.isCollection();
+    public Shape getShape() {
+        // Preserve cardinality from child, but change element type
+        return Shape.of(targetType, child.getCardinality());
     }
 
     @Override

@@ -1,28 +1,32 @@
 package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.FunctionSignature;
-import com.example.fhirpath.typing.CollectionType;
-import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.Cardinality;
+import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.TypeSystem;
 
 import jakarta.annotation.Nonnull;
 import java.util.List;
 
+/**
+ * Represents a union operation (|) in FHIRPath.
+ * Result is always MANY cardinality (0..*).
+ */
 public record Union(IRNode left, IRNode right) implements IRNode {
 
+    // TODO: Update signatures to use Shape when implementing signature system
     // Static signatures for Union operation - overloaded for all defined types
     public static final List<FunctionSignature> SIGNATURES =
             TypeSystem.definedTypes()
-                    .map(CollectionType::new)
                     .map(FunctionSignature::biOperator)
                     .toList();
 
     @Override
     @Nonnull
-    public Type getType() {
-        // we may get singluar value here collection but the result is always a collection
-        // except for null cases.
-        return new CollectionType(left.getType());
+    public Shape getShape() {
+        // Union always produces MANY cardinality
+        // Element type from left operand (both sides must have same type)
+        return Shape.many(left.getType());
     }
 
     @Override

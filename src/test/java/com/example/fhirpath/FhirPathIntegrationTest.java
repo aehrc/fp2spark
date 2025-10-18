@@ -364,17 +364,17 @@ class FhirPathIntegrationTest {
                         functions.from_json(functions.col("value"), patientSchema).alias("Patient"));
 
         final ComplexType humanNameType = new ComplexType(
-                new FieldSpec("family", Types.STRING),
-                new FieldSpec("given", new CollectionType(Types.STRING)),
-                new FieldSpec("use", Types.STRING)
+                new FieldSpec("family", Shape.single(Types.STRING)),
+                new FieldSpec("given", Shape.many(Types.STRING)),
+                new FieldSpec("use", Shape.single(Types.STRING))
         );
 
         final Column column = FhirPath.toColumn(expression, new ResourceType("Patient",
-                new FieldSpec("id", Types.STRING),
-                new FieldSpec("gender", new FhirType(PrimitiveType.STRING)),
-                new FieldSpec("age", new FhirType(PrimitiveType.INTEGER)),
-                new FieldSpec("value", new FhirType(PrimitiveType.DECIMAL)),
-                new FieldSpec("name", new CollectionType(humanNameType))
+                new FieldSpec("id", Shape.single(Types.STRING)),
+                new FieldSpec("gender", Shape.single(new FhirType(PrimitiveType.STRING))),
+                new FieldSpec("age", Shape.single(new FhirType(PrimitiveType.INTEGER))),
+                new FieldSpec("value", Shape.single(new FhirType(PrimitiveType.DECIMAL))),
+                new FieldSpec("name", Shape.many(humanNameType))
         ));
         // Evaluate the expression
         final Dataset<Row> result = inputDf.select(column.alias("result"));

@@ -1,9 +1,8 @@
 package com.example.fhirpath.analyzer;
 
-import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.LambdaType;
+import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.Type;
-
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 
@@ -213,11 +212,10 @@ public final class Signatures {
      */
     @Nonnull
     public static SignatureDefinition collectionFilter(@Nonnull final Type elementType) {
-        //final CollectionType collectionType = new CollectionType(elementType);
-        final LambdaType lambdaType = new LambdaType(Types.BOOLEAN);
+        // Lambda expects single BOOLEAN result
+        final LambdaType lambdaType = new LambdaType(Shape.single(Types.BOOLEAN));
 
         return new SignatureDefinition(
-                // TODO: use CollectionType as first param when we support it in overload resolution
                 List.of(Types.ANY, lambdaType),
                 ResultSpec.InputType.INSTANCE,  // Preserve collection type
                 2,  // minArity
@@ -273,9 +271,9 @@ public final class Signatures {
     public static SignatureDefinition conditionalIif() {
         return new SignatureDefinition(
                 List.of(
-                        new CollectionType(Types.ANY),      // Collection<T>
-                        new LambdaType(Types.BOOLEAN),      // criterion lambda returns Boolean
-                        new LambdaType(Types.ANY)           // true-result lambda returns R (any type)
+                        Types.ANY,                                  // T (any type)
+                        new LambdaType(Shape.single(Types.BOOLEAN)), // criterion lambda returns Boolean
+                        new LambdaType(Shape.single(Types.ANY))      // true-result lambda returns R (any type)
                 ),
                 new ResultSpec.ArgumentType(2),  // Result is type of arg[2] (unwrapped from lambda)
                 3,  // minArity = 3 (all required for non-variadic version)

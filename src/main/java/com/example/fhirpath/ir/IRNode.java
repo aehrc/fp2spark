@@ -1,25 +1,55 @@
 package com.example.fhirpath.ir;
 
+import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.Cardinality;
 
 import jakarta.annotation.Nonnull;
 
 /**
  * Base interface for all IR nodes in the FHIRPath expression tree.
  * IRNodes are target-agnostic and represent typed FHIRPath expressions.
- * <p>
- * Code generation is delegated to target-specific visitors via the accept() method.
+ *
+ * <p>Code generation is delegated to target-specific visitors via the accept() method.
+ *
+ * <p>Each IR node has a {@link Shape} (element type + cardinality) representing the
+ * type and cardinality of values it produces.
  */
 public sealed interface IRNode
         permits Operation, Literal, Traversal, Cast, Resource, CastToSystem,
         Union, Equals, Lambda, ThisReference {
 
     /**
-     * Returns the FHIRPath type of this expression.
-     * For operations, this is the result type from the resolved signature.
+     * Returns the shape of this expression (element type + cardinality).
+     * For operations, this is the result shape from the resolved signature.
      */
     @Nonnull
-    Type getType();
+    Shape getShape();
+
+    /**
+     * Returns the element type of this expression.
+     * Convenience method equivalent to {@code getShape().elementType()}.
+     */
+    @Nonnull
+    default Type getType() {
+        return getShape().elementType();
+    }
+
+    /**
+     * Returns the cardinality of this expression.
+     * Convenience method equivalent to {@code getShape().cardinality()}.
+     */
+    @Nonnull
+    default Cardinality getCardinality() {
+        return getShape().cardinality();
+    }
+
+    /**
+     * Returns whether this expression is singular (single cardinality, 0..1).
+     */
+    default boolean isSingular() {
+        return getShape().isSingle();
+    }
 
     /**
      * Accepts a visitor for target-specific code generation.
@@ -30,13 +60,5 @@ public sealed interface IRNode
      */
     @Nonnull
     <T> T accept(@Nonnull IRNodeVisitor<T> visitor);
-
-    /**
-     * Returns whether this expression is singular (not a collection).
-     * Default implementation delegates to type.
-     */
-    default boolean isSingular() {
-        return !getType().isCollection();
-    }
 }
 

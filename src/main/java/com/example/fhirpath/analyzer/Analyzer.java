@@ -190,14 +190,12 @@ public class Analyzer {
     }
 
     /**
-     * Extracts the element type from a collection type.
-     * If the type is not a collection, returns the type itself.
+     * Extracts the element type.
+     * In the new type system, Type is always the element type (cardinality is separate in Shape).
      */
     @Nonnull
-    private Type extractElementType(@Nonnull final Type collectionType) {
-        return (collectionType instanceof CollectionType ct)
-                ? ct.elementType()
-                : collectionType;
+    private Type extractElementType(@Nonnull final Type type) {
+        return type;
     }
 
     /**
@@ -328,7 +326,7 @@ public class Analyzer {
         // Resolve implicit target if needed
         AstTraversal resolvedTraversal = resolveWithImplicitTarget(traversal);
         IRNode targetIR = analyze(resolvedTraversal.target());
-        return Optional.of(targetIR.getType().effectiveType())
+        return Optional.of(targetIR.getType())
                 .filter(ComplexType.class::isInstance)
                 .map(ComplexType.class::cast)
                 .flatMap(ct -> ct.getField(resolvedTraversal.path()))

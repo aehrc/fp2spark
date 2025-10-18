@@ -5,10 +5,25 @@ import com.example.fhirpath.typing.fhir.FhirType;
 import javax.annotation.Nonnull;
 import java.util.stream.Stream;
 
+/**
+ * Utilities for working with the FHIRPath type system.
+ */
 public final class TypeSystem {
     private TypeSystem() {
     }
 
+    /**
+     * Checks if a value of type {@code from} can be adapted/cast to type {@code to}.
+     *
+     * <p>Implements the adaptation rules from the FHIRPath type system:
+     * <ul>
+     *   <li>INTEGER → DECIMAL</li>
+     *   <li>DECIMAL → QUANTITY</li>
+     *   <li>DATE → DATE_TIME</li>
+     *   <li>FhirType[Prim] → Prim</li>
+     *   <li>NULL → any type</li>
+     * </ul>
+     */
     public static boolean canCast(Type from, Type to) {
         if (from instanceof FhirType ft) {
             return canCast(ft.systemType(), to);
@@ -16,15 +31,10 @@ public final class TypeSystem {
         if (from == to) return true;
         if (from == PrimitiveType.NULL) return true;
 
-        // Primitive casts
+        // Primitive casts (adaptation rules)
         if (from == PrimitiveType.INTEGER && to == PrimitiveType.DECIMAL) return true;
         if (from == PrimitiveType.DECIMAL && to == PrimitiveType.QUANTITY) return true;
         if (from == PrimitiveType.DATE && to == PrimitiveType.DATE_TIME) return true;
-
-        // Collection element type compatibility
-        if (from instanceof CollectionType cf && to instanceof CollectionType ct) {
-            return canCast(cf.elementType(), ct.elementType());
-        }
 
         return false;
     }

@@ -1,12 +1,15 @@
 package com.example.fhirpath.codegen.spark;
 
-import com.example.fhirpath.typing.CollectionType;
 import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.DecimalType;
 
+/**
+ * Maps FHIRPath shapes to Spark DataTypes.
+ */
 public final class SparkTypeMapper {
 
     public static final DecimalType DECIMAL_TYPE = DataTypes.createDecimalType(38, 6);
@@ -14,10 +17,28 @@ public final class SparkTypeMapper {
     private SparkTypeMapper() {
     }
 
+    /**
+     * Maps a FHIRPath shape to a Spark DataType.
+     * MANY cardinality maps to ArrayType, SINGLE maps to the element type directly.
+     */
+    public static DataType toSparkDataType(Shape shape) {
+        DataType elementType = toSparkElementType(shape.elementType());
+        return shape.isMany()
+                ? DataTypes.createArrayType(elementType)
+                : elementType;
+    }
+
+    /**
+     * Maps a FHIRPath type (without cardinality) to a Spark DataType.
+     * @deprecated Use toSparkDataType(Shape) instead
+     */
+    @Deprecated
     public static DataType toSparkDataType(Type t) {
-        if (t instanceof CollectionType ct) {
-            return DataTypes.createArrayType(toSparkDataType(ct.elementType()));
-        } else if (t instanceof PrimitiveType pt) {
+        return toSparkElementType(t);
+    }
+
+    private static DataType toSparkElementType(Type t) {
+        if (t instanceof PrimitiveType pt) {
             return switch (pt) {
                 case INTEGER -> DataTypes.IntegerType;
                 case DECIMAL -> DECIMAL_TYPE;

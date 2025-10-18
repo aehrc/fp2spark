@@ -1,7 +1,7 @@
 package com.example.fhirpath.ir;
 
 import com.example.fhirpath.analyzer.ResolvedSignature;
-import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.Shape;
 
 import jakarta.annotation.Nonnull;
 import java.util.List;
@@ -10,18 +10,22 @@ import java.util.List;
  * Generic IR node representing any FHIRPath function or operator.
  * Replaces specific operation classes (Add, Abs, etc.).
  *
- * The resolved signature is stored in the node, providing:
- * - Result type (via signature.resultType()) - statically resolved during construction
- * - Parameter types (for validation)
- * - Which overload was selected (for debugging/optimization)
+ * <p>The resolved signature is stored in the node, providing:
+ * <ul>
+ *   <li>Result shape (via signature.resultShape()) - statically resolved during construction</li>
+ *   <li>Parameter types (for validation)</li>
+ *   <li>Which overload was selected (for debugging/optimization)</li>
+ * </ul>
  *
- * Type resolution happens exactly once during Operation construction via
- * ResolvedSignature.resolve(), converting ResultSpecs to concrete types.
+ * <p>Type resolution happens exactly once during Operation construction via
+ * ResolvedSignature.resolve(), converting ResultSpecs to concrete shapes.
  *
- * Examples:
- * - Operation("add", [leftIR, rightIR], resolvedSig)
- * - Operation("abs", [targetIR], resolvedSig)
- * - Operation("count", [collectionIR], resolvedSig) // now an Operation!
+ * <p>Examples:
+ * <ul>
+ *   <li>Operation("add", [leftIR, rightIR], resolvedSig)</li>
+ *   <li>Operation("abs", [targetIR], resolvedSig)</li>
+ *   <li>Operation("count", [collectionIR], resolvedSig)</li>
+ * </ul>
  */
 public record Operation(
     @Nonnull String name,
@@ -30,13 +34,13 @@ public record Operation(
 ) implements IRNode {
 
     /**
-     * Returns the result type from the resolved signature.
+     * Returns the result shape from the resolved signature.
      * No recalculation needed - single source of truth.
      */
     @Override
     @Nonnull
-    public Type getType() {
-        return signature.resultType();
+    public Shape getShape() {
+        return signature.resultShape();
     }
 
     /**
@@ -56,6 +60,6 @@ public record Operation(
 
     @Override
     public String toString() {
-        return name + "(" + args + ") : " + getType();
+        return name + "(" + args + ") : " + getShape();
     }
 }

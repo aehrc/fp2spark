@@ -1909,6 +1909,56 @@ public static final SignatureDefinition FIRST = new SignatureDefinition(
 - Add tests for simple signatures to validate foundation
 - Document test coverage gaps
 
+### Phase 1.5: Cardinality Enforcement (Implemented)
+
+After implementing the core Phase 1 type system, we added **compile-time cardinality checking** to enforce FHIRPath specification requirements for math and comparison operators.
+
+**FHIRPath Specification Requirements**:
+- **Section 3559-3566**: Math operators require each operand to be a **single element**. If there is more than one item, the evaluator will signal an error.
+- **Section 3196-3197**: Comparison operators require collections with **single values**. The evaluator will throw an error if either collection has more than one item.
+
+**Implementation**:
+
+*Exception Hierarchy*:
+- `AnalysisException`: Base exception for analysis-time errors
+- `CardinalityMismatchException`: Thrown when argument cardinality doesn't match parameter requirements
+
+*Cardinality Checking*:
+- Added `checkCardinality()` to `OverloadResolver`
+- Validates that SINGLE-cardinality parameters reject MANY-cardinality arguments
+- Skips Lambda arguments (have special matching logic)
+- Provides detailed error messages referencing FHIRPath spec sections
+
+**Examples**:
+```java
+// ERRORS - Cardinality violations detected at analysis time:
+(1 | 2) + 2              // CardinalityMismatchException: add requires SINGLE
+(1 | 2) > 5              // CardinalityMismatchException: gt requires SINGLE
+name + 'suffix'          // Error if name is MANY-valued field
+
+// VALID - Proper cardinality usage:
+1 + 2                    // Both operands SINGLE ✓
+(1 | 2).first() + 3      // first() extracts SINGLE element ✓
+(1 | 2).count()          // count() accepts MANY ✓
+```
+
+**Test Coverage**:
+- 50 parameterized test cases in `CardinalityErrorTest`
+- 40 error cases (math + comparison operators)
+- 10 valid cases (collection operations, single operands)
+
+**Capabilities**:
+
+*Phase 1 (Before cardinality checking)*:
+- ✅ Type checking (INTEGER vs STRING)
+- ❌ No cardinality enforcement - MANY accepted where SINGLE required
+
+*Phase 1.5 (With cardinality checking)*:
+- ✅ Type checking
+- ✅ Cardinality enforcement per FHIRPath spec
+- ✅ Clear error messages for violations
+- ❌ Still no type variables or polymorphism (Phase 2)
+
 #### Phase 2: Type Variables and Constraints (Future)
 
 **Scope: Add polymorphism and constraints to enable full spec compliance**

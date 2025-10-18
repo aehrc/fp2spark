@@ -47,7 +47,9 @@ public final class FunctionRegistry {
         // Try OperationRegistry
         List<SignatureDefinition> signatures = OperationRegistry.getSignatures(operationName);
         if (!signatures.isEmpty()) {
-            OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(signatures, args);
+            OverloadResolver.ResolvedCall resolvedCall = OverloadResolver.resolveCall(
+                    operationName, signatures, args
+            );
             return new Operation(operationName, resolvedCall.args(), resolvedCall.signature());
         }
 

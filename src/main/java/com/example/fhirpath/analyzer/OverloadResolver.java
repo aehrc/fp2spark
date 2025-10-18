@@ -21,9 +21,18 @@ public final class OverloadResolver {
     /**
      * Resolve a function call by selecting the best matching signature and adapting arguments.
      * Returns a ResolvedCall with concrete result type.
+     *
+     * @param operationName the name of the operation being resolved (for error messages)
+     * @param candidates    the list of candidate signatures
+     * @param args          the arguments to match against signatures
+     * @return resolved call with adapted arguments and concrete signature
+     * @throws CardinalityMismatchException if argument cardinality doesn't match parameter spec
      */
-    public static ResolvedCall resolveCall(List<SignatureDefinition> candidates,
-                                           List<IRNode> args) {
+    public static ResolvedCall resolveCall(
+            String operationName,
+            List<SignatureDefinition> candidates,
+            List<IRNode> args
+    ) {
         ResolvedCall best = null;
         int bestCost = Integer.MAX_VALUE;
 
@@ -34,7 +43,12 @@ public final class OverloadResolver {
             List<Adapt> adaptations = new ArrayList<>();
 
             for (int i = 0; i < args.size(); i++) {
-                Type t1 = sig.parameter(i).type();
+                ParamSpec paramSpec = sig.parameter(i);
+                Type t1 = paramSpec.type();
+
+                // Check cardinality compatibility BEFORE type adaptation
+                // Per FHIRPath spec: Math/comparison operators require SINGLE cardinality
+                checkCardinality(args.get(i), paramSpec, operationName, i);
 
                 Adapt a1 = adapt(args.get(i), t1);
                 if (!a1.ok) break;
@@ -65,6 +79,64 @@ public final class OverloadResolver {
     }
 
     private record Adapt(IRNode node, boolean ok, int cost) {
+    }
+
+    /**
+     * Check if argument cardinality matches parameter specification.
+     *
+     * <p>Per FHIRPath specification:
+     * <ul>
+     *   <li>Section 3559-3566: Math operators require each operand to be a single element.
+     *   <li>Section 3196-3197: Comparison operators require single-valued collections.
+     * </ul>
+     *
+     * <p>Cardinality matching rules:
+     * <ul>
+     *   <li>SINGLE parameter accepts only SINGLE arguments (strict)
+     *   <li>MANY parameter accepts both SINGLE and MANY arguments (flexible)
+     *   <li>Lambda arguments are skipped - they have special matching logic
+     * </ul>
+     *
+     * <p>Note: Singleton evaluation (converting 1-element collection to single value)
+     * happens at runtime, not during analysis. This check validates that MANY-valued
+     * arguments are not passed where SINGLE is required.
+     *
+     * @param arg           the argument node to check
+     * @param paramSpec     the parameter specification with expected cardinality
+     * @param operationName the operation name for error messages
+     * @param paramIndex    the parameter index (0-based) for error messages
+     * @throws CardinalityMismatchException if cardinalities are incompatible
+     */
+    private static void checkCardinality(
+            IRNode arg,
+            ParamSpec paramSpec,
+            String operationName,
+            int paramIndex
+    ) {
+        // Skip cardinality checking for Lambda nodes
+        // Lambdas have special matching logic in adapt() that checks LambdaType compatibility
+        // Lambda's getShape() returns the body's shape, not the lambda itself
+        if (arg instanceof Lambda) {
+            return;
+        }
+
+        Cardinality argCard = arg.getCardinality();
+        Cardinality expectedCard = paramSpec.cardinality();
+
+        // SINGLE parameter cannot accept MANY argument
+        // Per spec: "If there is more than one item, the evaluator will signal an error"
+        if (expectedCard == Cardinality.SINGLE && argCard == Cardinality.MANY) {
+            throw new CardinalityMismatchException(
+                    operationName,
+                    paramIndex,
+                    expectedCard,
+                    argCard,
+                    null  // Expression context not available here
+            );
+        }
+
+        // MANY parameter can accept both SINGLE and MANY
+        // SINGLE values are implicitly lifted to singleton collections
     }
 
     private static Adapt adapt(IRNode arg, Type target) {

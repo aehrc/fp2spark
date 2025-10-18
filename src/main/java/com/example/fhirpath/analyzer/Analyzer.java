@@ -314,9 +314,9 @@ public class Analyzer {
                         })
         ).toList();
 
-        // Resolve with OverloadResolver (will pick best match)
+        // Resolve with OverloadResolver (will pick best match and check cardinality)
         final OverloadResolver.ResolvedCall resolvedCallResult =
-                OverloadResolver.resolveCall(matchingSignatures, args);
+                OverloadResolver.resolveCall(call.functionName(), matchingSignatures, args);
 
         return new Operation(call.functionName(), resolvedCallResult.args(),
                 resolvedCallResult.signature());

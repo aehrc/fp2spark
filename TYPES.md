@@ -5,8 +5,8 @@ Goal: Provide a simple, precise, and implementable static type model for `FHIRPa
 ## Core model
 
 - Shape (cardinality + element type):
-  - `?T` = `Single[T] (0..1)`
-  - `*T` = `Many[T] (0..*)`
+  - `?T` = `Single[T]` (`0..1`)
+  - `*T` = `Many[T]` (`0..*`)
 - Element types (non-collection):
   - Primitives: `INTEGER`, `DECIMAL`, `STRING`, `BOOLEAN`, `DATE`, `DATE_TIME`, `TIME`, …
   - Structured (nominal): `HumanName`, `Address`, `Patient`, `Resource`, …
@@ -29,10 +29,23 @@ Notes:
 ## Implicit adaptations (adapters) and cost
 
 Adapters enable type‑checking and overload resolution via least‑cost plans (multi‑step allowed; costs are additive):
-- Numeric widening: `INTEGER → DECIMAL` (cost 1)
-- FHIR value extraction: `Fhir[Prim] → Prim` (cost 1) for FHIR types that support conversion to FHIRPath system primitive types (to be defined per FHIR spec)
-- Optional (if enabled): domain‑specific adapters (e.g., `Quantity → DECIMAL`) with declared cost
-- Arity: only for bottom: `?⊥ ⇄ *⊥` (cost 0) to allow `{}` to match either shape
+
+- FHIRPath‑defined implicit conversions (from `specs/FHIRPath.md`):
+  - Numeric widening:
+    - `INTEGER → DECIMAL` (cost 1)
+    - `INTEGER → LONG` (cost 1, STU/optional)
+    - `LONG → DECIMAL` (cost 1, STU/optional)
+  - To quantity (default unit `'1'` when originating from scalars):
+    - `INTEGER → QUANTITY` (cost 1)
+    - `DECIMAL → QUANTITY` (cost 1)
+  - Temporal:
+    - `DATE → DATE_TIME` (cost 1)  // time components remain unset (partial)
+
+- Additional project adapters (not defined by FHIRPath):
+  - FHIR value extraction: `Fhir[Prim] → Prim` (cost 1) for FHIR primitives supporting `getValue()`
+
+- Arity convenience:
+  - Only for bottom: `?⊥ ⇄ *⊥` (cost 0) to allow `{}` to match either shape
 
 If multiple matches tie on minimal cost, treat as ambiguity (error) unless a deterministic tiebreak is defined.
 

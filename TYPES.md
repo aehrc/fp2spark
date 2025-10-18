@@ -38,6 +38,7 @@ Adapters enable type‑checking and overload resolution via least‑cost plans (
   - To quantity (default unit `'1'` when originating from scalars):
     - `INTEGER → QUANTITY` (cost 1)
     - `DECIMAL → QUANTITY` (cost 1)
+    - `LONG → QUANTITY` (cost 1, STU/optional)
   - Temporal:
     - `DATE → DATE_TIME` (cost 1)  // time components remain unset (partial)
 

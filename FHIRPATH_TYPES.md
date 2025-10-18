@@ -9,7 +9,7 @@ This document defines static signatures for FHIRPath operators and functions usi
 - Constraints: `[ … ] ⇒ sig` precede the arrow; we use named predicates like `Comparable T`.
 - LUB: `LUB(T, U)` is least upper bound in the element-type lattice; must exist when stated.
 - Bottom/Empty: `{}` has principal type `?⊥` (Nothing); `LUB(T, ⊥) = T`.
-- Adapters follow the implicit conversions in the spec: `INTEGER→DECIMAL`, `INTEGER→LONG` (STU), `LONG→DECIMAL` (STU), `INTEGER→QUANTITY`, `DECIMAL→QUANTITY`, `DATE→DATE_TIME`.
+- Adapters follow the implicit conversions in the spec: `INTEGER→DECIMAL`, `INTEGER→LONG` (STU), `LONG→DECIMAL` (STU), `INTEGER→QUANTITY`, `DECIMAL→QUANTITY`, `LONG→QUANTITY` (STU), `DATE→DATE_TIME`.
 
 ## Type sets and predicates
 
@@ -19,7 +19,7 @@ Arithmetic     = Numeric ∪ { QUANTITY }
 TemporalDate   = { DATE, DATE_TIME }
 TemporalTime   = { TIME }
 Temporal       = TemporalDate ∪ TemporalTime
-Comparable     = { STRING, INTEGER, DECIMAL, QUANTITY, DATE, DATE_TIME, TIME }
+Comparable     = { STRING, INTEGER, LONG (STU), DECIMAL, QUANTITY, DATE, DATE_TIME, TIME }
 StringLike     = { STRING }
 BooleanLike    = { BOOLEAN }
 Equatable T    = predicate: T supports equality (=) with implicit conversions per spec
@@ -61,7 +61,8 @@ Note: `QUANTITY` comparability/equality depends on dimensional compatibility (un
 ### Subsetting
 
 ```text
-∀ T, α. index(α T, ?INTEGER) → ?T            -- path indexer [i]
+-- indexer [i]
+∀ T, α. [](α T, ?INTEGER) → ?T            -- path indexer [i]
 ∀ T, α. single(α T) → ?T                     -- error if input has >1 element
 ∀ T, α. first(α T) → ?T
 ∀ T, α. last(α T) → ?T
@@ -92,7 +93,9 @@ convertsToBoolean(?Any) → ?BOOLEAN
 -- Integer / Long (STU)
 ∀ X ∈ { INTEGER, STRING, BOOLEAN }. toInteger(?X) → ?INTEGER
 convertsToInteger(?Any) → ?BOOLEAN
-(toLong, convertsToLong)  -- STU: analogous to Integer, returning LONG
+∀ X ∈ { INTEGER, LONG (STU), STRING, BOOLEAN }. toLong(?X) → ?LONG              -- STU
+toLong(?LONG) → ?LONG                                                           -- identity (STU)
+convertsToLong(?Any) → ?BOOLEAN                                                 -- STU
 
 -- Decimal
 ∀ X ∈ { INTEGER, DECIMAL, STRING, BOOLEAN }. toDecimal(?X) → ?DECIMAL
@@ -141,7 +144,7 @@ lastIndexOf(?STRING, ?STRING) → ?INTEGER       -- STU
 substring(?STRING, ?INTEGER, [ ?INTEGER ]) → ?STRING
 startsWith(?STRING, ?STRING) → ?BOOLEAN
 endsWith(?STRING, ?STRING) → ?BOOLEAN
-contains_str(?STRING, ?STRING) → ?BOOLEAN      -- function form, distinct from collection operator
+contains(?STRING, ?STRING) → ?BOOLEAN          -- function form, distinct from the collection operator
 upper(?STRING) → ?STRING
 lower(?STRING) → ?STRING
 replace(?STRING, ?STRING, ?STRING) → ?STRING
@@ -249,14 +252,14 @@ type(α Any) → α TYPEINFO
 
 ```text
 -- equals
-∀ K, L, α, β. [Equatable LUB(K, L), LUB(K, L) defined] ⇒ equals(α K, β L) → ?BOOLEAN
+∀ K, L, α, β. [Equatable LUB(K, L), LUB(K, L) defined] ⇒ =(α K, β L) → ?BOOLEAN
 
 -- equivalent
-∀ K, L, α, β. [Equivalent LUB(K, L), LUB(K, L) defined] ⇒ equivalent(α K, β L) → ?BOOLEAN
+∀ K, L, α, β. [Equivalent LUB(K, L), LUB(K, L) defined] ⇒ ~(α K, β L) → ?BOOLEAN
 
 -- not equals / not equivalent
-notEquals(α K, β L)   ≡ not(equals(α K, β L))   → ?BOOLEAN
-notEquivalent(α K, β L) ≡ not(equivalent(α K, β L)) → ?BOOLEAN
+!=(α K, β L)   ≡ not(=(α K, β L))   → ?BOOLEAN
+!~(α K, β L) ≡ not(~(α K, β L)) → ?BOOLEAN
 ```
 
 Notes:
@@ -266,10 +269,10 @@ Notes:
 ### Comparison
 
 ```text
-∀ T, α, β. [T ∈ Comparable] ⇒ gt(?T, ?T) → ?BOOLEAN
-∀ T, α, β. [T ∈ Comparable] ⇒ lt(?T, ?T) → ?BOOLEAN
-∀ T, α, β. [T ∈ Comparable] ⇒ ge(?T, ?T) → ?BOOLEAN
-∀ T, α, β. [T ∈ Comparable] ⇒ le(?T, ?T) → ?BOOLEAN
+∀ T. [T ∈ Comparable] ⇒ >(?T, ?T) → ?BOOLEAN
+∀ T. [T ∈ Comparable] ⇒ <(?T, ?T) → ?BOOLEAN
+∀ T. [T ∈ Comparable] ⇒ >=(?T, ?T) → ?BOOLEAN
+∀ T. [T ∈ Comparable] ⇒ <=(?T, ?T) → ?BOOLEAN
 ```
 
 ### Types
@@ -308,45 +311,37 @@ Note: Operands are first evaluated as Booleans via singleton-evaluation rules; e
 ### Math (operators)
 
 ```text
--- multiplication
-*(?INTEGER, ?INTEGER) → ?INTEGER
-*(?DECIMAL, ?INTEGER) → ?DECIMAL
-*(?INTEGER, ?DECIMAL) → ?DECIMAL
-*(?DECIMAL, ?DECIMAL) → ?DECIMAL
-*(?QUANTITY, ?QUANTITY) → ?QUANTITY      -- dimensional exponent arithmetic at runtime
-
--- division
-/(?INTEGER, ?INTEGER) → ?DECIMAL
-/(?DECIMAL, ?INTEGER) → ?DECIMAL
-/(?INTEGER, ?DECIMAL) → ?DECIMAL
-/(?DECIMAL, ?DECIMAL) → ?DECIMAL
-/(?QUANTITY, ?QUANTITY) → ?QUANTITY      -- dimensional exponent arithmetic at runtime
-
--- addition
-+(?INTEGER, ?INTEGER) → ?INTEGER
-+(?DECIMAL, ?INTEGER) → ?DECIMAL
-+(?INTEGER, ?DECIMAL) → ?DECIMAL
-+(?DECIMAL, ?DECIMAL) → ?DECIMAL
+-- addition (also concatenation for String); mixed-type cases are handled via implicit adapters per TYPES.md
++(?INTEGER,  ?INTEGER)  → ?INTEGER
++(?DECIMAL,  ?DECIMAL)  → ?DECIMAL
 +(?QUANTITY, ?QUANTITY) → ?QUANTITY      -- compatible dimensions required
-+(?STRING, ?STRING)   → ?STRING          -- differs from & in empty handling
++(?STRING,   ?STRING)   → ?STRING        -- differs from & in empty handling
 
--- subtraction
--(?INTEGER, ?INTEGER) → ?INTEGER
--(?DECIMAL, ?INTEGER) → ?DECIMAL
--(?INTEGER, ?DECIMAL) → ?DECIMAL
--(?DECIMAL, ?DECIMAL) → ?DECIMAL
+-- subtraction; mixed-type cases are handled via implicit adapters per TYPES.md
+-(?INTEGER,  ?INTEGER)  → ?INTEGER
+-(?DECIMAL,  ?DECIMAL)  → ?DECIMAL
 -(?QUANTITY, ?QUANTITY) → ?QUANTITY      -- compatible dimensions required
 
--- integer division
+-- multiplication; mixed-type cases (e.g., QUANTITY×INTEGER) use adapters like INTEGER→QUANTITY
+*(?INTEGER,  ?INTEGER)  → ?INTEGER
+*(?DECIMAL,  ?DECIMAL)  → ?DECIMAL
+*(?QUANTITY, ?QUANTITY) → ?QUANTITY      -- dimensional exponent arithmetic at runtime
+
+-- division; numeric division yields DECIMAL; QUANTITY/QUANTITY yields QUANTITY
+/(?INTEGER,  ?INTEGER)  → ?DECIMAL
+/(?DECIMAL,  ?DECIMAL)  → ?DECIMAL
+/(?QUANTITY, ?QUANTITY) → ?QUANTITY      -- units adjusted per UCUM
+
+-- integer division (truncated)
 div(?INTEGER, ?INTEGER) → ?INTEGER
 div(?DECIMAL, ?DECIMAL) → ?INTEGER
 
--- modulo
+-- modulo (remainder)
 mod(?INTEGER, ?INTEGER) → ?INTEGER
 mod(?DECIMAL, ?DECIMAL) → ?DECIMAL
 
--- string concatenation
-&(?STRING, ?STRING) → ?STRING
+-- string concatenation (treats empty as empty string)
+&(?STRING, ?STRING)     → ?STRING
 ```
 
 ### Date/Time arithmetic
@@ -364,6 +359,7 @@ mod(?DECIMAL, ?DECIMAL) → ?DECIMAL
 ```
 
 Notes:
+- Mixed-type arithmetic (e.g., INTEGER+DECIMAL, QUANTITY*INTEGER, LONG+INTEGER) is resolved by the implicit adapters listed in `TYPES.md` (including `LONG→QUANTITY` (STU)). If multiple lowest-cost adaptation plans exist, the resolver applies the tie-break rules documented in `TYPES.md`.
 - Calendar vs definite duration semantics follow the spec; units above seconds with definite durations are errors for date/time arithmetic.
 
 ---

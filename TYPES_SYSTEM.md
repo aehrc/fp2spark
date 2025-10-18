@@ -1,15 +1,26 @@
-# FHIRPath Operator and Function Signatures (Element‑first)
+# FHIRPath Type System and Signatures (Element‑first)
 
-This document defines static signatures for FHIRPath operators and functions using the element‑first shape model and Haskell‑style constraints. It mirrors the organization of the FHIRPath specification and notes any ambiguities or items marked STU (trial use) in the spec.
+This single specification combines and supersedes the prior `TYPES.md` and `FHIRPATH_TYPES.md` documents (as of 2025‑10‑18). It defines the element‑first type model, implicit adapters, and the complete set of FHIRPath operator/function signatures used by this project.
+
+## Goals
+
+Provide a simple, precise, and implementable static type model for `FHIRPath → IR → SQL` that:
+- Tracks element type and cardinality (shape)
+- Supports implicit adaptations (casts) with costs for overload resolution
+- Enables concise polymorphic operator/function signatures
 
 ## Notation
 
-- Shapes (cardinality + element type): `?T` = Single[T] (0..1), `*T` = Many[T] (0..*).
+- Shapes (cardinality + element type):
+  - `?T` = `Single[T]` (`0..1`)
+  - `*T` = `Many[T]` (`0..*`)
 - Lambdas: `(S_in ⇒ S_out)` where `S` are shapes (`?T` or `*T`).
 - Constraints: `[ … ] ⇒ sig` precede the arrow; we use named predicates like `Comparable T`.
 - LUB: `LUB(T, U)` is least upper bound in the element-type lattice; must exist when stated.
-- Bottom/Empty: `{}` has principal type `?⊥` (Nothing); `LUB(T, ⊥) = T`.
-- Adapters follow the implicit conversions in the spec: `INTEGER→DECIMAL`, `INTEGER→LONG` (STU), `LONG→DECIMAL` (STU), `INTEGER→QUANTITY`, `DECIMAL→QUANTITY`, `LONG→QUANTITY` (STU), `DATE→DATE_TIME`.
+- Top/Bottom element types:
+  - `Any` = top element type; `⊥` (Nothing) = bottom element type
+  - Subtyping: `⊥ <: T <: Any`; `LUB(T, ⊥) = T`
+- Empty literal: `{}` has principal type `?⊥`. For matching convenience only, `?⊥ ⇄ *⊥` (cost 0) is allowed.
 
 ## Type sets and predicates
 
@@ -28,11 +39,76 @@ Equivalent T   = predicate: T supports equivalence (~) semantics per spec
 
 Note: `QUANTITY` comparability/equality depends on dimensional compatibility (units); this is a runtime check.
 
----
+### Type relations / promotion rules
 
-## Functions
+To support concise operator definitions, we note the numeric promotion rule used during adapter planning:
 
-### Existence
+```text
+PromoteNum(A, B) where A,B ∈ Numeric
+  = INTEGER  if (A = INTEGER ∧ B = INTEGER)
+  = DECIMAL  otherwise (including any use of LONG (STU))
+```
+
+Numeric division (/) always yields DECIMAL.
+
+## Implicit adaptations (adapters) and cost
+
+Adapters enable type‑checking and overload resolution via least‑cost plans (multi‑step allowed; costs are additive):
+
+- FHIRPath‑defined implicit conversions (from `specs/FHIRPath.md`):
+  - Numeric widening:
+    - `INTEGER → DECIMAL` (cost 1)
+    - `INTEGER → LONG` (cost 1, STU/optional)
+    - `LONG → DECIMAL` (cost 1, STU/optional)
+  - To quantity (default unit `'1'` when originating from scalars):
+    - `INTEGER → QUANTITY` (cost 1)
+    - `DECIMAL → QUANTITY` (cost 1)
+    - `LONG → QUANTITY` (cost 1, STU/optional)
+  - Temporal:
+    - `DATE → DATE_TIME` (cost 1)
+
+- Additional project adapters (not defined by FHIRPath):
+  - FHIR value extraction: `Fhir[Prim] → Prim` (cost 1) for FHIR primitives supporting `getValue()`
+
+- Arity convenience:
+  - Only for bottom: `?⊥ ⇄ *⊥` (cost 0) to allow `{}` to match either shape
+
+If multiple matches tie on minimal cost, treat as ambiguity (error) unless a deterministic tiebreak is defined.
+
+## Signature notation (Haskell‑style)
+
+- Quantification: `∀ T, U, K, L` (element types), `α, β ∈ {?, *}` (arity variables)
+- Constraints: `[ … ] ⇒ …` (constraints appear before the arrow)
+- Shapes in arguments/results: `α T` means a shape (``?T`` or ``*T``)
+- Lambdas: `(S1 ⇒ S2)` (parentheses for lambdas)
+- Optional parameters (doc notation): trailing `[arg : S]` desugars to two overloads: with and without that argument; optional parameters must be trailing
+- Cardinality lattice (join): `? ⊔ ? = ?`, `? ⊔ * = *`, `* ⊔ ? = *`, `* ⊔ * = *`
+
+### Minimal illustrative examples
+
+These examples illustrate the shape notation and constraints (not exhaustive):
+
+```text
+-- first
+∀ T, α. first(α T) → ?T
+
+-- where (per‑element predicate)
+∀ T, α. where(α T, (?T ⇒ ?BOOLEAN)) → α T
+
+-- select/map (per‑element)
+∀ T, U, α. select(α T, (?T ⇒ ?U)) → α U
+
+-- union (requires LUB)
+∀ K, L, α, β. [LUB(K, L) defined] ⇒ union(α K, β L) → *LUB(K, L)
+```
+
+## FHIRPath operator and function signatures
+
+The sections below mirror the organization of the FHIRPath specification. Unless otherwise noted, they operate on collections and return collections; singleton evaluation rules and empty propagation follow the spec.
+
+### Functions
+
+#### Existence
 
 ```text
 ∀ T, α. empty(α T) → ?BOOLEAN
@@ -42,48 +118,47 @@ Note: `QUANTITY` comparability/equality depends on dimensional compatibility (un
 ∀ α.    anyTrue(α BOOLEAN) → ?BOOLEAN
 ∀ α.    allFalse(α BOOLEAN) → ?BOOLEAN
 ∀ α.    anyFalse(α BOOLEAN) → ?BOOLEAN
-∀ T.    subsetOf(*T, *T) → ?BOOLEAN          -- uses equals semantics
-∀ T.    supersetOf(*T, *T) → ?BOOLEAN        -- uses equals semantics
+∀ T.    subsetOf(*T, *T) → ?BOOLEAN
+∀ T.    supersetOf(*T, *T) → ?BOOLEAN
 ∀ T, α. count(α T) → ?INTEGER
-∀ T, α. distinct(α T) → α T                  -- removes duplicates by equals semantics
+∀ T, α. distinct(α T) → α T
 ∀ T, α. isDistinct(α T) → ?BOOLEAN
 ```
 
-### Filtering and projection
+#### Filtering and projection
 
 ```text
 ∀ T, α. where(α T, (?T ⇒ ?BOOLEAN)) → α T
 ∀ T, U, α. select(α T, (?T ⇒ ?U)) → α U
-∀ T, α. repeat(α T, (?T ⇒ α T)) → α T        -- assumes projection returns same element type; see notes
+∀ T, α. repeat(α T, (?T ⇒ α T)) → α T
 ∀ T, U, α. ofType(α T, U typeSpecifier) → α U
 ```
 
-### Subsetting
+#### Subsetting
 
 ```text
 -- indexer [i]
-∀ T, α. [](α T, ?INTEGER) → ?T            -- path indexer [i]
-∀ T, α. single(α T) → ?T                     -- error if input has >1 element
+∀ T, α. [](α T, ?INTEGER) → ?T
+∀ T, α. single(α T) → ?T
 ∀ T, α. first(α T) → ?T
 ∀ T, α. last(α T) → ?T
 ∀ T, α. tail(α T) → *T
 ∀ T, α. skip(α T, ?INTEGER) → α T
 ∀ T, α. take(α T, ?INTEGER) → α T
--- set operations in Subsetting
-∀ K, L. [LUB(K, L) defined] ⇒ intersect(*K, *L) → *K   -- returns elements from the left that are in right (by equals)
-∀ K, L. [LUB(K, L) defined] ⇒ exclude(*K, *L)   → *K   -- returns elements from the left that are not in right (by equals)
+
+-- set operations
+∀ K, L. [LUB(K, L) defined] ⇒ intersect(*K, *L) → *K
+∀ K, L. [LUB(K, L) defined] ⇒ exclude(*K, *L)   → *K
 ```
 
-### Combining
+#### Combining
 
 ```text
 ∀ K, L, α, β. [LUB(K, L) defined] ⇒ union(α K, β L) → *LUB(K, L)
-∀ K, L, α, β. [LUB(K, L) defined] ⇒ combine(α K, β L) → *LUB(K, L)     -- preserves duplicates
+∀ K, L, α, β. [LUB(K, L) defined] ⇒ combine(α K, β L) → *LUB(K, L)
 ```
 
-### Conversion (implicit and explicit)
-
-Implicit conversions are applied by the adapter engine; these functions are explicit.
+#### Conversion (explicit)
 
 ```text
 -- Boolean
@@ -122,9 +197,7 @@ convertsToQuantity(?Any, [ ?STRING ]) → ?BOOLEAN
 convertsToString(?Any) → ?BOOLEAN
 ```
 
-#### Conditional (iif)
-
-We model `iif` using per‑collection lambdas over the input shape (spec text is not explicit):
+##### Conditional (iif)
 
 ```text
 -- three-argument iif
@@ -135,21 +208,20 @@ We model `iif` using per‑collection lambdas over the input shape (spec text is
 ∀ T, M, α, b ∈ {?, *}. iif(α T, (α T ⇒ ?BOOLEAN), (α T ⇒ b M)) → b M
 ```
 
-### String manipulation
+#### String manipulation
 
 ```text
 indexOf(?STRING, ?STRING) → ?INTEGER
-lastIndexOf(?STRING, ?STRING) → ?INTEGER       -- STU
--- substring requires a singleton input (spec errors on multi-item input)
+lastIndexOf(?STRING, ?STRING) → ?INTEGER
 substring(?STRING, ?INTEGER, [ ?INTEGER ]) → ?STRING
 startsWith(?STRING, ?STRING) → ?BOOLEAN
 endsWith(?STRING, ?STRING) → ?BOOLEAN
-contains(?STRING, ?STRING) → ?BOOLEAN          -- function form, distinct from the collection operator
+contains(?STRING, ?STRING) → ?BOOLEAN
 upper(?STRING) → ?STRING
 lower(?STRING) → ?STRING
 replace(?STRING, ?STRING, ?STRING) → ?STRING
 matches(?STRING, ?STRING) → ?BOOLEAN
-matchesFull(?STRING, ?STRING) → ?BOOLEAN       -- STU
+matchesFull(?STRING, ?STRING) → ?BOOLEAN
 replaceMatches(?STRING, ?STRING, ?STRING) → ?STRING
 length(?STRING) → ?INTEGER
 toChars(?STRING) → *STRING
@@ -164,41 +236,66 @@ split(?STRING, ?STRING) → *STRING
 join(*STRING, [ ?STRING ]) → ?STRING
 ```
 
-### Math functions (STU unless noted)
+#### Math functions (STU unless noted)
 
 ```text
+-- Absolute value
 abs(?INTEGER) → ?INTEGER
+abs(?LONG)    → ?LONG
 abs(?DECIMAL) → ?DECIMAL
 abs(?QUANTITY) → ?QUANTITY
+
+-- Rounding to integral types
 ceiling(?INTEGER) → ?INTEGER
+ceiling(?LONG)    → ?LONG
 ceiling(?DECIMAL) → ?INTEGER
-exp(?INTEGER) → ?DECIMAL
-exp(?DECIMAL) → ?DECIMAL
+
 floor(?INTEGER) → ?INTEGER
+floor(?LONG)    → ?LONG
 floor(?DECIMAL) → ?INTEGER
-ln(?INTEGER) → ?DECIMAL
-ln(?DECIMAL) → ?DECIMAL
-log(?INTEGER, ?DECIMAL) → ?DECIMAL
-log(?DECIMAL,  ?DECIMAL) → ?DECIMAL
--- power overloads; mixed cases use implicit INTEGER→DECIMAL
-power(?INTEGER, ?INTEGER) → ?INTEGER
-power(?DECIMAL, ?DECIMAL) → ?DECIMAL
-round(?INTEGER, [ ?INTEGER ]) → ?DECIMAL
-round(?DECIMAL, [ ?INTEGER ]) → ?DECIMAL
-sqrt(?INTEGER) → ?DECIMAL
-sqrt(?DECIMAL) → ?DECIMAL
+
 truncate(?INTEGER) → ?INTEGER
+truncate(?LONG)    → ?LONG
 truncate(?DECIMAL) → ?INTEGER
+
+-- Exponential / logarithmic
+exp(?INTEGER) → ?DECIMAL
+exp(?LONG)    → ?DECIMAL
+exp(?DECIMAL) → ?DECIMAL
+
+ln(?INTEGER) → ?DECIMAL
+ln(?LONG)    → ?DECIMAL
+ln(?DECIMAL) → ?DECIMAL
+
+-- Base-10/Arbitrary-base logarithm
+log(?INTEGER, ?DECIMAL) → ?DECIMAL
+log(?LONG,    ?DECIMAL) → ?DECIMAL
+log(?DECIMAL, ?DECIMAL) → ?DECIMAL
+
+-- Power (integral stays integral; decimal stays decimal)
+power(?INTEGER, ?INTEGER) → ?INTEGER
+power(?LONG,    ?LONG)    → ?LONG
+power(?DECIMAL, ?DECIMAL) → ?DECIMAL
+
+-- Round to precision (result is Decimal)
+round(?INTEGER, [ ?INTEGER ]) → ?DECIMAL
+round(?LONG,    [ ?INTEGER ]) → ?DECIMAL
+round(?DECIMAL, [ ?INTEGER ]) → ?DECIMAL
+
+-- Square root (Decimal result)
+sqrt(?INTEGER) → ?DECIMAL
+sqrt(?LONG)    → ?DECIMAL
+sqrt(?DECIMAL) → ?DECIMAL
 ```
 
-### Tree navigation
+#### Tree navigation
 
 ```text
 children(α Any) → *Any
 descendants(α Any) → *Any
 ```
 
-### Utility
+#### Utility
 
 ```text
 trace(α T, [ (α T ⇒ α U) ]) → α T
@@ -238,17 +335,9 @@ dateOf( ?DATE | ?DATE_TIME ) → ?DATE
 timeOf(?DATE_TIME) → ?TIME
 ```
 
-### Reflection (STU)
+### Operators
 
-```text
-type(α Any) → α TYPEINFO
-```
-
----
-
-## Operators
-
-### Equality
+#### Equality
 
 ```text
 -- equals
@@ -266,7 +355,7 @@ Notes:
 - For `QUANTITY`, equality/equivalence require compatible dimensions; unit conversion may occur at runtime.
 - For `DATE`, `DATE_TIME`, `TIME`, precision rules affect results; types must be convertible via implicit adapters.
 
-### Comparison
+#### Comparison
 
 ```text
 ∀ T. [T ∈ Comparable] ⇒ >(?T, ?T) → ?BOOLEAN
@@ -275,7 +364,7 @@ Notes:
 ∀ T. [T ∈ Comparable] ⇒ <=(?T, ?T) → ?BOOLEAN
 ```
 
-### Types
+#### Types
 
 ```text
 is(?Any, typeSpecifier) → ?BOOLEAN
@@ -283,7 +372,7 @@ as(?Any, typeSpecifier U) → ?U
 -- Function forms (back-compat): is(?Any, U), as(?Any, U)
 ```
 
-### Collections (operators)
+#### Collections (operators)
 
 ```text
 -- union operator
@@ -296,7 +385,7 @@ as(?Any, typeSpecifier U) → ?U
 ∀ C, E. [LUB(E, C) defined] ⇒ contains(*C, ?E) → ?BOOLEAN
 ```
 
-### Boolean logic
+#### Boolean logic
 
 ```text
 and(?BOOLEAN, ?BOOLEAN) → ?BOOLEAN
@@ -308,43 +397,31 @@ implies(?BOOLEAN, ?BOOLEAN) → ?BOOLEAN
 
 Note: Operands are first evaluated as Booleans via singleton-evaluation rules; empty propagates with three-valued logic per spec.
 
-### Math (operators)
+#### Math (operators)
+
+Mixed‑type arithmetic is handled via the implicit adapters described above; operators are defined using constrained Numeric/Arithmetic signatures plus String and Quantity same‑type cases.
 
 ```text
--- addition (also concatenation for String); mixed-type cases are handled via implicit adapters per TYPES.md
-+(?INTEGER,  ?INTEGER)  → ?INTEGER
-+(?DECIMAL,  ?DECIMAL)  → ?DECIMAL
-+(?QUANTITY, ?QUANTITY) → ?QUANTITY      -- compatible dimensions required
-+(?STRING,   ?STRING)   → ?STRING        -- differs from & in empty handling
+-- Numeric/Quantity arithmetic (same‑type via adapters)
+∀ T. [T ∈ Arithmetic] ⇒ +(?T, ?T) → ?T
+∀ T. [T ∈ Arithmetic] ⇒ -(?T, ?T) → ?T
+∀ T. [T ∈ Arithmetic] ⇒ *(?T, ?T) → ?T
 
--- subtraction; mixed-type cases are handled via implicit adapters per TYPES.md
--(?INTEGER,  ?INTEGER)  → ?INTEGER
--(?DECIMAL,  ?DECIMAL)  → ?DECIMAL
--(?QUANTITY, ?QUANTITY) → ?QUANTITY      -- compatible dimensions required
+-- Numeric division (always Decimal)
+∀ A,B. [A,B ∈ Numeric] ⇒ /(?A, ?B) → ?DECIMAL
 
--- multiplication; mixed-type cases (e.g., QUANTITY×INTEGER) use adapters like INTEGER→QUANTITY
-*(?INTEGER,  ?INTEGER)  → ?INTEGER
-*(?DECIMAL,  ?DECIMAL)  → ?DECIMAL
-*(?QUANTITY, ?QUANTITY) → ?QUANTITY      -- dimensional exponent arithmetic at runtime
+-- Quantity division
+/(?QUANTITY, ?QUANTITY) → ?QUANTITY
 
--- division; numeric division yields DECIMAL; QUANTITY/QUANTITY yields QUANTITY
-/(?INTEGER,  ?INTEGER)  → ?DECIMAL
-/(?DECIMAL,  ?DECIMAL)  → ?DECIMAL
-/(?QUANTITY, ?QUANTITY) → ?QUANTITY      -- units adjusted per UCUM
+-- String concatenation via +
++(?STRING, ?STRING) → ?STRING
 
--- integer division (truncated)
-div(?INTEGER, ?INTEGER) → ?INTEGER
-div(?DECIMAL, ?DECIMAL) → ?INTEGER
-
--- modulo (remainder)
-mod(?INTEGER, ?INTEGER) → ?INTEGER
-mod(?DECIMAL, ?DECIMAL) → ?DECIMAL
-
--- string concatenation (treats empty as empty string)
-&(?STRING, ?STRING)     → ?STRING
+-- Integer division (truncated) and modulo
+∀ T. [T ∈ {INTEGER, LONG (STU), DECIMAL}] ⇒ div(?T, ?T) → ?INTEGER
+∀ T. [T ∈ {INTEGER, LONG (STU), DECIMAL}] ⇒ mod(?T, ?T) → ?T
 ```
 
-### Date/Time arithmetic
+#### Date/Time arithmetic
 
 ```text
 -- addition
@@ -358,34 +435,16 @@ mod(?DECIMAL, ?DECIMAL) → ?DECIMAL
 -(?TIME,       ?QUANTITY[definite ≤ seconds]) → ?TIME
 ```
 
-Notes:
-- Mixed-type arithmetic (e.g., INTEGER+DECIMAL, QUANTITY*INTEGER, LONG+INTEGER) is resolved by the implicit adapters listed in `TYPES.md` (including `LONG→QUANTITY` (STU)). If multiple lowest-cost adaptation plans exist, the resolver applies the tie-break rules documented in `TYPES.md`.
-- Calendar vs definite duration semantics follow the spec; units above seconds with definite durations are errors for date/time arithmetic.
+## Assumptions and differences from the FHIRPath spec
+- `iif` branch semantics: We assume the true and false branches are lambdas over the input collection shape (per‑collection), i.e., `(α T ⇒ b M)` and `(α T ⇒ c K)`. The FHIRPath specification text is not explicit; this choice aligns with collection‑centric semantics and makes cardinality and typing predictable.
 
----
-
-## Aggregates (STU)
-
-```text
--- aggregator uses $this, $index, and $total; behaves like a fold
-∀ T, U. aggregate(*T, aggregator: (?$this:T, ?$total:U, ?$index:INTEGER) ⇒ ?U, [ init: ?U ]) → ?U
-```
-
-Implementation note: Typing of the aggregator lambda is binary (`T × U → U`); `$index` is available as `?INTEGER`.
-
----
 
 ## Unclear or specification-dependent items
 
-- repeat: projection result type is assumed to be `α T` (same element type) for type safety; in practice, projection may change element types. If so, generalize signature to `repeat(α T, (?T ⇒ α U)) → α U` with `Equatable U`.
-- equals/equivalent on complex types: full structural equality/equivalence is runtime-defined; we model via `Equatable/Equivalent` predicates.
+- `repeat`: projection result type is assumed to be `α T` (same element type) for type safety; in practice, projection may change element types. If so, generalize to `repeat(α T, (?T ⇒ α U)) → α U` with `Equatable U`.
+- Equals/equivalent on complex types: full structural equality/equivalence is runtime-defined; we model via `Equatable/Equivalent` predicates.
 - QUANTITY operations: dimensional analysis (unit exponents, compatibility) is runtime; types capture only `QUANTITY`.
 - Date/Time precision and timezone behavior affect equality/comparison results; signatures assume implicit adapters handle `DATE→DATE_TIME` as needed.
 - `type()` (reflection) returns `TYPEINFO` meta-objects; not part of the core value type lattice.
 - STU items (Long, matchesFull, math functions, additional string functions, defineVariable, reflection) are optional; gate by feature flags.
-- Boolean short-circuiting is not required by the spec; our signatures do not impose evaluation order.
-- iif: Spec defines `iif(criterion: expression, true-result: collection [, otherwise-result: collection])`. We model these as per‑collection lambdas over the input shape for static typing. Review needed if a different evaluation context is desired.
-
----
-
-Generated: 2025‑10‑18
+- Boolean short-circuiting is not required by the spec; math/boolean operator semantics do not imply evaluation order.

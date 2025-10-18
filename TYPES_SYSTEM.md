@@ -15,8 +15,11 @@ Provide a simple, precise, and implementable static type model for `FHIRPath →
   - `?T` = `Single[T]` (`0..1`)
   - `*T` = `Many[T]` (`0..*`)
 - Lambdas: `(S_in ⇒ S_out)` where `S` are shapes (`?T` or `*T`).
+- Optional parameters (doc notation): trailing `[arg : S]` desugars to two overloads: with and without that argument; optional parameters must be trailing (no mandatory params after an optional)
 - Constraints: `[ … ] ⇒ sig` precede the arrow; we use named predicates like `Comparable T`.
 - LUB: `LUB(T, U)` is least upper bound in the element-type lattice; must exist when stated.
+- Cardinality lattice (join): `? ⊔ ? = ?`, `? ⊔ * = *`, `* ⊔ ? = *`, `* ⊔ * = *`
+
 - Top/Bottom element types:
   - `Any` = top element type; `⊥` (Nothing) = bottom element type
   - Subtyping: `⊥ <: T <: Any`; `LUB(T, ⊥) = T`
@@ -39,21 +42,13 @@ Equivalent T   = predicate: T supports equivalence (~) semantics per spec
 
 Note: `QUANTITY` comparability/equality depends on dimensional compatibility (units); this is a runtime check.
 
-### Type relations / promotion rules
+### Specification style preference
 
-To support concise operator definitions, we note the numeric promotion rule used during adapter planning:
-
-```text
-PromoteNum(A, B) where A,B ∈ Numeric
-  = INTEGER  if (A = INTEGER ∧ B = INTEGER)
-  = DECIMAL  otherwise (including any use of LONG (STU))
-```
-
-Numeric division (/) always yields DECIMAL.
+Prefer constrained, named type‑set signatures ("for‑each" form) whenever possible. For example, use `[T ∈ Arithmetic] ⇒ abs(?T) → ?T` instead of listing each numeric/quantity overload; use `TemporalDate`/`Temporal` for date/time component extractors.
 
 ## Implicit adaptations (adapters) and cost
 
-Adapters enable type‑checking and overload resolution via least‑cost plans (multi‑step allowed; costs are additive):
+Adapters enable type‑checking and overload resolution via least‑cost plans (multi‑step allowed; costs are additive). Mixed‑type arithmetic resolution relies entirely on these adapters and their costs; there is no separate promotion table. Numeric division (/) always yields DECIMAL.
 
 - FHIRPath‑defined implicit conversions (from `specs/FHIRPath.md`):
   - Numeric widening:
@@ -239,11 +234,8 @@ join(*STRING, [ ?STRING ]) → ?STRING
 #### Math functions (STU unless noted)
 
 ```text
--- Absolute value
-abs(?INTEGER) → ?INTEGER
-abs(?LONG)    → ?LONG
-abs(?DECIMAL) → ?DECIMAL
-abs(?QUANTITY) → ?QUANTITY
+-- Absolute value (all Arithmetic types)
+∀ T. [T ∈ Arithmetic] ⇒ abs(?T) → ?T
 
 -- Rounding to integral types
 ceiling(?INTEGER) → ?INTEGER
@@ -258,34 +250,19 @@ truncate(?INTEGER) → ?INTEGER
 truncate(?LONG)    → ?LONG
 truncate(?DECIMAL) → ?INTEGER
 
--- Exponential / logarithmic
-exp(?INTEGER) → ?DECIMAL
-exp(?LONG)    → ?DECIMAL
-exp(?DECIMAL) → ?DECIMAL
+-- Exponential / logarithmic over Numeric
+∀ T. [T ∈ Numeric] ⇒ exp(?T) → ?DECIMAL
+∀ T. [T ∈ Numeric] ⇒ ln(?T)  → ?DECIMAL
+∀ T. [T ∈ Numeric] ⇒ log(?T, ?DECIMAL) → ?DECIMAL
 
-ln(?INTEGER) → ?DECIMAL
-ln(?LONG)    → ?DECIMAL
-ln(?DECIMAL) → ?DECIMAL
-
--- Base-10/Arbitrary-base logarithm
-log(?INTEGER, ?DECIMAL) → ?DECIMAL
-log(?LONG,    ?DECIMAL) → ?DECIMAL
-log(?DECIMAL, ?DECIMAL) → ?DECIMAL
-
--- Power (integral stays integral; decimal stays decimal)
-power(?INTEGER, ?INTEGER) → ?INTEGER
-power(?LONG,    ?LONG)    → ?LONG
-power(?DECIMAL, ?DECIMAL) → ?DECIMAL
+-- Power (operand/result remains within the same Numeric kind)
+∀ T. [T ∈ Numeric] ⇒ power(?T, ?T) → ?T
 
 -- Round to precision (result is Decimal)
-round(?INTEGER, [ ?INTEGER ]) → ?DECIMAL
-round(?LONG,    [ ?INTEGER ]) → ?DECIMAL
-round(?DECIMAL, [ ?INTEGER ]) → ?DECIMAL
+∀ T. [T ∈ Numeric] ⇒ round(?T, [ ?INTEGER ]) → ?DECIMAL
 
 -- Square root (Decimal result)
-sqrt(?INTEGER) → ?DECIMAL
-sqrt(?LONG)    → ?DECIMAL
-sqrt(?DECIMAL) → ?DECIMAL
+∀ T. [T ∈ Numeric] ⇒ sqrt(?T) → ?DECIMAL
 ```
 
 #### Tree navigation
@@ -309,30 +286,21 @@ today() → ?DATE
 defineVariable(?STRING, [ expr: (α T ⇒ α U) ]) on input α T → α T
 
 -- Boundaries and precision
-lowBoundary(?DECIMAL, [ ?INTEGER ])   → ?DECIMAL
-lowBoundary(?DATE,    [ ?INTEGER ])   → ?DATE
-lowBoundary(?DATE_TIME,[ ?INTEGER ])  → ?DATE_TIME
-lowBoundary(?TIME,    [ ?INTEGER ])   → ?TIME
-highBoundary(?DECIMAL, [ ?INTEGER ])  → ?DECIMAL
-highBoundary(?DATE,    [ ?INTEGER ])  → ?DATE
-highBoundary(?DATE_TIME,[ ?INTEGER ]) → ?DATE_TIME
-highBoundary(?TIME,    [ ?INTEGER ])  → ?TIME
-precision(?DECIMAL) → ?INTEGER
-precision(?DATE)    → ?INTEGER
-precision(?DATE_TIME) → ?INTEGER
-precision(?TIME)    → ?INTEGER
+∀ T. [T ∈ (Temporal ∪ DECIMAL)] lowBoundary(?T, [ ?INTEGER ])   → ?T
+∀ T. [T ∈ (Temporal ∪ DECIMAL)] highBoundary(?T, [ ?INTEGER ])  → ?T
+∀ T. [T ∈ (Temporal ∪ DECIMAL)] precision(?T) → ?INTEGER
 
 -- Extract Date/DateTime/Time components
-yearOf( ?DATE | ?DATE_TIME ) → ?INTEGER
-monthOf(?DATE | ?DATE_TIME ) → ?INTEGER
-dayOf(  ?DATE | ?DATE_TIME ) → ?INTEGER
-hourOf( ?DATE | ?DATE_TIME | ?TIME ) → ?INTEGER
-minuteOf(?DATE | ?DATE_TIME | ?TIME ) → ?INTEGER
-secondOf(?DATE | ?DATE_TIME | ?TIME ) → ?INTEGER
-millisecondOf(?DATE | ?DATE_TIME | ?TIME ) → ?INTEGER
+yearOf(?TemporalDate)     → ?INTEGER
+monthOf(?TemporalDate)    → ?INTEGER
+dayOf(?TemporalDate)      → ?INTEGER
+hourOf(?Temporal)         → ?INTEGER
+minuteOf(?Temporal)       → ?INTEGER
+secondOf(?Temporal)       → ?INTEGER
+millisecondOf(?Temporal)  → ?INTEGER
 timezoneOffsetOf(?DATE_TIME) → ?DECIMAL
-dateOf( ?DATE | ?DATE_TIME ) → ?DATE
-timeOf(?DATE_TIME) → ?TIME
+dateOf(?TemporalDate)     → ?DATE
+timeOf(?DATE_TIME)        → ?TIME
 ```
 
 ### Operators
@@ -399,7 +367,7 @@ Note: Operands are first evaluated as Booleans via singleton-evaluation rules; e
 
 #### Math (operators)
 
-Mixed‑type arithmetic is handled via the implicit adapters described above; operators are defined using constrained Numeric/Arithmetic signatures plus String and Quantity same‑type cases.
+Mixed‑type arithmetic is handled via the implicit adapters described above; operators are defined using constrained Numeric/Arithmetic signatures plus String same‑type cases.
 
 ```text
 -- Numeric/Quantity arithmetic (same‑type via adapters)
@@ -417,23 +385,23 @@ Mixed‑type arithmetic is handled via the implicit adapters described above; op
 +(?STRING, ?STRING) → ?STRING
 
 -- Integer division (truncated) and modulo
-∀ T. [T ∈ {INTEGER, LONG (STU), DECIMAL}] ⇒ div(?T, ?T) → ?INTEGER
-∀ T. [T ∈ {INTEGER, LONG (STU), DECIMAL}] ⇒ mod(?T, ?T) → ?T
+∀ T. [T ∈ Numeric] ⇒ div(?T, ?T) → ?INTEGER
+∀ T. [T ∈ Numeric] ⇒ mod(?T, ?T) → ?T
 ```
 
 #### Date/Time arithmetic
 
 ```text
 -- addition
-+(?DATE,       ?QUANTITY[calendar]) → ?DATE
-+(?DATE_TIME,  ?QUANTITY[calendar|definite]) → ?DATE_TIME
-+(?TIME,       ?QUANTITY[definite ≤ seconds]) → ?TIME
+∀ T. [T ∈ Temporal] +(?T,?QUANTITY) → ?T
 
 -- subtraction
--(?DATE,       ?QUANTITY[calendar]) → ?DATE
--(?DATE_TIME,  ?QUANTITY[calendar|definite]) → ?DATE_TIME
--(?TIME,       ?QUANTITY[definite ≤ seconds]) → ?TIME
+∀ T. [T ∈ Temporal] -(?T,?QUANTITY) → ?T
 ```
+
+Rule: For units above seconds, operations use calendar semantics; at seconds and below, definite-duration semantics apply. Using a definite-duration unit above seconds is an error per the FHIRPath spec.
+
+
 
 ## Assumptions and differences from the FHIRPath spec
 - `iif` branch semantics: We assume the true and false branches are lambdas over the input collection shape (per‑collection), i.e., `(α T ⇒ b M)` and `(α T ⇒ c K)`. The FHIRPath specification text is not explicit; this choice aligns with collection‑centric semantics and makes cardinality and typing predictable.

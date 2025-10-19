@@ -9,8 +9,29 @@ import com.example.fhirpath.typing.ResourceType;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.Column;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
+/**
+ * Main API for compiling FHIRPath expressions to Apache Spark SQL columns.
+ *
+ * <p>This class provides static methods to parse, analyze, and generate Spark SQL code
+ * from FHIRPath expressions. It serves as the primary entry point for the FHIRPath
+ * to SQL translation system.
+ *
+ * <p>Example usage:
+ * <pre>{@code
+ * Column result = FhirPath.toColumn("Patient.name.given");
+ * Column filtered = FhirPath.toColumn("Patient.name.where(use = 'official')");
+ * Column withContext = FhirPath.toColumn("name.given", "Patient.name");
+ * }</pre>
+ *
+ * <p>The compilation process follows a pipeline architecture:
+ * <ol>
+ *   <li>Parse the FHIRPath expression into an Abstract Syntax Tree (AST)</li>
+ *   <li>Analyze the AST to produce a typed Intermediate Representation (IR)</li>
+ *   <li>Generate a Spark SQL Column from the IR</li>
+ * </ol>
+ */
 @Slf4j
 public final class FhirPath {
     private FhirPath() {

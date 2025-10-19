@@ -3,8 +3,20 @@ package com.example.fhirpath.codegen.spark;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
+/**
+ * Wrapper for FHIRPath Quantity values in Spark SQL.
+ *
+ * <p>In FHIRPath, a Quantity is a structured type containing a numeric value,
+ * a unit of measure, and optional system and code fields. This record provides
+ * typed access to Quantity fields and operations on Quantity values.
+ *
+ * <p>The underlying Spark representation is a struct with fields:
+ * {@code value}, {@code unit}, {@code system}, {@code code}.
+ *
+ * @param target The Spark SQL column containing the Quantity struct
+ */
 public record Quantity(@Nonnull Column target) {
     @Nonnull
     public Column abs() {

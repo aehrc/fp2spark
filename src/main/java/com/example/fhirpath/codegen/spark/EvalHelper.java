@@ -5,12 +5,22 @@ import com.example.fhirpath.ir.IRNode;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 import java.util.function.Function;
 
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
+/**
+ * Helper record for handling FHIRPath expressions that can be either singular values or arrays.
+ *
+ * <p>In FHIRPath, collections can have different cardinalities (single vs many elements).
+ * This record provides utilities to apply different operations based on whether a column
+ * represents a singular value or an array, enabling proper handling of both cases.
+ *
+ * @param column The Spark SQL column containing the value
+ * @param isSingular Whether the column represents a singular value (true) or an array (false)
+ */
 public record EvalHelper(Column column, boolean isSingular) {
     /**
      * Apply different functions based on whether the column is singular or an array.

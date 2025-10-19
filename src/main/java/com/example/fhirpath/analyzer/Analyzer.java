@@ -163,7 +163,6 @@ public class Analyzer {
 
     private IRNode resolveVariable(AstVariable variable) {
         return switch (variable.name()) {
-            // TODO: the context node should be analyzed with empty context to avoid recursion
             case CONTEXT_VARIABLE -> new Analyzer(resourceSpec).analyze(contextNode);
             case RESOURCE_VARIABLE -> new Resource(resourceSpec);
             default ->

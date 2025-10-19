@@ -1,5 +1,14 @@
 package com.example.fhirpath.typing;
 
+/**
+ * Enumeration of FHIRPath primitive types.
+ *
+ * <p>Primitive types represent the fundamental value types in FHIRPath
+ * such as integers, strings, booleans, and temporal types.
+ *
+ * <p>In the element-first type system, PrimitiveType represents the element type,
+ * while {@link Cardinality} specifies how many elements (0..1 or 0..*).
+ */
 public enum PrimitiveType implements Type {
     INTEGER("integer"),
     DECIMAL("decimal"),

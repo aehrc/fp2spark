@@ -1,6 +1,6 @@
 package com.example.fhirpath.ast;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 public record AstVariable(@Nonnull String name) implements AstNode {
 

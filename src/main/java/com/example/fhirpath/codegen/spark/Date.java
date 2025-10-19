@@ -2,8 +2,17 @@ package com.example.fhirpath.codegen.spark;
 
 import org.apache.spark.sql.Column;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
+/**
+ * Wrapper for FHIRPath Date values in Spark SQL.
+ *
+ * <p>Provides typed operations for FHIRPath date values (dates without time),
+ * including comparisons and conversions. The underlying Spark representation
+ * stores date values according to the FHIRPath specification.
+ *
+ * @param target The Spark SQL column containing the date value
+ */
 public record Date(@Nonnull Column target) {
     @Nonnull
     public static Date date(@Nonnull final Column dateTimeColumn) {

@@ -1,6 +1,5 @@
 package com.example.fhirpath.analyzer;
 
-import com.example.fhirpath.typing.Cardinality;
 import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.Type;
 
@@ -100,49 +99,6 @@ public record SignatureDefinition(
         return parameters.stream()
             .map(ParamSpec::type)
             .toList();
-    }
-
-    /**
-     * Gets the result type (element type without cardinality) for static signatures.
-     * For dynamic signatures, this returns the type from the Static wrapper.
-     *
-     * @deprecated Use resultSpec.resolve() for accurate type information
-     */
-    @Nonnull
-    @Deprecated
-    public Type resultType() {
-        if (resultSpec instanceof ResultTypeSpec.Static staticSpec) {
-            return staticSpec.type();
-        }
-        throw new UnsupportedOperationException(
-            "Cannot get static result type from dynamic ResultTypeSpec. Use resolve() instead."
-        );
-    }
-
-    /**
-     * Gets the result cardinality for static signatures.
-     * For dynamic signatures, this returns the cardinality from the wrapper.
-     *
-     * @deprecated Use resultSpec.resolve() for accurate cardinality information
-     */
-    @Nonnull
-    @Deprecated
-    public Cardinality resultCardinality() {
-        if (resultSpec instanceof ResultTypeSpec.Static staticSpec) {
-            return staticSpec.cardinality();
-        } else if (resultSpec instanceof ResultTypeSpec.InputType inputType) {
-            return inputType.cardinality();
-        } else if (resultSpec instanceof ResultTypeSpec.EffectiveInputType effectiveType) {
-            return effectiveType.cardinality();
-        } else if (resultSpec instanceof ResultTypeSpec.LambdaBodyType) {
-            // LambdaBodyType extracts cardinality from lambda body at resolution time
-            throw new UnsupportedOperationException(
-                "Cannot get static cardinality from LambdaBodyType. Use resolve() instead."
-            );
-        }
-        throw new UnsupportedOperationException(
-            "Unknown ResultTypeSpec type: " + resultSpec.getClass()
-        );
     }
 
     @Override

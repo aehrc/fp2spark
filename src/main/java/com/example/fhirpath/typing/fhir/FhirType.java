@@ -3,7 +3,7 @@ package com.example.fhirpath.typing.fhir;
 import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Represents a FHIR primitive type (e.g., FhirString, FhirInteger).

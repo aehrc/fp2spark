@@ -1,7 +1,7 @@
 package com.example.fhirpath.ast;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 public record AstTraversal(String path, @Nullable AstNode target) implements WithTarget<AstTraversal> {
     // Constructor for traversals without a target (standalone field access)

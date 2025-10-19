@@ -2,8 +2,17 @@ package com.example.fhirpath.codegen.spark;
 
 import org.apache.spark.sql.Column;
 
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
+/**
+ * Wrapper for FHIRPath Time values in Spark SQL.
+ *
+ * <p>Provides typed operations for FHIRPath time values, including
+ * comparisons and conversions. The underlying Spark representation
+ * stores time values according to the FHIRPath specification.
+ *
+ * @param target The Spark SQL column containing the time value
+ */
 public record Time(@Nonnull Column target) {
     @Nonnull
     public static Time time(@Nonnull final Column timeColumn) {

@@ -108,6 +108,7 @@ hey are based on industry best practices and project specific requirements.
 
 - **Use `@Override`** for all overridden methods to catch errors at compile time.
 - **Do not suppress warnings** (`@SuppressWarnings`) without a clear justification and comment.
+- **Use `jakarta.annotation` package for annotations,** not `javax.annotation`. This project uses Jakarta EE annotations.
 - **Use nullability annotations** (`jakarta.annotation.Nonnull` and `jakarta.annotation.Nullable`) on method parameters,
   return values, and class or record fields.
 - **Use custom annotations** for domain-specific metadata when appropriate.

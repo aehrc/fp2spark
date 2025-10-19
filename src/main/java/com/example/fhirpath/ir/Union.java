@@ -14,13 +14,6 @@ import java.util.List;
  */
 public record Union(IRNode left, IRNode right) implements IRNode {
 
-    // TODO: Update signatures to use Shape when implementing signature system
-    // Static signatures for Union operation - overloaded for all defined types
-    public static final List<FunctionSignature> SIGNATURES =
-            TypeSystem.definedTypes()
-                    .map(FunctionSignature::biOperator)
-                    .toList();
-
     @Override
     @Nonnull
     public Shape getShape() {

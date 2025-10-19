@@ -1,7 +1,7 @@
 package com.example.fhirpath.ast;
 
 import jakarta.annotation.Nullable;
-import javax.annotation.Nonnull;
+import jakarta.annotation.Nonnull;
 
 /**
  * Interface for AST nodes that have an optional target expression.

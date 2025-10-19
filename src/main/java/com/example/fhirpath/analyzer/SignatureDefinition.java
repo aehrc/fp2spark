@@ -134,6 +134,8 @@ public record SignatureDefinition(
             return inputType.cardinality();
         } else if (resultSpec instanceof ResultTypeSpec.EffectiveInputType effectiveType) {
             return effectiveType.cardinality();
+        } else if (resultSpec instanceof ResultTypeSpec.LambdaBodyType lambdaBodyType) {
+            return lambdaBodyType.cardinality();
         }
         throw new UnsupportedOperationException(
             "Unknown ResultTypeSpec type: " + resultSpec.getClass()

@@ -21,6 +21,7 @@ import java.util.List;
  * <ul>
  *   <li>Static: {@code add(?INTEGER, ?INTEGER) → ?INTEGER}
  *   <li>Dynamic: {@code where(*T, Lambda) → *T} (preserves input type)
+ *   <li>Lambda body: {@code iif(*T, ?Lambda(?BOOL), ?Lambda(?R)) → ?R} (extracts from lambda body)
  * </ul>
  *
  * <p>Phase 2 will add type variables to eliminate need for dynamic resolution.
@@ -28,7 +29,8 @@ import java.util.List;
 public sealed interface ResultTypeSpec
         permits ResultTypeSpec.Static,
                 ResultTypeSpec.InputType,
-                ResultTypeSpec.EffectiveInputType {
+                ResultTypeSpec.EffectiveInputType,
+                ResultTypeSpec.LambdaBodyType {
 
     /**
      * Resolve the result shape from analyzed arguments.
@@ -81,6 +83,22 @@ public sealed interface ResultTypeSpec
     @Nonnull
     static ResultTypeSpec effectiveInputType(@Nonnull Cardinality cardinality) {
         return new EffectiveInputType(cardinality);
+    }
+
+    /**
+     * Creates a dynamic result spec that extracts type from a lambda body.
+     * Result type = return type of lambda at specified argument index.
+     *
+     * <p>Used for operations like {@code iif()} where result type depends on
+     * the lambda body's return type.
+     *
+     * @param argumentIndex the index of the lambda argument to extract type from
+     * @param cardinality   the result cardinality
+     * @return dynamic result spec
+     */
+    @Nonnull
+    static ResultTypeSpec lambdaBodyType(int argumentIndex, @Nonnull Cardinality cardinality) {
+        return new LambdaBodyType(argumentIndex, cardinality);
     }
 
     /**
@@ -162,6 +180,46 @@ public sealed interface ResultTypeSpec
         @Override
         public String toString() {
             return (cardinality == Cardinality.SINGLE ? "?" : "*") + "T (effective type)";
+        }
+    }
+
+    /**
+     * Dynamic result type - extracts type from a lambda body.
+     *
+     * <p>Result type = return type of lambda at specified argument index.
+     *
+     * <p>This is used for operations like {@code iif()} where the result type
+     * is determined by the lambda's body type.
+     *
+     * <p>Example: {@code iif(*T, ?Lambda(?BOOL), ?Lambda(?R)) → ?R}
+     * The result type R comes from the second lambda's body type.
+     */
+    record LambdaBodyType(int argumentIndex, @Nonnull Cardinality cardinality) implements ResultTypeSpec {
+        @Override
+        @Nonnull
+        public Shape resolve(@Nonnull List<IRNode> resolvedArgs) {
+            if (argumentIndex >= resolvedArgs.size()) {
+                throw new IllegalArgumentException(
+                        "LambdaBodyType requires argument at index " + argumentIndex +
+                        " but only " + resolvedArgs.size() + " arguments provided");
+            }
+
+            IRNode lambdaArg = resolvedArgs.get(argumentIndex);
+            if (!(lambdaArg instanceof com.example.fhirpath.ir.Lambda lambda)) {
+                throw new IllegalArgumentException(
+                        "LambdaBodyType expects Lambda at argument index " + argumentIndex +
+                        " but got " + lambdaArg.getClass().getSimpleName());
+            }
+
+            // Extract the type from the lambda's body
+            Type bodyType = lambda.body().getType();
+            return Shape.of(bodyType, cardinality);
+        }
+
+        @Override
+        public String toString() {
+            return (cardinality == Cardinality.SINGLE ? "?" : "*") +
+                   "R (from lambda[" + argumentIndex + "] body)";
         }
     }
 }

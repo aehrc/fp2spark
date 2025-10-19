@@ -1,5 +1,6 @@
 package com.example.fhirpath.analyzer;
 
+import com.example.fhirpath.typing.Cardinality;
 import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.Type;
@@ -109,12 +110,15 @@ public final class Signatures {
     /**
      * Element extractor from collection: *T → ?T
      * Example: *T.first() → ?T
+     *
+     * <p>Phase 1 workaround: Uses dynamic result type resolution (ResultTypeSpec.effectiveInputType)
+     * to extract the element type from the input collection, since we don't have type variables yet.
      */
     @Nonnull
     public static SignatureDefinition elementExtractor(@Nonnull final Type elementType) {
         return new SignatureDefinition(
                 List.of(many(elementType)),
-                ResultTypeSpec.single(elementType)
+                ResultTypeSpec.effectiveInputType(Cardinality.SINGLE)  // Dynamic: extract element type with SINGLE cardinality
         );
     }
 
@@ -183,15 +187,19 @@ public final class Signatures {
      * Example: *T.where(?Lambda(?BOOLEAN)) → *T
      *
      * <p>Uses ELEMENT_WISE binding: $this = T (element type)
+     *
+     * <p>Phase 1 workaround: Uses dynamic result type resolution (ResultTypeSpec.inputType)
+     * to preserve the input element type, since we don't have type variables yet.
      */
     @Nonnull
     public static SignatureDefinition collectionFilter(@Nonnull final Type elementType) {
         // Lambda expects single BOOLEAN result
         final LambdaType lambdaType = new LambdaType(Shape.single(Types.BOOLEAN));
 
+        // Use dynamic result resolution to preserve input type
         return new SignatureDefinition(
                 List.of(many(elementType), single(lambdaType)),
-                ResultTypeSpec.many(elementType),
+                ResultTypeSpec.inputType(Cardinality.MANY),  // Dynamic: preserve input type with MANY cardinality
                 2,  // minArity
                 LambdaBindingStrategy.ELEMENT_WISE  // $this = element
         );

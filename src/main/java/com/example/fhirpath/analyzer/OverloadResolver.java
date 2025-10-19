@@ -65,8 +65,8 @@ public final class OverloadResolver {
                         .map(a -> a.node)
                         .toList();
 
-                // In Phase 1, result shape is directly specified in signature (no type variables)
-                ResolvedSignature resolvedSig = ResolvedSignature.fromDefinition(sig);
+                // Resolve signature (ResultTypeSpec.resolve handles both static and dynamic)
+                ResolvedSignature resolvedSig = ResolvedSignature.fromDefinition(sig, adaptedArgs);
                 best = new ResolvedCall(resolvedSig, adaptedArgs);
             }
         }

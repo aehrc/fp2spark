@@ -16,6 +16,12 @@ import java.util.stream.Stream;
  * Each parameter has a concrete type + cardinality via ParamSpec.
  * Result type + cardinality is specified via ResultTypeSpec.
  *
+ * <p>ResultTypeSpec supports both static and dynamic type resolution:
+ * <ul>
+ *   <li>Static: {@code ResultTypeSpec.single(INTEGER)} for fixed types
+ *   <li>Dynamic: {@code ResultTypeSpec.inputType(MANY)} to preserve input type
+ * </ul>
+ *
  * <p>Phase 2 will add support for type variables and constraints.
  *
  * <p>Implements TypeGroup to enable zero-overhead usage in registry:
@@ -97,20 +103,41 @@ public record SignatureDefinition(
     }
 
     /**
-     * Gets the result type (element type without cardinality).
-     * Convenience method for compatibility.
+     * Gets the result type (element type without cardinality) for static signatures.
+     * For dynamic signatures, this returns the type from the Static wrapper.
+     *
+     * @deprecated Use resultSpec.resolve() for accurate type information
      */
     @Nonnull
+    @Deprecated
     public Type resultType() {
-        return resultSpec.type();
+        if (resultSpec instanceof ResultTypeSpec.Static staticSpec) {
+            return staticSpec.type();
+        }
+        throw new UnsupportedOperationException(
+            "Cannot get static result type from dynamic ResultTypeSpec. Use resolve() instead."
+        );
     }
 
     /**
-     * Gets the result cardinality.
+     * Gets the result cardinality for static signatures.
+     * For dynamic signatures, this returns the cardinality from the wrapper.
+     *
+     * @deprecated Use resultSpec.resolve() for accurate cardinality information
      */
     @Nonnull
+    @Deprecated
     public Cardinality resultCardinality() {
-        return resultSpec.cardinality();
+        if (resultSpec instanceof ResultTypeSpec.Static staticSpec) {
+            return staticSpec.cardinality();
+        } else if (resultSpec instanceof ResultTypeSpec.InputType inputType) {
+            return inputType.cardinality();
+        } else if (resultSpec instanceof ResultTypeSpec.EffectiveInputType effectiveType) {
+            return effectiveType.cardinality();
+        }
+        throw new UnsupportedOperationException(
+            "Unknown ResultTypeSpec type: " + resultSpec.getClass()
+        );
     }
 
     @Override

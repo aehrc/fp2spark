@@ -42,18 +42,26 @@ public record ResolvedSignature(
 
     /**
      * Create a resolved signature from a Phase 1 signature definition.
-     * In Phase 1, the result shape is directly specified (no type variable substitution).
+     * In Phase 1, the result shape may be static or dynamic (computed from arguments).
+     *
+     * @param definition the signature definition
+     * @param resolvedArgs the resolved arguments (needed for dynamic type resolution)
+     * @return resolved signature with concrete result shape
      */
     @Nonnull
-    public static ResolvedSignature fromDefinition(@Nonnull SignatureDefinition definition) {
+    public static ResolvedSignature fromDefinition(
+            @Nonnull SignatureDefinition definition,
+            @Nonnull List<com.example.fhirpath.ir.IRNode> resolvedArgs
+    ) {
         // Extract parameter types (without cardinality)
         List<Type> paramTypes = definition.parameters().stream()
             .map(ParamSpec::type)
             .toList();
 
-        // Get result shape from definition
-        Shape resultShape = definition.resultSpec().toShape();
+        // Resolve result shape (static or dynamic)
+        Shape resultShape = definition.resultSpec().resolve(resolvedArgs);
 
         return new ResolvedSignature(paramTypes, resultShape, definition.minArity());
     }
+
 }

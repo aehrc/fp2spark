@@ -22,7 +22,7 @@ public class Analyzer {
     @Nonnull
     private final ResourceType resourceSpec;
     @Nullable
-    private final Type thisType;  // For lambda analysis
+    private final Shape thisShape;  // For lambda analysis - tracks both type and cardinality of $this
 
     public Analyzer() {
         // by default, no context
@@ -47,18 +47,20 @@ public class Analyzer {
     private Analyzer(
             @Nonnull AstNode contextNode,
             @Nonnull ResourceType resourceSpec,
-            @Nullable Type thisType
+            @Nullable Shape thisShape
     ) {
         this.contextNode = contextNode;
         this.resourceSpec = resourceSpec;
-        this.thisType = thisType;
+        this.thisShape = thisShape;
     }
 
     /**
-     * Creates an analyzer for lambda body with $this bound to elementType.
+     * Creates an analyzer for lambda body with $this bound to the specified shape.
+     *
+     * @param shape the shape (type + cardinality) of $this
      */
-    private Analyzer withThisType(@Nonnull Type elementType) {
-        return new Analyzer(this.contextNode, this.resourceSpec, elementType);
+    private Analyzer withThisShape(@Nonnull Shape shape) {
+        return new Analyzer(this.contextNode, this.resourceSpec, shape);
     }
 
     /**
@@ -68,7 +70,7 @@ public class Analyzer {
      */
     @Nonnull
     private AstNode getImplicitTarget() {
-        return (thisType != null)
+        return (thisShape != null)
                 ? AstIterationVariable.thisVariable()
                 : AstVariable.contextVariable();
     }
@@ -175,13 +177,13 @@ public class Analyzer {
     private IRNode resolveIterationVariable(AstIterationVariable iterVar) {
         return switch (iterVar.name()) {
             case AstIterationVariable.THIS -> {
-                if (thisType == null) {
+                if (thisShape == null) {
                     throw new InvalidExpressionException(
                             "$this can only be used in lambda expressions (e.g., within where() or select())",
                             null
                     );
                 }
-                yield new ThisReference(thisType);
+                yield new ThisReference(thisShape);
             }
             case AstIterationVariable.INDEX -> throw new UnsupportedFeatureException(
                     "$index iteration variable",
@@ -278,21 +280,21 @@ public class Analyzer {
         // Get the signature (now guaranteed to be unambiguous for arity)
         final SignatureDefinition sig = matchingSignatures.get(0);
 
-        // Determine $this binding type based on lambda binding strategy
-        final Type thisBindingType;
+        // Determine $this binding shape based on lambda binding strategy
+        final Shape thisBindingShape;
         if (sig.lambdaBinding() != null) {
-            thisBindingType = switch (sig.lambdaBinding()) {
-                case ELEMENT_WISE -> extractElementType(targetIR.getType());
-                case COLLECTION_WISE -> targetIR.getType();  // Entire collection
+            thisBindingShape = switch (sig.lambdaBinding()) {
+                case ELEMENT_WISE -> Shape.single(extractElementType(targetIR.getType()));
+                case COLLECTION_WISE -> targetIR.getShape();  // Preserves MANY cardinality
             };
         } else {
-            // No lambda parameters - thisBindingType won't be used
-            thisBindingType = null;
+            // No lambda parameters - thisBindingShape won't be used
+            thisBindingShape = null;
         }
 
         // Create lambda analyzer if needed
-        final Analyzer thisAnalyzer = thisBindingType != null
-                ? withThisType(thisBindingType)
+        final Analyzer thisAnalyzer = thisBindingShape != null
+                ? withThisShape(thisBindingShape)
                 : null;
 
         // Analyze arguments based on signature parameter types

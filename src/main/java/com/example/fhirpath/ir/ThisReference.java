@@ -6,29 +6,38 @@ import jakarta.annotation.Nonnull;
 
 /**
  * IR node representing $this reference in lambda expressions.
- * $this refers to the current element being evaluated in collection operations like where() and select().
+ * $this refers to the current value being evaluated in lambda expressions.
  *
- * <p>Example: name.where(use = 'official')
+ * <p>The shape (type + cardinality) of $this depends on the lambda binding strategy:
+ * <ul>
+ *   <li><b>ELEMENT_WISE</b>: $this is a single element (e.g., in where())</li>
+ *   <li><b>COLLECTION_WISE</b>: $this is the entire collection (e.g., in iif())</li>
+ * </ul>
+ *
+ * <p>Example (ELEMENT_WISE): name.where(use = 'official')
  * <pre>
  * The expression "use = 'official'" is analyzed as:
- *   Operation("equals", [Traversal(ThisReference(HumanName), "use"), Literal("official")])
- * ThisReference holds the type of the collection element (HumanName)
+ *   Operation("equals", [Traversal(ThisReference(HumanName, SINGLE), "use"), Literal("official")])
+ * ThisReference holds single element of type HumanName
  * </pre>
  *
- * <p>During code generation, ThisReference is substituted with the actual element variable
- * passed to the Spark lambda function.
+ * <p>Example (COLLECTION_WISE): (1 | 2 | 3).iif(exists(), $this)
+ * <pre>
+ * The expression "$this" refers to the entire collection:
+ *   ThisReference(INTEGER, MANY)
+ * </pre>
  *
- * <p>$this always has single cardinality (refers to one element at a time).
+ * <p>During code generation, ThisReference is substituted with the actual variable
+ * passed to the Spark lambda function.
  */
 public record ThisReference(
-    @Nonnull Type type
+    @Nonnull Shape shape
 ) implements IRNode {
 
     @Override
     @Nonnull
     public Shape getShape() {
-        // $this always refers to a single element in the iteration
-        return Shape.single(type);
+        return shape;
     }
 
     @Override
@@ -39,6 +48,6 @@ public record ThisReference(
 
     @Override
     public String toString() {
-        return "$this : " + type;
+        return "$this : " + shape;
     }
 }

@@ -221,14 +221,21 @@ public final class Signatures {
     }
 
     /**
-     * Conditional iif operation: (*T, ?Lambda(?BOOLEAN), ?Lambda(?R)) → ?R
+     * Conditional iif operation: (*T, ?Lambda(?BOOLEAN), ?Lambda(S)) → S
      *
      * <p>Uses COLLECTION_WISE binding: $this = *T (entire collection)
      *
-     * <p>Phase 1 workaround: Uses dynamic result type resolution (ResultTypeSpec.lambdaBodyType)
-     * to extract the result type from the "then" lambda's body, since we don't have type variables yet.
+     * <p>Phase 1 workaround: Uses dynamic result shape resolution (ResultTypeSpec.lambdaBodyType)
+     * to extract the result shape (type + cardinality) from the "then" lambda's body,
+     * since we don't have type variables yet.
      *
-     * <p>Phase 2 will add type variables and properly compute result cardinality from lambda body.
+     * <p>The result shape S is whatever the lambda body returns:
+     * <ul>
+     *   <li>If lambda returns ?R (single), result is ?R</li>
+     *   <li>If lambda returns *R (many), result is *R</li>
+     * </ul>
+     *
+     * <p>Phase 2 will add type variables for more precise type checking.
      */
     @Nonnull
     public static SignatureDefinition conditionalIif(@Nonnull final Type inputType, @Nonnull final Type resultType) {
@@ -238,8 +245,8 @@ public final class Signatures {
                         single(new LambdaType(Shape.single(Types.BOOLEAN))),
                         single(new LambdaType(Shape.single(resultType)))
                 ),
-                // Dynamic: extract result type from lambda at argument index 2 (the "then" lambda)
-                ResultTypeSpec.lambdaBodyType(2, Cardinality.SINGLE),
+                // Dynamic: extract result shape from lambda at argument index 2 (the "then" lambda)
+                ResultTypeSpec.lambdaBodyType(2),
                 3,
                 LambdaBindingStrategy.COLLECTION_WISE
         );

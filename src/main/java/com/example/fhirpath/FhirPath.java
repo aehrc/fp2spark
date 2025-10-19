@@ -97,7 +97,10 @@ public final class FhirPath {
         log.debug("IR: {}", ir);
 
         // Generate Spark SQL Column from IR
-        return ir.accept(new SparkCodeGenerator());
+        Column column = ir.accept(new SparkCodeGenerator());
+        log.debug("SQL: {}", column);
+
+        return column;
     }
 
     /**

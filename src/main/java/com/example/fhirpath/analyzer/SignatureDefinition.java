@@ -134,8 +134,11 @@ public record SignatureDefinition(
             return inputType.cardinality();
         } else if (resultSpec instanceof ResultTypeSpec.EffectiveInputType effectiveType) {
             return effectiveType.cardinality();
-        } else if (resultSpec instanceof ResultTypeSpec.LambdaBodyType lambdaBodyType) {
-            return lambdaBodyType.cardinality();
+        } else if (resultSpec instanceof ResultTypeSpec.LambdaBodyType) {
+            // LambdaBodyType extracts cardinality from lambda body at resolution time
+            throw new UnsupportedOperationException(
+                "Cannot get static cardinality from LambdaBodyType. Use resolve() instead."
+            );
         }
         throw new UnsupportedOperationException(
             "Unknown ResultTypeSpec type: " + resultSpec.getClass()

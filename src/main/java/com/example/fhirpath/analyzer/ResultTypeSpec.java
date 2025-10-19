@@ -86,19 +86,18 @@ public sealed interface ResultTypeSpec
     }
 
     /**
-     * Creates a dynamic result spec that extracts type from a lambda body.
-     * Result type = return type of lambda at specified argument index.
+     * Creates a dynamic result spec that extracts shape from a lambda body.
+     * Result shape (type + cardinality) = return shape of lambda at specified argument index.
      *
-     * <p>Used for operations like {@code iif()} where result type depends on
-     * the lambda body's return type.
+     * <p>Used for operations like {@code iif()} where result type and cardinality depend on
+     * the lambda body's return shape.
      *
-     * @param argumentIndex the index of the lambda argument to extract type from
-     * @param cardinality   the result cardinality
+     * @param argumentIndex the index of the lambda argument to extract shape from
      * @return dynamic result spec
      */
     @Nonnull
-    static ResultTypeSpec lambdaBodyType(int argumentIndex, @Nonnull Cardinality cardinality) {
-        return new LambdaBodyType(argumentIndex, cardinality);
+    static ResultTypeSpec lambdaBodyType(int argumentIndex) {
+        return new LambdaBodyType(argumentIndex);
     }
 
     /**
@@ -184,17 +183,17 @@ public sealed interface ResultTypeSpec
     }
 
     /**
-     * Dynamic result type - extracts type from a lambda body.
+     * Dynamic result shape - extracts full shape from a lambda body.
      *
-     * <p>Result type = return type of lambda at specified argument index.
+     * <p>Result shape (type + cardinality) = return shape of lambda at specified argument index.
      *
-     * <p>This is used for operations like {@code iif()} where the result type
-     * is determined by the lambda's body type.
+     * <p>This is used for operations like {@code iif()} where the result type and cardinality
+     * are determined by the lambda's body shape.
      *
-     * <p>Example: {@code iif(*T, ?Lambda(?BOOL), ?Lambda(?R)) → ?R}
-     * The result type R comes from the second lambda's body type.
+     * <p>Example: {@code iif(*T, ?Lambda(?BOOL), ?Lambda(*R)) → *R}
+     * The result shape *R comes from the second lambda's body shape.
      */
-    record LambdaBodyType(int argumentIndex, @Nonnull Cardinality cardinality) implements ResultTypeSpec {
+    record LambdaBodyType(int argumentIndex) implements ResultTypeSpec {
         @Override
         @Nonnull
         public Shape resolve(@Nonnull List<IRNode> resolvedArgs) {
@@ -211,15 +210,13 @@ public sealed interface ResultTypeSpec
                         " but got " + lambdaArg.getClass().getSimpleName());
             }
 
-            // Extract the type from the lambda's body
-            Type bodyType = lambda.body().getType();
-            return Shape.of(bodyType, cardinality);
+            // Extract the full shape (type + cardinality) from the lambda's body
+            return lambda.body().getShape();
         }
 
         @Override
         public String toString() {
-            return (cardinality == Cardinality.SINGLE ? "?" : "*") +
-                   "R (from lambda[" + argumentIndex + "] body)";
+            return "S (from lambda[" + argumentIndex + "] body)";
         }
     }
 }

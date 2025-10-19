@@ -367,8 +367,40 @@ public class Analyzer {
                 .orElseGet(() -> new Literal(null, Types.NULL));
     }
 
+    /**
+     * Resolves binary operators to IR nodes.
+     * Binary operators are syntactic sugar for function calls (e.g., a + b ≡ add(a, b)).
+     */
     private IRNode resolveBinaryOp(AstBinaryOperator binaryOp) {
-        return FunctionRegistry.resolve(this, binaryOp);
+        // Analyze both operands
+        final List<IRNode> args = List.of(
+                analyze(binaryOp.left()),
+                analyze(binaryOp.right())
+        );
+
+        final String operatorSymbol = binaryOp.operator();
+
+        // Normalize operator symbol to canonical function name (e.g., "=" → "equals", "+" → "add")
+        final String operationName = OperatorNormalizer.normalize(operatorSymbol);
+
+        // Special handling for infrastructure operations (equals, union)
+        // These bypass normal signature resolution
+        if ("equals".equals(operationName)) {
+            return new Equals(args.get(0), args.get(1));
+        }
+        if ("union".equals(operationName)) {
+            return new Union(args.get(0), args.get(1));
+        }
+
+        // Standard operations: query registry and resolve via overload resolution
+        final List<SignatureDefinition> signatures = OperationRegistry.getSignatures(operationName);
+        if (!signatures.isEmpty()) {
+            final OverloadResolver.ResolvedCall resolvedCall =
+                    OverloadResolver.resolveCall(operationName, signatures, args);
+            return new Operation(operationName, resolvedCall.args(), resolvedCall.signature());
+        }
+
+        throw new UnsupportedOperatorException(operatorSymbol, null);
     }
 
     private Type inferType(Object value) {

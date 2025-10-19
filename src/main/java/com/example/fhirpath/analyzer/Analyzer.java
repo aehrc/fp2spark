@@ -156,7 +156,7 @@ public class Analyzer {
         if (node instanceof AstIterationVariable iterVar) {
             return resolveIterationVariable(iterVar);
         }
-        throw new IllegalArgumentException("Unsupported AST node: " + node);
+        throw new InvalidExpressionException("Unsupported AST node type: " + node.getClass().getSimpleName(), null);
     }
 
     private IRNode resolveVariable(AstVariable variable) {
@@ -165,7 +165,10 @@ public class Analyzer {
             case CONTEXT_VARIABLE -> new Analyzer(resourceSpec).analyze(contextNode);
             case RESOURCE_VARIABLE -> new Resource(resourceSpec);
             default ->
-                    throw new IllegalArgumentException("Unsupported FHIRPath environment variable: " + variable.name());
+                    throw new InvalidExpressionException(
+                            "Unknown FHIRPath environment variable: " + variable.name(),
+                            null
+                    );
         };
     }
 
@@ -173,19 +176,25 @@ public class Analyzer {
         return switch (iterVar.name()) {
             case AstIterationVariable.THIS -> {
                 if (thisType == null) {
-                    throw new IllegalArgumentException(
-                            "$this can only be used in lambda expressions (e.g., within where() or select())"
+                    throw new InvalidExpressionException(
+                            "$this can only be used in lambda expressions (e.g., within where() or select())",
+                            null
                     );
                 }
                 yield new ThisReference(thisType);
             }
-            case AstIterationVariable.INDEX -> throw new UnsupportedOperationException(
-                    "$index is not yet supported"
+            case AstIterationVariable.INDEX -> throw new UnsupportedFeatureException(
+                    "$index iteration variable",
+                    null
             );
-            case AstIterationVariable.TOTAL -> throw new UnsupportedOperationException(
-                    "$total is not yet supported"
+            case AstIterationVariable.TOTAL -> throw new UnsupportedFeatureException(
+                    "$total iteration variable",
+                    null
             );
-            default -> throw new IllegalArgumentException("Unknown iteration variable: " + iterVar.name());
+            default -> throw new InvalidExpressionException(
+                    "Unknown iteration variable: " + iterVar.name(),
+                    null
+            );
         };
     }
 
@@ -217,8 +226,9 @@ public class Analyzer {
             case "getValue" -> new CastToSystem(args.get(0));
             case "equals" -> new Equals(args.get(0), args.get(1));
             case "union", "|" -> new Union(args.get(0), args.get(1));
-            default -> throw new UnsupportedOperationException(
-                    "Function '" + call.functionName() + "' is not supported"
+            default -> throw new UnsupportedFeatureException(
+                    "Function '" + call.functionName() + "'",
+                    null
             );
         };
     }
@@ -246,9 +256,10 @@ public class Analyzer {
                 .toList();
 
         if (matchingSignatures.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "No signature for '" + call.functionName() + "' matches " +
-                            actualArgCount + " arguments"
+            throw new OverloadResolutionException(
+                    call.functionName(),
+                    List.of(),  // Argument types not yet resolved
+                    null
             );
         }
 
@@ -256,10 +267,11 @@ public class Analyzer {
         // If multiple matching signatures AND any has lambdas → illegal state
         if (matchingSignatures.size() > 1 &&
                 matchingSignatures.stream().anyMatch(SignatureDefinition::hasLambdaParameters)) {
+            // This is an internal error - registry should not have ambiguous lambda signatures
             throw new IllegalStateException(
-                    "Function '" + call.functionName() + "' has " + matchingSignatures.size() +
+                    "INTERNAL ERROR: Function '" + call.functionName() + "' has " + matchingSignatures.size() +
                             " matching signatures with lambda parameters. " +
-                            "Lambda signatures cannot be overloaded."
+                            "Lambda signatures cannot be overloaded. This indicates a bug in the operation registry."
             );
         }
 
@@ -346,6 +358,9 @@ public class Analyzer {
         if (value instanceof BigDecimal) return Types.DECIMAL;
         if (value instanceof Boolean) return Types.BOOLEAN;
         if (value instanceof String) return Types.STRING;
-        throw new IllegalArgumentException("Unsupported literal value: " + value);
+        throw new InvalidExpressionException(
+                "Unsupported literal value type: " + value.getClass().getSimpleName(),
+                null
+        );
     }
 }

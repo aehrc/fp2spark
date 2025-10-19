@@ -72,8 +72,11 @@ public final class OverloadResolver {
         }
 
         if (best == null) {
-            throw new IllegalArgumentException("No matching overload for operation with arg types: "
-                    + args.stream().map(IRNode::getType).toList());
+            throw new OverloadResolutionException(
+                    operationName,
+                    args.stream().map(IRNode::getType).toList(),
+                    null  // Expression context not available here
+            );
         }
         return best;
     }

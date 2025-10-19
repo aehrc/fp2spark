@@ -53,6 +53,6 @@ public final class FunctionRegistry {
             return new Operation(operationName, resolvedCall.args(), resolvedCall.signature());
         }
 
-        throw new UnsupportedOperationException("Operator '" + operatorSymbol + "' is not supported");
+        throw new UnsupportedOperatorException(operatorSymbol, null);
     }
 }

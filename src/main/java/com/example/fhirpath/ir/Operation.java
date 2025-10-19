@@ -18,7 +18,7 @@ import java.util.List;
  * </ul>
  *
  * <p>Type resolution happens exactly once during Operation construction via
- * ResolvedSignature.resolve(), converting ResultSpecs to concrete shapes.
+ * ResolvedSignature.resolve(), converting ResultTypeSpecs to concrete shapes.
  *
  * <p>Examples:
  * <ul>

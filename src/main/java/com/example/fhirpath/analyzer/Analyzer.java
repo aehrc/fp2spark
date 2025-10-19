@@ -208,31 +208,6 @@ public class Analyzer {
         return type;
     }
 
-    /**
-     * Handles special infrastructure functions not yet in OperationRegistry.
-     * These will eventually be migrated to the registry.
-     */
-    @Nonnull
-    private IRNode handleInfrastructureFunctions(
-            @Nonnull final AstFunctionCall call,
-            @Nonnull final IRNode targetIR
-    ) {
-        // Analyze remaining arguments normally (none of these take lambdas)
-        final List<IRNode> args = Stream.concat(
-                Stream.of(targetIR),
-                call.arguments().stream().map(this::analyze)
-        ).toList();
-
-        return switch (call.functionName()) {
-            case "getValue" -> new CastToSystem(args.get(0));
-            case "equals" -> new Equals(args.get(0), args.get(1));
-            case "union", "|" -> new Union(args.get(0), args.get(1));
-            default -> throw new UnsupportedFeatureException(
-                    "Function '" + call.functionName() + "'",
-                    null
-            );
-        };
-    }
 
     @Nonnull
     private IRNode resolveFunctionCall(@Nonnull final AstFunctionCall call) {
@@ -242,12 +217,19 @@ public class Analyzer {
         // Resolve target (always needed, even for lambdas)
         final IRNode targetIR = analyze(resolvedCall.target());
 
+        // Check if this is an infrastructure operation (handled separately)
+        if (InfrastructureOperationHandler.isInfrastructureOperation(call.functionName())) {
+            return InfrastructureOperationHandler.handle(call, targetIR, this::analyze);
+        }
+
         // Get all signatures for this function
         final List<SignatureDefinition> signatures = OperationRegistry.getSignatures(call.functionName());
 
         if (signatures.isEmpty()) {
-            // Fallback to special handling for infrastructure functions
-            return handleInfrastructureFunctions(call, targetIR);
+            throw new UnsupportedFeatureException(
+                    "Function '" + call.functionName() + "'",
+                    null
+            );
         }
 
         // Filter signatures by arity (number of arguments + 1 for target)
@@ -297,35 +279,7 @@ public class Analyzer {
                 : null;
 
         // Analyze arguments based on signature parameter types
-        // For variadic functions, pad missing arguments with AstLiteral.NULL
-        final List<IRNode> args = Stream.concat(
-                Stream.of(targetIR),
-                IntStream.range(1, sig.parameterTypes().size())  // Start at 1 (skip target at index 0)
-                        .mapToObj(i -> {
-                            final Type paramType = sig.parameterTypes().get(i);
-
-                            // Get AST argument, or use null literal if exhausted (variadic padding)
-                            final AstNode argAst = (i - 1) < call.arguments().size()
-                                    ? call.arguments().get(i - 1)
-                                    : AstLiteral.NULL;
-
-                            if (paramType instanceof LambdaType) {
-                                if (thisAnalyzer == null) {
-                                    throw new IllegalStateException(
-                                            "Lambda parameter found but no binding strategy specified for function: " +
-                                                    call.functionName()
-                                    );
-                                }
-                                // Use thisAnalyzer for lambda context
-                                final IRNode lambdaBody = thisAnalyzer.analyze(argAst);
-                                return new Lambda(lambdaBody);
-                            } else {
-                                // Use current analyzer for normal arguments
-                                // AstLiteral.NULL → Literal(null, Type.NULL)
-                                return analyze(argAst);
-                            }
-                        })
-        ).toList();
+        final List<IRNode> args = analyzeArguments(call, sig, targetIR, thisAnalyzer);
 
         // Resolve with OverloadResolver (will pick best match and check cardinality)
         final OverloadResolver.ResolvedCall resolvedCallResult =
@@ -333,6 +287,70 @@ public class Analyzer {
 
         return new Operation(call.functionName(), resolvedCallResult.args(),
                 resolvedCallResult.signature());
+    }
+
+    /**
+     * Analyzes function call arguments based on signature parameter types.
+     * Handles both lambda and non-lambda arguments, with variadic padding support.
+     *
+     * @param call The function call AST node
+     * @param sig The signature to match
+     * @param targetIR The analyzed target expression
+     * @param lambdaAnalyzer Analyzer with $this binding for lambda parameters (nullable)
+     * @return List of analyzed arguments including target
+     */
+    @Nonnull
+    private List<IRNode> analyzeArguments(
+            @Nonnull final AstFunctionCall call,
+            @Nonnull final SignatureDefinition sig,
+            @Nonnull final IRNode targetIR,
+            @Nullable final Analyzer lambdaAnalyzer
+    ) {
+        return Stream.concat(
+                Stream.of(targetIR),
+                IntStream.range(1, sig.parameterTypes().size())  // Start at 1 (skip target at index 0)
+                        .mapToObj(i -> analyzeArgument(call, sig, i, lambdaAnalyzer))
+        ).toList();
+    }
+
+    /**
+     * Analyzes a single function call argument at the specified parameter index.
+     *
+     * @param call The function call AST node
+     * @param sig The signature definition
+     * @param paramIndex Parameter index in signature (0 is target, 1+ are call arguments)
+     * @param lambdaAnalyzer Analyzer with $this binding for lambda parameters (nullable)
+     * @return Analyzed argument IR node
+     */
+    @Nonnull
+    private IRNode analyzeArgument(
+            @Nonnull final AstFunctionCall call,
+            @Nonnull final SignatureDefinition sig,
+            final int paramIndex,
+            @Nullable final Analyzer lambdaAnalyzer
+    ) {
+        final Type paramType = sig.parameterTypes().get(paramIndex);
+
+        // Get AST argument, or use null literal if exhausted (variadic padding)
+        final AstNode argAst = (paramIndex - 1) < call.arguments().size()
+                ? call.arguments().get(paramIndex - 1)
+                : AstLiteral.NULL;
+
+        if (paramType instanceof LambdaType) {
+            if (lambdaAnalyzer == null) {
+                throw new IllegalStateException(
+                        "Lambda parameter found but no binding strategy specified for function: " +
+                                call.functionName()
+                );
+            }
+            // Use lambdaAnalyzer for lambda context
+            final IRNode lambdaBody = lambdaAnalyzer.analyze(argAst);
+            return new Lambda(lambdaBody);
+        } else {
+            // Use current analyzer for normal arguments
+            // AstLiteral.NULL → Literal(null, Type.NULL)
+            return analyze(argAst);
+        }
     }
 
     private IRNode resolveTraversal(AstTraversal traversal) {

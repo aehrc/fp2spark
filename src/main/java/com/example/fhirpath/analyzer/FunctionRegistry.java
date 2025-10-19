@@ -4,24 +4,8 @@ import com.example.fhirpath.ast.AstBinaryOperator;
 import com.example.fhirpath.ir.*;
 
 import java.util.List;
-import java.util.Map;
 
 public final class FunctionRegistry {
-
-    // Mapping of operator symbols to canonical names
-    private static final Map<String, String> OPERATOR_NAMES = Map.ofEntries(
-            Map.entry(">", "gt"),
-            Map.entry("<", "lt"),
-            Map.entry(">=", "geq"),
-            Map.entry("<=", "leq"),
-            Map.entry("+", "add"),
-            Map.entry("-", "sub"),
-            Map.entry("*", "multiply"),
-            Map.entry("/", "divide"),
-            Map.entry("%", "mod"),
-            Map.entry("=", "equals"),
-            Map.entry("|", "union")
-    );
 
     private FunctionRegistry() {
     }
@@ -34,7 +18,7 @@ public final class FunctionRegistry {
         String operatorSymbol = biOperator.operator();
 
         // Convert operator symbol to canonical name
-        String operationName = OPERATOR_NAMES.getOrDefault(operatorSymbol, operatorSymbol);
+        String operationName = OperatorNormalizer.normalize(operatorSymbol);
 
         // Special handling for equals and union (infrastructure nodes)
         if ("equals".equals(operationName)) {

@@ -6,10 +6,12 @@ import com.example.fhirpath.codegen.spark.SparkCodeGenerator;
 import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.parser.ParserFacade;
 import com.example.fhirpath.typing.ResourceType;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.Column;
 
 import javax.annotation.Nonnull;
 
+@Slf4j
 public final class FhirPath {
     private FhirPath() {
     }
@@ -20,9 +22,7 @@ public final class FhirPath {
      */
     @Nonnull
     public static Column toColumn(@Nonnull final String expr) {
-        AstNode ast = ParserFacade.parse(expr);
-        IRNode ir = new Analyzer().analyze(ast);
-        return ir.accept(new SparkCodeGenerator());
+        return compile(expr, null, null);
     }
 
     /**
@@ -36,9 +36,7 @@ public final class FhirPath {
      */
     @Nonnull
     public static Column toColumn(@Nonnull final String expr, @Nonnull final String context) {
-        AstNode ast = ParserFacade.parse(expr);
-        IRNode ir = new Analyzer(ParserFacade.parse(context)).analyze(ast);
-        return ir.accept(new SparkCodeGenerator());
+        return compile(expr, context, null);
     }
 
     /**
@@ -51,10 +49,7 @@ public final class FhirPath {
      */
     @Nonnull
     public static Column toColumn(@Nonnull final String expr, @Nonnull final ResourceType resourceSpec) {
-        AstNode ast = ParserFacade.parse(expr);
-        IRNode ir = new Analyzer(resourceSpec).analyze(ast);
-        return ir.accept(new SparkCodeGenerator());
-
+        return compile(expr, null, resourceSpec);
     }
 
     /**
@@ -67,8 +62,60 @@ public final class FhirPath {
      */
     @Nonnull
     public static Column toColumn(@Nonnull final String expr, @Nonnull final String context, @Nonnull final ResourceType resourceSpec) {
+        return compile(expr, context, resourceSpec);
+    }
+
+    /**
+     * Core compilation logic that parses, analyzes, and generates code for a FHIRPath expression.
+     *
+     * @param expr         The FHIRPath expression to compile
+     * @param context      Optional context expression (may be null)
+     * @param resourceSpec Optional resource specification (may be null)
+     * @return A Spark SQL Column representing the compiled expression
+     */
+    private static Column compile(@Nonnull final String expr, final String context, final ResourceType resourceSpec) {
+        log.debug("Compiling FHIRPath expression: {}", expr);
+        if (context != null) {
+            log.debug("  with context: {}", context);
+        }
+        if (resourceSpec != null) {
+            log.debug("  with resource spec: {}", resourceSpec);
+        }
+
+        // Parse expression to AST
         AstNode ast = ParserFacade.parse(expr);
-        IRNode ir = new Analyzer(ParserFacade.parse(context), resourceSpec).analyze(ast);
+        log.debug("AST: {}", ast);
+
+        // Parse context if provided
+        AstNode contextAst = context != null ? ParserFacade.parse(context) : null;
+
+        // Create analyzer with appropriate parameters
+        Analyzer analyzer = createAnalyzer(contextAst, resourceSpec);
+
+        // Analyze AST to produce IR
+        IRNode ir = analyzer.analyze(ast);
+        log.debug("IR: {}", ir);
+
+        // Generate Spark SQL Column from IR
         return ir.accept(new SparkCodeGenerator());
+    }
+
+    /**
+     * Create an analyzer with the appropriate configuration based on context and resource spec.
+     *
+     * @param contextAst   Optional context AST (may be null)
+     * @param resourceSpec Optional resource specification (may be null)
+     * @return Configured analyzer instance
+     */
+    private static Analyzer createAnalyzer(final AstNode contextAst, final ResourceType resourceSpec) {
+        if (contextAst != null && resourceSpec != null) {
+            return new Analyzer(contextAst, resourceSpec);
+        } else if (contextAst != null) {
+            return new Analyzer(contextAst);
+        } else if (resourceSpec != null) {
+            return new Analyzer(resourceSpec);
+        } else {
+            return new Analyzer();
+        }
     }
 }

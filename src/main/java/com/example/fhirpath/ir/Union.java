@@ -1,12 +1,8 @@
 package com.example.fhirpath.ir;
 
-import com.example.fhirpath.analyzer.FunctionSignature;
-import com.example.fhirpath.typing.Cardinality;
 import com.example.fhirpath.typing.Shape;
-import com.example.fhirpath.typing.TypeSystem;
 
 import jakarta.annotation.Nonnull;
-import java.util.List;
 
 /**
  * Represents a union operation (|) in FHIRPath.

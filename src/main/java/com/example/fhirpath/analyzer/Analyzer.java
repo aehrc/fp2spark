@@ -268,25 +268,11 @@ public class Analyzer {
         // Get the signature (now guaranteed to be unambiguous for arity)
         final SignatureDefinition sig = matchingSignatures.get(0);
 
-        // Determine $this binding shape based on lambda binding strategy
-        final Shape thisBindingShape;
-        if (sig.lambdaBinding() != null) {
-            thisBindingShape = switch (sig.lambdaBinding()) {
-                case ELEMENT_WISE -> Shape.single(extractElementType(targetIR.getType()));
-                case COLLECTION_WISE -> targetIR.getShape();  // Preserves MANY cardinality
-            };
-        } else {
-            // No lambda parameters - thisBindingShape won't be used
-            thisBindingShape = null;
-        }
-
-        // Create lambda analyzer if needed
-        final Analyzer thisAnalyzer = thisBindingShape != null
-                ? withThisShape(thisBindingShape)
-                : null;
+        // Create lambda analyzer with appropriate $this binding
+        final Analyzer lambdaAnalyzer = createLambdaAnalyzer(sig, targetIR);
 
         // Analyze arguments based on signature parameter types
-        final List<IRNode> args = analyzeArguments(call, sig, targetIR, thisAnalyzer);
+        final List<IRNode> args = analyzeArguments(call, sig, targetIR, lambdaAnalyzer);
 
         // Resolve with OperationResolver (will pick best match and check cardinality)
         final OverloadResolver.ResolvedCall resolvedCallResult =
@@ -294,6 +280,34 @@ public class Analyzer {
 
         return new Operation(call.functionName(), resolvedCallResult.args(),
                 resolvedCallResult.signature());
+    }
+
+    /**
+     * Creates a lambda analyzer with appropriate $this binding based on signature's lambda binding strategy.
+     *
+     * <p>Lambda parameters in FHIRPath can be bound to either individual elements (ELEMENT_WISE)
+     * or the entire collection (COLLECTION_WISE), determined by the function's signature.
+     *
+     * @param sig The signature definition containing lambda binding strategy
+     * @param targetIR The analyzed target expression whose type/shape determines $this binding
+     * @return Analyzer with $this binding for lambda evaluation, or null if signature has no lambda parameters
+     */
+    @Nullable
+    private Analyzer createLambdaAnalyzer(
+            @Nonnull final SignatureDefinition sig,
+            @Nonnull final IRNode targetIR
+    ) {
+        if (sig.lambdaBinding() == null) {
+            return null;  // No lambda parameters in this signature
+        }
+
+        // Determine $this binding shape based on lambda binding strategy
+        final Shape thisBindingShape = switch (sig.lambdaBinding()) {
+            case ELEMENT_WISE -> Shape.single(extractElementType(targetIR.getType()));
+            case COLLECTION_WISE -> targetIR.getShape();  // Preserves MANY cardinality
+        };
+
+        return withThisShape(thisBindingShape);
     }
 
     /**

@@ -1,6 +1,10 @@
-package com.example.fhirpath.analyzer;
+package com.example.fhirpath.operation;
 
+import com.example.fhirpath.analyzer.CardinalityMismatchException;
 import com.example.fhirpath.ir.*;
+import com.example.fhirpath.operation.signature.ParamSpec;
+import com.example.fhirpath.operation.signature.ResolvedSignature;
+import com.example.fhirpath.operation.signature.SignatureDefinition;
 import com.example.fhirpath.typing.*;
 import com.example.fhirpath.typing.fhir.FhirType;
 

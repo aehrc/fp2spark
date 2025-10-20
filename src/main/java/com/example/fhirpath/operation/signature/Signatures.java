@@ -1,4 +1,4 @@
-package com.example.fhirpath.analyzer;
+package com.example.fhirpath.operation.signature;
 
 import com.example.fhirpath.typing.Cardinality;
 import com.example.fhirpath.typing.LambdaType;
@@ -9,8 +9,8 @@ import jakarta.annotation.Nonnull;
 
 import java.util.List;
 
-import static com.example.fhirpath.analyzer.ParamSpec.many;
-import static com.example.fhirpath.analyzer.ParamSpec.single;
+import static com.example.fhirpath.operation.signature.ParamSpec.many;
+import static com.example.fhirpath.operation.signature.ParamSpec.single;
 
 /**
  * Phase 1 signature factory methods with explicit cardinality.

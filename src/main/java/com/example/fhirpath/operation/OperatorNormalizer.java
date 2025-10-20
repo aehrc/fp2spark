@@ -1,4 +1,4 @@
-package com.example.fhirpath.analyzer;
+package com.example.fhirpath.operation;
 
 import jakarta.annotation.Nonnull;
 

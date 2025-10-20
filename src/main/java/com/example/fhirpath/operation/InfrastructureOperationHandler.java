@@ -1,4 +1,6 @@
-package com.example.fhirpath.analyzer;
+package com.example.fhirpath.operation;
+
+import com.example.fhirpath.analyzer.UnsupportedFeatureException;
 
 import com.example.fhirpath.ast.AstFunctionCall;
 import com.example.fhirpath.ir.CastToSystem;

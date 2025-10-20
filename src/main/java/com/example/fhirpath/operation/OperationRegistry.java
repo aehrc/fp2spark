@@ -1,13 +1,19 @@
-package com.example.fhirpath.analyzer;
+package com.example.fhirpath.operation;
 
+import com.example.fhirpath.operation.signature.ParamSpec;
+import com.example.fhirpath.operation.signature.ResultTypeSpec;
+import com.example.fhirpath.operation.signature.SignatureDefinition;
+import com.example.fhirpath.operation.signature.Signatures;
+import com.example.fhirpath.operation.signature.TypeGroup;
+import com.example.fhirpath.operation.signature.TypeGroups;
 import jakarta.annotation.Nonnull;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
-import static com.example.fhirpath.analyzer.TypeGroups.forTypes;
-import static com.example.fhirpath.analyzer.TypeSets.*;
+import static com.example.fhirpath.operation.signature.TypeGroups.forTypes;
+import static com.example.fhirpath.typing.TypeSets.*;
 import static com.example.fhirpath.typing.Types.*;
 
 /**

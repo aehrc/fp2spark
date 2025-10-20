@@ -1,4 +1,4 @@
-package com.example.fhirpath.analyzer;
+package com.example.fhirpath.operation.signature;
 
 /**
  * Defines how $this is bound when analyzing lambda parameters.

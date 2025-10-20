@@ -1,16 +1,18 @@
-package com.example.fhirpath.analyzer;
-
-import com.example.fhirpath.typing.Type;
+package com.example.fhirpath.typing;
 
 import java.util.List;
 
 import static com.example.fhirpath.typing.Types.*;
 
 /**
- * Predefined type sets for common signature patterns in FHIRPath.
+ * Predefined type sets representing semantic categories of FHIRPath types.
  * <p>
- * These sets group types that share common operation signatures,
- * reducing duplication in the OperationRegistry.
+ * These sets group types that share common semantic properties (e.g., numeric types,
+ * comparable types, temporal types). They serve as the authoritative definition of
+ * type categories in the FHIRPath type system.
+ * <p>
+ * These categories are used by the operation signature system and may be used
+ * for type validation, error messages, and static analysis.
  */
 public final class TypeSets {
 

@@ -1,5 +1,6 @@
-package com.example.fhirpath.analyzer;
+package com.example.fhirpath.operation;
 
+import com.example.fhirpath.analyzer.AnalysisException;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 

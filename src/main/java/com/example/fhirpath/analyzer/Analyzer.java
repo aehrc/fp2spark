@@ -2,6 +2,13 @@ package com.example.fhirpath.analyzer;
 
 import com.example.fhirpath.ast.*;
 import com.example.fhirpath.ir.*;
+import com.example.fhirpath.operation.InfrastructureOperationHandler;
+import com.example.fhirpath.operation.OperationResolver;
+import com.example.fhirpath.operation.OperatorNormalizer;
+import com.example.fhirpath.operation.OverloadResolver;
+import com.example.fhirpath.operation.OverloadResolutionException;
+import com.example.fhirpath.operation.UnsupportedOperatorException;
+import com.example.fhirpath.operation.signature.SignatureDefinition;
 import com.example.fhirpath.typing.*;
 
 import jakarta.annotation.Nonnull;
@@ -223,7 +230,7 @@ public class Analyzer {
         }
 
         // Get all signatures for this function
-        final List<SignatureDefinition> signatures = OperationRegistry.getSignatures(call.functionName());
+        final List<SignatureDefinition> signatures = OperationResolver.getSignatures(call.functionName());
 
         if (signatures.isEmpty()) {
             throw new UnsupportedFeatureException(
@@ -281,9 +288,9 @@ public class Analyzer {
         // Analyze arguments based on signature parameter types
         final List<IRNode> args = analyzeArguments(call, sig, targetIR, thisAnalyzer);
 
-        // Resolve with OverloadResolver (will pick best match and check cardinality)
+        // Resolve with OperationResolver (will pick best match and check cardinality)
         final OverloadResolver.ResolvedCall resolvedCallResult =
-                OverloadResolver.resolveCall(call.functionName(), matchingSignatures, args);
+                OperationResolver.resolveCall(call.functionName(), matchingSignatures, args);
 
         return new Operation(call.functionName(), resolvedCallResult.args(),
                 resolvedCallResult.signature());
@@ -373,10 +380,8 @@ public class Analyzer {
      */
     private IRNode resolveBinaryOp(AstBinaryOperator binaryOp) {
         // Analyze both operands
-        final List<IRNode> args = List.of(
-                analyze(binaryOp.left()),
-                analyze(binaryOp.right())
-        );
+        final IRNode leftArg = analyze(binaryOp.left());
+        final IRNode rightArg = analyze(binaryOp.right());
 
         final String operatorSymbol = binaryOp.operator();
 
@@ -386,21 +391,16 @@ public class Analyzer {
         // Special handling for infrastructure operations (equals, union)
         // These bypass normal signature resolution
         if ("equals".equals(operationName)) {
-            return new Equals(args.get(0), args.get(1));
+            return new Equals(leftArg, rightArg);
         }
         if ("union".equals(operationName)) {
-            return new Union(args.get(0), args.get(1));
+            return new Union(leftArg, rightArg);
         }
 
-        // Standard operations: query registry and resolve via overload resolution
-        final List<SignatureDefinition> signatures = OperationRegistry.getSignatures(operationName);
-        if (!signatures.isEmpty()) {
-            final OverloadResolver.ResolvedCall resolvedCall =
-                    OverloadResolver.resolveCall(operationName, signatures, args);
-            return new Operation(operationName, resolvedCall.args(), resolvedCall.signature());
-        }
-
-        throw new UnsupportedOperatorException(operatorSymbol, null);
+        // Standard operations: delegate to OperationResolver
+        final OverloadResolver.ResolvedCall resolvedCall =
+                OperationResolver.resolveBinaryOperator(operatorSymbol, leftArg, rightArg);
+        return new Operation(operationName, resolvedCall.args(), resolvedCall.signature());
     }
 
     private Type inferType(Object value) {

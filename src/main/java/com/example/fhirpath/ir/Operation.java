@@ -1,6 +1,6 @@
 package com.example.fhirpath.ir;
 
-import com.example.fhirpath.analyzer.ResolvedSignature;
+import com.example.fhirpath.operation.signature.ResolvedSignature;
 import com.example.fhirpath.typing.Shape;
 
 import jakarta.annotation.Nonnull;

@@ -4,7 +4,7 @@ This document describes the high-level architecture and design principles of the
 
 ## Overview
 
-The system translates FHIRPath expressions into Apache Spark SQL Column expressions through a multi-layered architecture that separates parsing, semantic analysis, and code generation.
+The system translates FHIRPath expressions into Apache Spark SQL Column expressions through a multi-layered architecture separating parsing, semantic analysis, and code generation.
 
 **Pipeline:**
 ```
@@ -21,217 +21,348 @@ Spark Column / SQL String
 
 ### 1. Separation of Concerns
 
-The architecture is organized into distinct layers, each with a clear responsibility:
-
-- **Parser Layer**: Converts FHIRPath text to AST
-- **Semantic Analysis**: Type checking and overload resolution
-- **IR Layer**: Target-agnostic intermediate representation
-- **Code Generation**: Target-specific output (Spark, SQL Server, etc.)
+Each layer has a clear, focused responsibility:
+- **Parser**: Converts FHIRPath text to AST
+- **Analyzer**: Type checking, overload resolution, IR construction
+- **IR**: Target-agnostic semantic representation
+- **Code Generator**: Target-specific output (Spark, SQL Server, etc.)
 
 ### 2. Target Independence
 
-The IR (Intermediate Representation) is completely independent of any execution target. Code generation for different targets (Spark, SQL Server, PostgreSQL) is implemented via the Visitor pattern, allowing new targets to be added without modifying existing code.
+IR is completely independent of execution targets. Code generation for different platforms (Spark, SQL Server, PostgreSQL) uses the Visitor pattern, enabling new targets without modifying existing code.
 
 ### 3. Single Source of Truth
 
-Type information and function signatures are defined once in a centralized registry. This eliminates redundancy and makes the system easier to maintain and audit against the FHIRPath specification.
+Type information and operation signatures are defined once in centralized registries (`OperationRegistry`, type system). This eliminates redundancy and simplifies auditing against the FHIRPath specification.
 
 ### 4. Attributed IR Nodes
 
-Type information is resolved during analysis and stored directly in IR nodes. This enables:
-- Zero-cost type queries (`getType()` is simple field access)
+Type information is resolved during analysis and stored in IR nodes:
+- Zero-cost type queries (`getShape()` is field access)
 - No type recalculation during code generation
-- Clear separation between type checking and code generation
+- Clean separation between type checking and code generation
+
+---
 
 ## Layered Architecture
 
 ### Layer 1: Parser
 
-**Components:** ANTLR grammar, generated parser/lexer, AST builder
+**Components**: ANTLR grammar, generated parser/lexer, AST builder
 
-**Responsibility:** Transform FHIRPath text into a structured AST representing the syntax.
+**Responsibility**: Transform FHIRPath text into structured AST
 
-**Key Types:**
-- `AstNode` - Base interface for AST nodes
-- `AstLiteral`, `AstBinaryOperator`, `AstFunctionCall` - Concrete AST nodes
-
-**Input:** FHIRPath expression string
-**Output:** AST tree
+**Input**: FHIRPath expression string
+**Output**: AST tree
 
 ### Layer 2: Semantic Analysis
 
-**Components:** Analyzer, OperationRegistry, OverloadResolver
+**Components**: `Analyzer`, `OperationResolver`, `OverloadResolver`, `OperationRegistry`
 
-**Responsibility:**
-- Type checking
-- Overload resolution for operators and functions
-- Insertion of implicit type casts
-- Creation of attributed IR nodes
+**Responsibilities**:
+- Type checking with element-first type system
+- Overload resolution based on argument types and cardinality
+- Cardinality enforcement (FHIRPath spec compliance)
+- Implicit type cast insertion
+- Attributed IR node construction
 
-**Key Design:**
-- **OperationRegistry**: Maps operation names to signature definitions
-- **OverloadResolver**: Selects best-matching signature based on argument types
-- **Type System**: Defined in [TYPE_SYSTEM.md](TYPE_SYSTEM.md)
+**Key Subsystems**:
+- **OperationResolver**: Facade for operation resolution
+- **OperationRegistry**: Maps operation names to signatures
+- **OverloadResolver**: Selects best-matching signature by adaptation cost
+- **Type System**: See [docs/TYPE_SYSTEM_DESIGN.md](docs/TYPE_SYSTEM_DESIGN.md)
 
-**Input:** AST tree
-**Output:** Typed IR tree with resolved signatures
+**Input**: AST tree
+**Output**: Typed IR tree with resolved signatures
 
 ### Layer 3: Intermediate Representation (IR)
 
-**Components:** IRNode interface, Operation, Literal, Traversal, Cast nodes
+**Components**: `IRNode` interface, `Operation`, `Literal`, `Traversal`, `Cast`, `Lambda` nodes
 
-**Responsibility:** Represent the semantic structure of FHIRPath expressions in a target-agnostic way.
+**Responsibility**: Target-agnostic semantic representation of FHIRPath expressions
 
-**Key Design Decisions:**
+**Key Design**:
+- **Generic Operation Node**: Single `Operation` class for all operations (identified by name + resolved signature)
+- **Attributed Nodes**: Each node carries `Shape` (type + cardinality) from analysis
+- **Visitor Pattern**: `accept(IRNodeVisitor<T>)` enables multiple code generation targets
 
-1. **Generic Operation Node**: Instead of specific classes for each operator/function (Add, Abs, Subtract, etc.), a single `Operation` class handles all operations, identified by name and resolved signature.
-
-2. **Attributed Nodes**: Each `Operation` stores its `ResolvedSignature`, enabling zero-cost type queries.
-
-3. **Visitor Pattern**: IR nodes expose `accept(IRNodeVisitor<T>)` instead of target-specific methods like `eval()`.
-
-**Key Types:**
-```java
-sealed interface IRNode {
-    Type getType();
-    <T> T accept(IRNodeVisitor<T> visitor);
-}
-
-record Operation(
-    String name,
-    List<IRNode> args,
-    ResolvedSignature signature
-) implements IRNode
-```
-
-**Benefits:**
-- 18+ operation classes → 1 generic Operation class
+**Benefits**:
+- 18+ operation-specific classes → 1 generic `Operation` class
 - Complete target independence
 - Extensible via visitors
 
 ### Layer 4: Code Generation
 
-**Components:** IRNodeVisitor implementations (SparkCodeGenerator, SqlServerCodeGenerator, etc.)
+**Components**: `IRNodeVisitor` implementations per target (`SparkCodeGenerator`, etc.)
 
-**Responsibility:** Transform IR into target-specific executable code.
+**Responsibility**: Transform IR into target-specific executable code
 
-**Key Design:**
+**Architecture**: See [docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)
 
-Code generators implement `IRNodeVisitor<T>` where `T` is the target type:
+**Key Design**:
+- **Stateful Handlers**: Command objects created per invocation with operation, type, context
+- **Hybrid Organization**: Operation-based, type-based, and generic handlers
+- **Automatic Boxing/Unboxing**: `InvocationBinder` converts between `Column` and domain wrappers
+- **Domain Wrappers**: `Collection`, `Quantity`, `LambdaExpression` used sparingly where they add value
+
+**Code generators implement** `IRNodeVisitor<T>` where `T` is target type:
 - `SparkCodeGenerator implements IRNodeVisitor<Column>`
 - `SqlServerCodeGenerator implements IRNodeVisitor<String>`
 
-Each visitor traverses the IR tree and generates appropriate code for its target platform.
+**Adding New Targets**: Implement new visitor class. No changes to IR or other layers required.
 
-**Adding New Targets:** Implement a new visitor class. No changes to IR or other layers required.
+---
 
 ## Type System
 
-The type system is fully documented in [TYPE_SYSTEM.md](TYPE_SYSTEM.md).
+**Full documentation**: [docs/TYPE_SYSTEM_DESIGN.md](docs/TYPE_SYSTEM_DESIGN.md)
 
-### Key Concepts
+### Element-First Model
 
-**Element Types and Shapes:**
-- Element types: `INTEGER`, `STRING`, `BOOLEAN`, `DATE_TIME`, etc.
-- Cardinality: `?T` (optional/single) and `*T` (many/collection)
-- Combined: "shapes" like `?INTEGER` or `*STRING`
-**Implicit Adaptations:**
+**Core Concepts**:
+- **Element Types**: `INTEGER`, `STRING`, `BOOLEAN`, `DATE_TIME`, `DECIMAL`, `QUANTITY`, etc.
+- **Cardinality**: `SINGLE` (0..1) or `MANY` (0..*)
+- **Shape**: Combines element type + cardinality (e.g., `Shape(ONE, INTEGER)`)
 
-The type system supports implicit conversions with costs for overload resolution:
+**Key Principle**: Cardinality is metadata, not part of type hierarchy. No `CollectionType` - all types represent elements.
+
+**Implicit Adaptations** (for overload resolution):
 - Numeric widening: `INTEGER → DECIMAL` (cost 1)
 - Temporal: `DATE → DATE_TIME` (cost 1)
 - FHIR value extraction: `Fhir[T] → T` (cost 1)
 
+### Implementation Status
 
-TODO: Complete the high level  design.
+**Phase 1 - Complete** (Simple signatures):
+- ✅ Element-first type system with cardinality as metadata
+- ✅ Simple signatures with concrete types
+- ✅ Cardinality enforcement per FHIRPath spec
+- ✅ Arithmetic, comparison, string, collection operations
+- ✅ All 193 tests passing
 
-See [TYPE_SYSTEM.md](TYPE_SYSTEM.md) for complete details.
+**Phase 2 - Future** (Polymorphic signatures):
+- Type variables for polymorphism (`?T`, `*T`)
+- Type constraints (e.g., `T ∈ Arithmetic`)
+- Mixed-type arithmetic (`2 + 2.5`)
+- Polymorphic operators (`union`, `in`, `contains`)
+
+### Signature System
+
+**Current** (Phase 1):
+```
+ParamSpec(Type, Cardinality)
+ResultTypeSpec(Type, Cardinality)
+SignatureDefinition(params, result, minArity)
+```
+
+**Example signatures** enumerate types explicitly:
+- `+(INTEGER, INTEGER) → INTEGER`
+- `+(DECIMAL, DECIMAL) → DECIMAL`
+- `count(*T) → ?INTEGER`
+
+---
+
+## Code Generation Architecture
+
+**Full documentation**: [docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)
+
+### Stateful Handlers (Command Pattern)
+
+Handlers are created **per invocation** with:
+- `operation` - Operation name
+- `dispatchType` - Type determining handler selection
+- `context` - Code generation context
+
+**Benefit**: Operation methods have clean signatures - no context parameter needed.
+
+### Handler Organization
+
+**Three handler types**:
+
+1. **Operation-Based**: For heavily overloaded operations (comparison, arithmetic, math)
+   - Benefit: Adding new comparison operator touches ONE file
+
+2. **Type-Based**: For type-specific operations (string ops, quantity ops)
+   - Benefit: All operations for a type in one place
+
+3. **Generic**: For polymorphic operations (collection ops: count, where, select)
+   - Benefit: Work on any type without specialization
+
+### Automatic Boxing/Unboxing
+
+`InvocationBinder` converts between SparkSQL `Column` and domain wrappers:
+
+**Boxing** (when invoking handlers):
+- `Column` → `Collection(column, isSingular)` for cardinality-aware operations
+- `Column` → `Quantity(column)` for complex struct field access
+- IR `Lambda` → `LambdaExpression(lambda, context)` for lambda operations
+
+**Unboxing** (handler results):
+- Wrappers → `Column` via `toColumn()`
+
+**Philosophy**: Use wrappers **sparingly** - only where they add value. Most primitive operations work directly with raw `Column`.
+
+### Domain Wrappers
+
+**Collection**: Cardinality-aware operations (count, where, select)
+**Quantity**: Complex struct field access (getValue, getUnit)
+**LambdaExpression**: Lambda evaluation with `$this` binding
+
+---
 
 ## Operation Registry
 
-### Design: TypeGroup Pattern
+The `OperationRegistry` maps operation names to signature definitions.
 
-The `OperationRegistry` maps operation names to signature definitions using a minimal abstraction pattern:
-
-**Key Principles:**
-- Zero overhead for single signatures (most common case)
-- Elegant composition for multi-type operations
-- Method references for common patterns
-- Single source of truth for the type system
-
-**Example:**
-```java
-// Single signature - direct, no wrapper
-register("pow",
-    Signatures.binaryFunc(DECIMAL, DECIMAL, DECIMAL)
-)
-
-// Multi-type with method reference
-register("abs",
-    forTypes(TypeSets.NUMERIC_WITH_QUANTITY).define(Signatures::unaryOp)
-)
-```
-
-**Benefits:**
+**Design Goals**:
+- Zero overhead for single signatures (most common)
+- Minimal code to add functions (~5 lines)
+- Single source of truth for type system
 - Easy to audit against FHIRPath specification
-- Minimal code to add new functions (~5 lines vs ~50 lines)
-- Type definitions in one place (not duplicated)
+
+**Current** (Phase 1): Signatures enumerate concrete types explicitly
+
+**Future** (Phase 2): Type variables enable polymorphic signatures with fewer definitions
+
+---
 
 ## Key Design Decisions
 
-### Empty Literal Handling
+### Empty Collection Handling
 
-**Decision:** No special optimization for empty literals (`{}`) at the IR or code generation level.
+**Decision**: Empty collections represented as SQL `NULL`
 
-**Rationale:**
-- Rely on Spark's Catalyst optimizer for NULL propagation and constant folding
-- Avoid duplicating optimization logic
-- Maintain clear separation of concerns:
-  - IR: logical structure
-  - Code generation: correctness
-  - Catalyst: optimization
+**Rationale**:
+- Leverages Spark's Catalyst optimizer for NULL propagation
+- Uses Spark 3.x non-ANSI functions (return NULL on error, not exceptions)
+- Matches FHIRPath empty semantics naturally
 
-**Example:** `a > {}` generates `Column(a > NULL)`, which Catalyst optimizes to `NULL` in the physical plan.
+### Cardinality Enforcement
 
-### Visitor Pattern for Multi-Target Support
+**Decision**: Compile-time cardinality checking in Analyzer
 
-**Decision:** Use Visitor pattern instead of target-specific methods in IR nodes.
+**FHIRPath Spec Requirements**:
+- Math operators require **single elements** (§3559-3566)
+- Comparison operators require **single values** (§3196-3197)
 
-**Benefits:**
-- IR remains completely target-agnostic
-- Adding new targets requires only implementing a new visitor
-- Zero impact on existing code when adding targets
+**Implementation**: `OverloadResolver` validates argument cardinality against parameter requirements, throws `CardinalityMismatchException` on violations.
+
+### Visitor Pattern for Multi-Target
+
+**Decision**: Use Visitor pattern instead of target-specific methods in IR nodes
+
+**Benefits**:
+- IR remains target-agnostic
+- Adding targets requires only implementing new visitor
+- Zero impact on existing code
 - Supports diverse output types (Column, String, etc.)
 
-**Trade-offs:**
-- Slightly more verbose than direct method calls
-- Requires exhaustive visitor methods for all IR node types
+### IR Node Design
+
+**Decision**: Single generic `Operation` class instead of operation-specific classes
+
+**Benefits**:
+- 18+ classes → 1 class
+- Target independence
+- Easy to add new operations (no new IR classes needed)
+
+---
 
 ## Extension Points
 
 ### Adding a New Function
 
 1. Add signature to `OperationRegistry` (~5 lines)
-2. Implement code generation in each visitor (~1-2 lines per target)
+2. Add handler method with `@Operation` annotation (~5-10 lines)
+3. Tests (~10-20 lines)
+
+### Adding a New Handler
+
+1. Extend `AnnotatedOperationHandler`
+2. Implement operation methods with `@Operation` annotations
+3. Register in `HandlerRegistry.standard()`
 
 ### Adding a New Target
 
-1. Implement `IRNodeVisitor<T>` for the target
-2. No changes to IR, analyzer, or other targets required
+1. Implement `IRNodeVisitor<T>` for target
+2. No changes to IR, analyzer, or other targets
 
-**Effort:** ~1-2 weeks per target
-**Risk:** Low (isolated changes)
+**Effort**: 1-2 weeks per target
+**Risk**: Low (isolated changes)
+
+---
 
 ## Performance Characteristics
 
-- **Type queries**: Zero cost (field access)
-- **Type resolution**: Once during analysis
-- **Visitor dispatch**: Typically inlined by JVM
-- **Generated code**: Identical to hand-written for Spark
+- **Type queries**: Zero cost (field access on IR nodes)
+- **Type resolution**: Once during analysis, cached in IR
+- **Visitor dispatch**: Virtual method call, typically inlined by JVM
+- **Generated Spark code**: Identical to hand-written
+- **Optimization**: Delegated to Spark's Catalyst optimizer
+
+---
+
+## Package Organization
+
+```
+com.example.fhirpath/
+├── analyzer/              - AST → IR transformation
+│   └── Analyzer.java
+├── operation/             - Operation resolution subsystem
+│   ├── OperationResolver.java
+│   ├── OperationRegistry.java
+│   ├── OverloadResolver.java
+│   └── ...
+├── operation/signature/   - Type signature specifications
+│   ├── SignatureDefinition.java
+│   ├── ParamSpec.java
+│   ├── ResultTypeSpec.java
+│   └── ...
+├── typing/                - Type system (element-first model)
+│   ├── Type.java
+│   ├── Shape.java
+│   ├── Cardinality.java
+│   └── ...
+├── ir/                    - Intermediate representation nodes
+│   ├── IRNode.java
+│   ├── Operation.java
+│   ├── Literal.java
+│   └── ...
+└── codegen/               - Code generation (future home)
+```
+
+---
+
+## Testing Strategy
+
+**Full documentation**: [docs/CODEGEN_TESTING_STRATEGY.md](docs/CODEGEN_TESTING_STRATEGY.md)
+
+**Two-layer approach**:
+
+1. **Component Tests**: Wrappers, utilities in isolation
+2. **FHIRPath Expression Tests**: Full pipeline with FHIRPath expressions (primary strategy)
+
+**Philosophy**:
+- Skip handler/CodeGen tests (plumbing between components)
+- Invest in comprehensive, reusable FHIRPath expression test suite
+- Tests serve as specification compliance suite, reusable across implementations
+
+---
 
 ## References
 
-- **Type System**: [TYPE_SYSTEM.md](TYPE_SYSTEM.md) - Complete type system specification
-- **Detailed Design**: [DESIGN.md](DESIGN.md) - Implementation details and examples
-- **FHIRPath Spec**: `specs/FHIRPath.md` - Official FHIRPath specification
-- **Coding Style**: [JAVA_CODING_STYLE.md](JAVA_CODING_STYLE.md) - Java coding conventions
+### Design Documents
+
+- **[docs/TYPE_SYSTEM_DESIGN.md](docs/TYPE_SYSTEM_DESIGN.md)** - Type system design, element-first model, implementation phases
+- **[docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)** - Code generator architecture, stateful handlers, domain wrappers
+- **[docs/CODEGEN_TESTING_STRATEGY.md](docs/CODEGEN_TESTING_STRATEGY.md)** - Testing strategy and philosophy
+
+### Specifications
+
+- **[specs/FHIRPath.md](specs/FHIRPath.md)** - Official FHIRPath specification
+- **[specs/FHIR_FHIRpath.md](specs/FHIR_FHIRpath.md)** - FHIR-specific FHIRPath extensions
+
+### Coding Standards
+
+- **[JAVA_CODING_STYLE.md](JAVA_CODING_STYLE.md)** - Java coding conventions
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines

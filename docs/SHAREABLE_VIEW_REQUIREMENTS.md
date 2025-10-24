@@ -99,10 +99,11 @@ Support for FHIRPath System types only:
 
 ### Phase 2: FHIR Types and Resources
 Add FHIR-specific support:
-- **FHIR Types**: Support for FHIR primitive and complex types
+- **FHIR Types**: Support for FHIR primitive and complex types (Date, DateTime, Time, Quantity)
 - **Resource Navigation**: Path navigation through FHIR resource structures
 - **Extension Access**: `extension(url)` function for accessing FHIR extensions
 - **Type System**: Integration with FHIR type system
+- **Union Operator**: Add `|` (union) with undefined order semantics per FHIRPath spec
 
 ### Phase 3: SQL on FHIR Extensions
 Add SQL on FHIR-specific functions:

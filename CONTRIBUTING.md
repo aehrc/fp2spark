@@ -122,7 +122,7 @@ when combining heterogeneous numeric collections.
 
 1. **Create a feature branch** from `main`:
    ```bash
-   git checkout -b feature/your-feature-name
+   git checkout -b issue/<issue-number>-<short-description>
    ```
 
 2. **Make your changes** following the code style guidelines

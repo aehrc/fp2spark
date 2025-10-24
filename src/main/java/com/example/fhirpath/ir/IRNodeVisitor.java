@@ -53,10 +53,10 @@ public interface IRNodeVisitor<T> {
     T visitCastToSystem(@Nonnull CastToSystem node);
 
     /**
-     * Visit a union operation (collection union).
+     * Visit a combine operation (ordered concatenation).
      */
     @Nonnull
-    T visitUnion(@Nonnull Union node);
+    T visitCombine(@Nonnull Combine node);
 
     /**
      * Visit an equals comparison operation.

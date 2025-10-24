@@ -16,7 +16,8 @@ import java.util.Map;
  *   <li>{@code "+"} → {@code "add"}</li>
  *   <li>{@code ">"} → {@code "gt"}</li>
  *   <li>{@code "="} → {@code "equals"}</li>
- *   <li>{@code "|"} → {@code "union"}</li>
+ *   <li>{@code "|"} → {@code "union"} (deprecated in Phase 1)</li>
+ *   <li>{@code ";"} → {@code "union"} (ordered concatenation)</li>
  * </ul>
  */
 public final class OperatorNormalizer {
@@ -36,7 +37,7 @@ public final class OperatorNormalizer {
             Map.entry("/", "divide"),
             Map.entry("%", "mod"),
             Map.entry("=", "equals"),
-            Map.entry("|", "union")
+            Map.entry(";", "combine")
     );
 
     private OperatorNormalizer() {

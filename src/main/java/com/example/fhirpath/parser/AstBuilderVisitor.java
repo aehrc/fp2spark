@@ -167,11 +167,11 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
     }
 
     @Override
-    public AstNode visitUnionExpression(FhirPathParser.UnionExpressionContext ctx) {
+    public AstNode visitCombineExpression(FhirPathParser.CombineExpressionContext ctx) {
         AstNode left = visit(ctx.expression(0));
         AstNode right = visit(ctx.expression(1));
 
-        String op = ctx.getChild(1).getText(); // Should be "|"
+        String op = ctx.getChild(1).getText(); // Should be "|" or ";'
         return new AstBinaryOperator(op, left, right);
     }
 
@@ -190,7 +190,8 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
         AstNode right = visit(ctx.expression(1));
 
         String op = ctx.getChild(1).getText();
-        return new AstBinaryOperator(op, left, right);    }
+        return new AstBinaryOperator(op, left, right);
+    }
 
     @Override
     public AstNode visitMembershipExpression(FhirPathParser.MembershipExpressionContext ctx) {

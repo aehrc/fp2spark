@@ -105,12 +105,12 @@ class FhirPathIntegrationTest {
                 // test count() on literals
                 Arguments.of("10.count()", "1"),
                 Arguments.of("{}.count()", "0"),
-                Arguments.of("(1 | 2).count()", "2"),
-                Arguments.of("('a' | 'b' | 'c').count()", "3"),
+                Arguments.of("(1 ; 2).count()", "2"),
+                Arguments.of("('a' ; 'b' ; 'c').count()", "3"),
                 // test exists() on literals
                 Arguments.of("'xxx'.exists()", "true"),
                 Arguments.of("{}.exists()", "false"),
-                Arguments.of("(1 | 2).exists()", "true"),
+                Arguments.of("(1 ; 2).exists()", "true"),
                 // test equality operators
                 Arguments.of("5 = 5", "true"),
                 Arguments.of("5 = 5.0", "true"),
@@ -120,42 +120,43 @@ class FhirPathIntegrationTest {
                 Arguments.of("'1' = 1", "false"),// different types
                 Arguments.of("{} = 1", null),
                 Arguments.of("'xxx'={}", null),
-                // Union operator test left for later when implemented
-                Arguments.of("5 | 10", "[5, 10]"),
-                Arguments.of("5.2 | 10.5", "[5.2, 10.5]"),
-                Arguments.of("'a' | 'b' | 'c'", "[a, b, c]"),
-                Arguments.of("1 | {}", "[1]"),
-                Arguments.of("{} | 1", "[1]"),
-                // DISABLE: Arguments.of("{} | {}", null),
-                Arguments.of("true | false | true", "[true, false]"),
+                // Concatenation operator (';') - ordered collection construction
+                Arguments.of("5 ; 10", "[5, 10]"),
+                Arguments.of("5.2 ; 10.5", "[5.2, 10.5]"),
+                Arguments.of("'a' ; 'b' ; 'c'", "[a, b, c]"),
+                Arguments.of("1 ; {}", "[1]"),
+                Arguments.of("{} ; 1", "[1]"),
+                // DISABLE: Arguments.of("{} ; {}", null),
+                // Combine operator preserves all elements (no deduplication, unlike union)
+                Arguments.of("true ; false ; true", "[true, false, true]"),
                 // NOTE: this may not be the correct behavior in general
                 // but because we do not support polymorphic collection this seem to be reasonable
                 // Another option is to fail when types are not the same
-                Arguments.of("1.1 | (2 | 3)", "[1.1, 2, 3]"),
-                // 2.0 should be skipped
-                Arguments.of("(2 | 3) | (1.1 | 2.3 | 2.0)", "[2, 3, 1.1, 2.3]"),
+                Arguments.of("1.1 ; (2 ; 3)", "[1.1, 2, 3]"),
+                // Combine operator preserves order and all elements (no deduplication)
+                Arguments.of("(2 ; 3) ; (1.1 ; 2.3 ; 2.0)", "[2, 3, 1.1, 2.3, 2]"),
                 // test default empty context which is also empty resource
                 Arguments.of("count()", "0"),
                 Arguments.of("%resource.exists()", "false"),
                 Arguments.of("%resource.foo", null),
                 Arguments.of("bar", null),
                 // simple where tests
-                Arguments.of("(1 | 2 | 3).where($this > 1)", "[2, 3]"),
-                Arguments.of("('a' | 'bc' | 'cd').where(length() > 1)", "[bc, cd]"),
+                Arguments.of("(1 ; 2 ; 3).where($this > 1)", "[2, 3]"),
+                Arguments.of("('a' ; 'bc' ; 'cd').where(length() > 1)", "[bc, cd]"),
                 // Edge cases: where() on empty collections and singular values
                 // Per FHIRPath spec 5.2.5: "If the input collection is empty ({ }), the result is empty"
                 // Per FHIRPath spec 2.1: All expressions return collections, even single values
                 Arguments.of("{}.where($this > 1)", null), // empty collection returns empty
                 Arguments.of("2.where($this > 1)", "2"), // singular value matching criteria returns the value
                 Arguments.of("'foo'.where($this = 'bar')", null), // singular string not matching criteria
-                Arguments.of("(1 | 2 | 3).where({})", null), // where with empty lambda
+                Arguments.of("(1 ; 2 ; 3).where({})", null), // where with empty lambda
                 // exists(criteria) tests on literals (desugared to where(criteria).exists())
                 Arguments.of("{}.exists($this > 1)", "false"), // empty collection returns empty
                 Arguments.of("2.exists($this > 1)", "true"), // singular value matching criteria returns the value
                 Arguments.of("'foo'.exists($this = 'bar')", "false"), // singular string not matching criteria
-                Arguments.of("(1 | 2 | 3).exists($this > 1)", "true"),
-                Arguments.of("(1 | 2 | 3).exists($this > 5)", "false"),
-                Arguments.of("('a' | 'b' | 'c').exists($this = 'b')", "true"),
+                Arguments.of("(1 ; 2 ; 3).exists($this > 1)", "true"),
+                Arguments.of("(1 ; 2 ; 3).exists($this > 5)", "false"),
+                Arguments.of("('a' ; 'b' ; 'c').exists($this = 'b')", "true"),
                 // iif() conditional tests - FHIRPath Spec 6.7
                 // Basic: iif with literal boolean criterion
                 Arguments.of("{}.iif(true, 'true')", "true"),          // empty collection, true criterion returns result
@@ -163,29 +164,29 @@ class FhirPathIntegrationTest {
                 Arguments.of("5.iif(true, 'found')", "found"),         // singular value, true criterion
                 Arguments.of("5.iif(false, 'found')", null),           // singular value, false criterion
                 // Collection-level criterion: $this refers to entire collection (implicit $this)
-                Arguments.of("(1 | 2).iif(exists(), $this)", "[1, 2]"),               // implicit $this.exists()
-                Arguments.of("(1 | 2).iif(empty(), $this)", null),                    // implicit $this.empty()
-                Arguments.of("(1 | 2 | 3).iif(count() > 2, $this)", "[1, 2, 3]"),   // implicit $this.count()
-                Arguments.of("(1 | 2).iif(count() > 2, $this)", null),               // count criterion false
-                Arguments.of("(1 | 2 | 3).iif(count() = 3, first())", "1"),         // implicit in both lambdas
+                Arguments.of("(1 ; 2).iif(exists(), $this)", "[1, 2]"),               // implicit $this.exists()
+                Arguments.of("(1 ; 2).iif(empty(), $this)", null),                    // implicit $this.empty()
+                Arguments.of("(1 ; 2 ; 3).iif(count() > 2, $this)", "[1, 2, 3]"),   // implicit $this.count()
+                Arguments.of("(1 ; 2).iif(count() > 2, $this)", null),               // count criterion false
+                Arguments.of("(1 ; 2 ; 3).iif(count() = 3, first())", "1"),         // implicit in both lambdas
                 // True-result as lambda: operates on collection (implicit $this)
-                Arguments.of("(5 | 10 | 15).iif(exists(), count())", "3"),                      // implicit in both
-                Arguments.of("(1 | 2 | 3 | 4).iif(count() > 2, where($this > 2))", "[3, 4]"), // implicit count(), explicit $this in where
+                Arguments.of("(5 ; 10 ; 15).iif(exists(), count())", "3"),                      // implicit in both
+                Arguments.of("(1 ; 2 ; 3 ; 4).iif(count() > 2, where($this > 2))", "[3, 4]"), // implicit count(), explicit $this in where
                 // Nested iif: iif within criterion or result (implicit $this)
-                Arguments.of("(1 | 2).iif(iif(exists(), true), 'nested')", "nested"),  // nested in criterion, implicit
-                Arguments.of("(1 | 2).iif(true, iif(count() = 2, 'match'))", "match"), // nested in result, implicit
+                Arguments.of("(1 ; 2).iif(iif(exists(), true), 'nested')", "nested"),  // nested in criterion, implicit
+                Arguments.of("(1 ; 2).iif(true, iif(count() = 2, 'match'))", "match"), // nested in result, implicit
                 Arguments.of("5.iif(true, 10.iif(true, 'deep'))", "deep"),             // double nested result
                 // Edge: Different result types (implicit $this)
-                Arguments.of("(1 | 2 | 3).iif(count() > 2, 'found')", "found"),       // implicit, returns string
-                Arguments.of("('a' | 'b').iif(exists(), 999)", "999"),                 // implicit, returns integer
+                Arguments.of("(1 ; 2 ; 3).iif(count() > 2, 'found')", "found"),       // implicit, returns string
+                Arguments.of("('a' ; 'b').iif(exists(), 999)", "999"),                 // implicit, returns integer
                 // Edge: Combining with other operations (implicit $this)
-                Arguments.of("(1 | 2 | 3).iif(exists(), $this).count()", "3"),        // implicit in criterion
-                Arguments.of("(5 | 10).iif(count() = 2, first()) + 3", "8"),           // implicit in both lambdas
+                Arguments.of("(1 ; 2 ; 3).iif(exists(), $this).count()", "3"),        // implicit in criterion
+                Arguments.of("(5 ; 10).iif(count() = 2, first()) + 3", "8"),           // implicit in both lambdas
                 // first() function tests - FHIRPath Spec 6.6
                 // spec: Returns first element from multi-element collection
-                Arguments.of("(1 | 2 | 3).first()", "1"),
-                Arguments.of("('a' | 'b' | 'c').first()", "a"),
-                Arguments.of("(5.2 | 10.5 | 15.3).first()", "5.2"),
+                Arguments.of("(1 ; 2 ; 3).first()", "1"),
+                Arguments.of("('a' ; 'b' ; 'c').first()", "a"),
+                Arguments.of("(5.2 ; 10.5 ; 15.3).first()", "5.2"),
                 // spec: Returns empty for empty collection (equivalent to {}[0])
                 Arguments.of("{}.first()", null),
                 // edge: Singular value returns that value (single-element collection)
@@ -214,7 +215,7 @@ class FhirPathIntegrationTest {
                 Arguments.of("exists()", "'x'", "true"),
                 Arguments.of("%context.exists()", "{}", "false"),
                 Arguments.of("5 + %context", "10", "15"),
-                Arguments.of("count() = 3", "10 | 20 | 30 | %context.foo", "true")
+                Arguments.of("count() = 3", "10 ; 20 ; 30 ; %context.foo", "true")
         );
     }
 

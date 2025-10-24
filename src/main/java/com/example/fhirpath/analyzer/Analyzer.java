@@ -402,13 +402,13 @@ public class Analyzer {
         // Normalize operator symbol to canonical function name (e.g., "=" → "equals", "+" → "add")
         final String operationName = OperatorNormalizer.normalize(operatorSymbol);
 
-        // Special handling for infrastructure operations (equals, union)
+        // Special handling for infrastructure operations (equals, combine)
         // These bypass normal signature resolution
         if ("equals".equals(operationName)) {
             return new Equals(leftArg, rightArg);
         }
-        if ("union".equals(operationName)) {
-            return new Union(leftArg, rightArg);
+        if ("combine".equals(operationName)) {
+            return new Combine(leftArg, rightArg);
         }
 
         // Standard operations: delegate to OperationResolver

@@ -535,23 +535,24 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
     @Override
     @Nonnull
-    public Column visitUnion(@Nonnull Union union) {
-        Column leftColumn = union.left().accept(this);
-        Column rightColumn = union.right().accept(this);
+    public Column visitCombine(@Nonnull Combine combine) {
+        Column leftColumn = combine.left().accept(this);
+        Column rightColumn = combine.right().accept(this);
 
-        // FHIRPath union semantics: {} | x = x, x | {} = x
+        // FHIRPath combine semantics: {} ; x = x, x ; {} = x
         // Empty collections (NULL) should be treated as empty arrays
 
         // Convert to arrays if singular, NULL stays NULL (will be coalesced to empty array)
-        Column leftArray = union.left().isSingular()
+        Column leftArray = combine.left().isSingular()
                 ? when(leftColumn.isNotNull(), functions.array(leftColumn))
                 : leftColumn;
-        Column rightArray = union.right().isSingular()
+        Column rightArray = combine.right().isSingular()
                 ? when(rightColumn.isNotNull(), functions.array(rightColumn))
                 : rightColumn;
 
-        // array_union handles NULL properly: array_union(NULL, arr) = arr
-        return array_union(
+        // concat handles NULL properly: concat(NULL, arr) = arr
+        // Use concat for ordered concatenation (';' operator semantics)
+        return concat(
                 coalesce(leftArray, functions.array()),
                 coalesce(rightArray, functions.array())
         );

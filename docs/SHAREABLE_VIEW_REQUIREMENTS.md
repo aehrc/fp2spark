@@ -1,4 +1,4 @@
-# Implement FHIRPath Support for SQL on FHIR ShareableViewDefinition
+D# Implement FHIRPath Support for SQL on FHIR ShareableViewDefinition
 
 ## Overview
 
@@ -11,8 +11,11 @@ Implement the FHIRPath language subset required for SQL on FHIR v2 ShareableView
 This implementation includes the following additions/modifications to the ShareableViewDefinition requirements:
 
 - **Boolean literal** (`true`, `false`) - added for completeness
+- **Empty collection literal** (`{}`) - added for testing empty collection semantics
 - **Full comparison operator set** - added `<`, `>=` to the spec's `>`, `<=`
 - **Equality scope clarification** - `=` and `!=` explicitly limited to primitive types only
+- **Ordered concatenation operator** (`;`) - added for Phase 1 to support deterministic collection construction in tests
+- **Union operator** (`|`) - **removed from Phase 1** (out of scope, order undefined in spec)
 
 ## Scope
 
@@ -22,7 +25,8 @@ This implementation includes the following additions/modifications to the Sharea
 - String: `'hello'`, `'Patient/123'`
 - Integer: `42`, `-10`, `0`
 - Decimal: `3.14`, `-0.5`, `100.0`
-- **Boolean**: `true`, `false`
+- Boolean: `true`, `false`
+- **Empty collection: `{}`**
 
 #### Functions
 - `where(criteria)` - filter collections by boolean expression
@@ -53,7 +57,8 @@ This implementation includes the following additions/modifications to the Sharea
 - `>` - greater than
 - `>=` - greater than or equal
 
-**Collection Access**:
+**Collection**:
+- **`;` - ordered concatenation** (for deterministic test collection construction)
 - Indexer: `collection[0]`, `collection[index]`
 
 #### SQL on FHIR Extension Functions
@@ -79,14 +84,18 @@ This implementation includes the following additions/modifications to the Sharea
 
 ### Phase 1: FHIRPath System Types
 Support for FHIRPath System types only:
-- **Literals**: String, Integer, Decimal, Boolean
+- **Literals**: String, Integer, Decimal, Boolean, `{}` (empty collection)
+- **Types**: System types (String, Integer, Decimal, Boolean, NULL)
+- **Structured Types**: ResourceType, ComplexType (Phase 1: fields restricted to System types only - for testing)
 - **Functions**: `where()`, `exists()`, `empty()`, `ofType()`, `first()`
-- **Operators**: All boolean, arithmetic, comparison operators
+- **Operators**: Boolean, arithmetic, comparison, `;` (ordered concatenation)
 - **Collection Access**: Indexer expressions
 - **Excluded**:
-  - No FHIR-specific types or resources
-  - No `extension()` function
-  - No SQL on FHIR extension functions
+  - No `|` (union) operator - order undefined in spec
+  - No FHIR-specific types (Date, DateTime, Time, Quantity)
+  - No FHIR resource navigation (Phase 2)
+  - No `extension()` function (Phase 2)
+  - No SQL on FHIR extension functions (Phase 3)
 
 ### Phase 2: FHIR Types and Resources
 Add FHIR-specific support:

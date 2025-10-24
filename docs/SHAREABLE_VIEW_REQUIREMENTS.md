@@ -28,6 +28,16 @@ This implementation includes the following additions/modifications to the Sharea
 - Boolean: `true`, `false`
 - **Empty collection: `{}`**
 
+#### Variables & Context
+- **`$this`** - current context in lambda expressions (e.g., within `where()`)
+- **`%resource`** - reference to root resource being evaluated
+- **`%context`** - reference to evaluation context
+
+#### Path Navigation
+- **Field traversal**: `resource.field`, `complexType.field`
+- **Nested traversal**: `resource.nestedComplex.field`
+- **Collection fields**: Support for SINGLE (`?`) and MANY (`*`) cardinality
+
 #### Functions
 - `where(criteria)` - filter collections by boolean expression
 - `exists()` - true if collection non-empty
@@ -82,27 +92,56 @@ This implementation includes the following additions/modifications to the Sharea
 
 ## Implementation Phases
 
-### Phase 1: FHIRPath System Types
-Support for FHIRPath System types only:
-- **Literals**: String, Integer, Decimal, Boolean, `{}` (empty collection)
-- **Types**: System types (String, Integer, Decimal, Boolean, NULL)
-- **Structured Types**: ResourceType, ComplexType (Phase 1: fields restricted to System types only - for testing)
-- **Functions**: `where()`, `exists()`, `empty()`, `ofType()`, `first()`
-- **Operators**: Boolean, arithmetic, comparison, `;` (ordered concatenation)
-- **Collection Access**: Indexer expressions
-- **Excluded**:
-  - No `|` (union) operator - order undefined in spec
-  - No FHIR-specific types (Date, DateTime, Time, Quantity)
-  - No FHIR resource navigation (Phase 2)
-  - No `extension()` function (Phase 2)
-  - No SQL on FHIR extension functions (Phase 3)
+### Phase 1: FHIRPath System Types + Basic Navigation
+Support for FHIRPath System types with basic resource/context navigation:
 
-### Phase 2: FHIR Types and Resources
-Add FHIR-specific support:
-- **FHIR Types**: Support for FHIR primitive and complex types (Date, DateTime, Time, Quantity)
-- **Resource Navigation**: Path navigation through FHIR resource structures
+**Literals & Types:**
+- **Literals**: String, Integer, Decimal, Boolean, `{}` (empty collection)
+- **System Types**: String, Integer, Decimal, Boolean, NULL
+- **Structured Types**:
+  - ComplexType (fields restricted to System types only)
+  - ResourceType (based on ComplexType - fields restricted to System types only)
+
+**Variables & Context:**
+- **`$this`** - current context in lambda expressions (e.g., within `where()`, `exists()`)
+- **`%resource`** - reference to root resource being evaluated
+- **`%context`** - reference to evaluation context (same as implicit `$this` for root)
+- Root resource and context provided at evaluation time
+
+**Path Navigation:**
+- **Field traversal**: `resource.field`, `complexType.field` (System type fields only)
+- **Nested traversal**: `resource.nestedComplex.field`
+- **Collection fields**: Fields can be SINGLE (`?`) or MANY (`*`) cardinality
+
+**Functions:**
+- `where()`, `exists()`, `empty()`, `ofType()`, `first()`
+
+**Operators:**
+- Boolean: `and`, `or`, `not`
+- Arithmetic: `+`, `-`, `*`, `/`
+- Comparison: `=`, `!=`, `<`, `<=`, `>`, `>=`
+- Collection: `;` (ordered concatenation)
+
+**Collection Access:**
+- Indexer expressions: `collection[index]`
+
+**Excluded from Phase 1:**
+- `|` (union) operator - order undefined in spec (deferred to Phase 2)
+- FHIR primitive types: Date, DateTime, Time (no getValue(), no implicit casting)
+- FHIR Quantity type
+- `extension()` function (Phase 2)
+- SQL on FHIR extension functions: `getResourceKey()`, `getReferenceKey()` (Phase 3)
+
+### Phase 2: FHIR Types
+Add FHIR-specific type support:
+- **FHIR Primitive Types**: Date, DateTime, Time with FhirType wrapper
+  - `getValue()` function for unwrapping to System types
+  - Implicit casting from FHIR primitives to System types
+  - Temporal arithmetic operations
+- **FHIR Quantity Type**: Complex type with value/unit/system/code
+  - Quantity arithmetic and comparison
+- **FHIR Complex Types**: Use actual FHIR type definitions (not just System types)
 - **Extension Access**: `extension(url)` function for accessing FHIR extensions
-- **Type System**: Integration with FHIR type system
 - **Union Operator**: Add `|` (union) with undefined order semantics per FHIRPath spec
 
 ### Phase 3: SQL on FHIR Extensions

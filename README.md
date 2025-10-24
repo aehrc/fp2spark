@@ -2,6 +2,12 @@
 
 Parse and evaluate FHIRPath expressions directly to Apache Spark SQL Column expressions.
 
+## Project Status
+
+**Current Phase**: Phase 1 - FHIRPath System Types Support
+
+This project is implementing the FHIRPath language subset required for [SQL on FHIR v2 ShareableViewDefinition](https://build.fhir.org/ig/FHIR/sql-on-fhir-v2/StructureDefinition-ShareableViewDefinition.html). See [docs/SHAREABLE_VIEW_REQUIREMENTS.md](docs/SHAREABLE_VIEW_REQUIREMENTS.md) for complete requirements and [issue #3](https://github.com/piotrszul/fp2spark/issues/3) for tracking.
+
 ## Tech Stack
 
 - **Java 21**
@@ -57,19 +63,44 @@ Spark SQL Column
 
 ## Supported Features
 
-- Literals (strings, numbers, booleans)
-- Arithmetic operators (`+`, `-`, `*`, `/`)
-- Comparison operators (`=`, `>`, `<`, `>=`, `<=`)
-- Collection operators (`|` union)
-- Functions: `count()`, `exists()`, `where()`, `first()`, `iif()`, `substring()`
+**Phase 1 (In Progress)**:
+- Literals: String, Integer, Decimal, Boolean
+- Boolean operators: `and`, `or`, `not`
+- Arithmetic operators: `+`, `-`, `*`, `/`
+- Comparison operators: `=`, `!=`, `<`, `<=`, `>`, `>=`
+- Functions: `where()`, `exists()`, `empty()`, `ofType()`, `first()`
+- Collection indexer: `collection[index]`
+
+**Coming in Phase 2**:
+- FHIR-specific types and resources
 - Field traversal on FHIR resources
-- Lambda expressions with `$this` binding
+- `extension()` function
+
+**Coming in Phase 3**:
+- SQL on FHIR extension functions: `getResourceKey()`, `getReferenceKey()`
 
 ## Requirements
 
 - Java 21+
 - Maven 3.6+
 - Apache Spark 4.0.1 (provided scope)
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines, code style requirements, and pull request process.
+
+Key points:
+- All PRs must have **zero compilation warnings**
+- Follow [JAVA_CODING_STYLE.md](JAVA_CODING_STYLE.md)
+- Write tests for all new code
+- Create or reference an issue before starting work
+
+## Documentation
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design patterns
+- [JAVA_CODING_STYLE.md](JAVA_CODING_STYLE.md) - Java coding conventions
+- [docs/SHAREABLE_VIEW_REQUIREMENTS.md](docs/SHAREABLE_VIEW_REQUIREMENTS.md) - FHIRPath requirements
+- [docs/phase1/PHASE1_STRATEGY.md](docs/phase1/PHASE1_STRATEGY.md) - Phase 1 implementation plan
 
 ## License
 

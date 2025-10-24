@@ -120,40 +120,73 @@ when combining heterogeneous numeric collections.
 
 ## Pull Request Process
 
-1. **Create a feature branch** from `main`:
+1. **Communicate first**: Create or comment on an issue before starting significant work
+   - Prevents duplicate efforts
+   - Ensures alignment with project goals
+   - Opportunity to discuss approach
+
+2. **Create a feature branch** from `main`:
    ```bash
    git checkout -b issue/<issue-number>-<short-description>
    ```
 
-2. **Make your changes** following the code style guidelines
+3. **Make your changes** following the code style guidelines
 
-3. **Write tests** for your changes
+4. **Write tests** for your changes
 
-4. **Run the full test suite** and ensure all tests pass:
+5. **Run the full test suite** and ensure all tests pass:
    ```bash
    mvn clean test
    ```
 
-5. **Commit your changes** with clear, focused commit messages
+6. **Verify quality gates**:
+   ```bash
+   # Must have ZERO compilation warnings
+   mvn clean compile
+   ```
 
-6. **Push to your fork** and create a pull request
+7. **Commit your changes** with clear, focused commit messages
 
-7. **Address review feedback** promptly
+8. **Push to your fork** and create a pull request
+
+9. **Address review feedback** promptly
 
 ### Pull Request Checklist
 
 - [ ] Code follows [JAVA_CODING_STYLE.md](JAVA_CODING_STYLE.md)
 - [ ] All new code has unit tests
 - [ ] All tests pass (`mvn test`)
-- [ ] No compiler warnings
+- [ ] **Zero compilation warnings** (`mvn clean compile`)
 - [ ] Documentation updated (if applicable)
 - [ ] Commit messages are clear and follow guidelines
+- [ ] PR references related issue number
+
+## Code Quality Standards
+
+This project enforces the following quality gates:
+
+### Compilation Warnings
+- **Zero compilation warnings are required**
+- CI will fail if any warnings are present
+- Address all warnings before submitting PR
+
+### Test Coverage
+- Test coverage gates will be enforced starting in Phase 1, Stage 1.9
+- Until then, focus on quality over quantity
+- All new code should have comprehensive unit tests
+- Target: >80% coverage for core FHIRPath components (to be enforced)
+
+### Code Review
+- All PRs require review before merging
+- Address all review comments
+- Maintain respectful, constructive dialogue
 
 ## Questions or Issues?
 
 - Check existing issues before creating a new one
 - Provide detailed information when reporting bugs
 - Include minimal reproduction steps for bug reports
+- Communicate before starting significant work
 
 ## License
 

@@ -37,27 +37,22 @@ public final class OperationRegistry {
         return Map.ofEntries(
 
             // ARITHMETIC OPERATORS (FHIRPath Spec 6.2)
+            // Phase 1: Only numeric types (INTEGER, DECIMAL) and STRING
 
-            // Addition: numeric types, strings, and temporal + Quantity
-            // FHIRPath Spec 3740-3809: Date/DateTime/Time + Quantity
             register("add",
-                forTypes(NUMERIC_WITH_QUANTITY, STRING_LIKE).define(Signatures::binaryOp),
-                forTypes(TEMPORAL).define(Signatures::temporalArithmetic)
+                forTypes(NUMERIC, STRING_LIKE).define(Signatures::binaryOp)
             ),
 
-            // Subtraction: numeric types and temporal - Quantity
-            // FHIRPath Spec 3810-3867: Date/DateTime/Time - Quantity
             register("sub",
-                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::binaryOp),
-                forTypes(TEMPORAL).define(Signatures::temporalArithmetic)
+                forTypes(NUMERIC).define(Signatures::binaryOp)
             ),
 
             register("multiply",
-                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::binaryOp)
+                forTypes(NUMERIC).define(Signatures::binaryOp)
             ),
 
             register("divide",
-                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::binaryOp)
+                forTypes(NUMERIC).define(Signatures::binaryOp)
             ),
 
             register("mod",
@@ -83,9 +78,10 @@ public final class OperationRegistry {
             ),
 
             // MATH FUNCTIONS (FHIRPath Spec 6.4)
+            // Phase 1: Only numeric types (INTEGER, DECIMAL)
 
             register("abs",
-                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::unaryOp)
+                forTypes(NUMERIC).define(Signatures::unaryOp)
             ),
 
             register("ceiling",

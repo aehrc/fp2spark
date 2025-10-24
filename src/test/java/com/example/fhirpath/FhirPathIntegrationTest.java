@@ -1,7 +1,6 @@
 package com.example.fhirpath;
 
 import com.example.fhirpath.typing.*;
-import com.example.fhirpath.typing.fhir.FhirType;
 import org.apache.spark.sql.*;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.Metadata;
@@ -246,7 +245,8 @@ class FhirPathIntegrationTest {
                 Arguments.of("10.3 + age", "65.3"),
                 Arguments.of("gender = 'male'", "true"),
                 Arguments.of("value", "344.1000"),
-                Arguments.of("value.getValue()", "344.1"),
+                // Phase 1: getValue() deferred to Phase 2 (no FhirType wrapper)
+                // Arguments.of("value.getValue()", "344.1"),
                 // where() function tests - FHIRPath Spec 5.2.5
                 // spec: Basic filtering with equality
                 Arguments.of("name.where(use = 'official').family", "[Szul]"),
@@ -370,11 +370,12 @@ class FhirPathIntegrationTest {
                 new FieldSpec("use", Shape.single(Types.STRING))
         );
 
+        // Phase 1: Use System types directly (no FhirType wrapper)
         final Column column = FhirPath.toColumn(expression, new ResourceType("Patient",
                 new FieldSpec("id", Shape.single(Types.STRING)),
-                new FieldSpec("gender", Shape.single(new FhirType(PrimitiveType.STRING))),
-                new FieldSpec("age", Shape.single(new FhirType(PrimitiveType.INTEGER))),
-                new FieldSpec("value", Shape.single(new FhirType(PrimitiveType.DECIMAL))),
+                new FieldSpec("gender", Shape.single(PrimitiveType.STRING)),
+                new FieldSpec("age", Shape.single(PrimitiveType.INTEGER)),
+                new FieldSpec("value", Shape.single(PrimitiveType.DECIMAL)),
                 new FieldSpec("name", Shape.many(humanNameType))
         ));
         // Evaluate the expression

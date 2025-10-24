@@ -3,7 +3,6 @@ package com.example.fhirpath.operation;
 import com.example.fhirpath.analyzer.UnsupportedFeatureException;
 
 import com.example.fhirpath.ast.AstFunctionCall;
-import com.example.fhirpath.ir.CastToSystem;
 import com.example.fhirpath.ir.Combine;
 import com.example.fhirpath.ir.Equals;
 import com.example.fhirpath.ir.IRNode;
@@ -26,7 +25,6 @@ import java.util.stream.Stream;
  *
  * <p>Supported operations:
  * <ul>
- *   <li>{@code getValue()} - Unwraps FHIR primitive types to system types</li>
  *   <li>{@code equals()} - Equality comparison</li>
  *   <li>{@code combine} / {@code ;} - Ordered collection concatenation</li>
  * </ul>
@@ -45,7 +43,7 @@ public final class InfrastructureOperationHandler {
      */
     public static boolean isInfrastructureOperation(@Nonnull final String functionName) {
         return switch (functionName) {
-            case "getValue", "equals", "combine", ";" -> true;
+            case "equals", "combine", ";" -> true;
             default -> false;
         };
     }
@@ -73,7 +71,6 @@ public final class InfrastructureOperationHandler {
         ).toList();
 
         return switch (call.functionName()) {
-            case "getValue" -> new CastToSystem(args.get(0));
             case "equals" -> new Equals(args.get(0), args.get(1));
             case "combine", ";" -> new Combine(args.get(0), args.get(1));
             default -> throw new UnsupportedFeatureException(

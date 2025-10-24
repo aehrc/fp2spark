@@ -12,11 +12,7 @@ import org.apache.spark.sql.types.DataType;
 import jakarta.annotation.Nonnull;
 import java.util.List;
 
-import static com.example.fhirpath.codegen.spark.Date.date;
-import static com.example.fhirpath.codegen.spark.DateTime.dateTime;
-import static com.example.fhirpath.codegen.spark.Quantity.quantity;
 import static com.example.fhirpath.codegen.spark.SparkTypeMapper.toSparkDataType;
-import static com.example.fhirpath.codegen.spark.Time.time;
 import static org.apache.spark.sql.functions.*;
 
 /**
@@ -148,8 +144,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> left.plus(right);
             case STRING -> concat(left, right);
-            case DATE_TIME -> dateTime(left).plus(quantity(right));
-            case QUANTITY -> quantity(left).plus(quantity(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported result type for add: " + resultType);
         };
@@ -162,7 +156,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> left.minus(right);
-            case DATE_TIME, QUANTITY -> left.minus(right); // Simplified - use direct minus
             default -> throw new IllegalArgumentException(
                     "Unsupported result type for sub: " + resultType);
         };
@@ -175,7 +168,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> left.multiply(right);
-            case QUANTITY -> left.multiply(right); // Use simple multiply for now
             default -> throw new IllegalArgumentException(
                     "Unsupported result type for multiply: " + resultType);
         };
@@ -188,7 +180,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> left.divide(right);
-            case QUANTITY -> quantity(left).divide(quantity(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported result type for divide: " + resultType);
         };
@@ -210,10 +201,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         // Note: resultType is always BOOLEAN for comparisons
         return switch ((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.gt(right);
-            case QUANTITY -> quantity(left).gt(quantity(right));
-            case DATE_TIME -> dateTime(left).gt(dateTime(right));
-            case DATE -> date(left).gt(date(right));
-            case TIME -> time(left).gt(time(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for gt: " + inputType);
         };
@@ -226,10 +213,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.lt(right);
-            case QUANTITY -> quantity(left).lt(quantity(right));
-            case DATE_TIME -> dateTime(left).lt(dateTime(right));
-            case DATE -> date(left).lt(date(right));
-            case TIME -> time(left).lt(time(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for lt: " + inputType);
         };
@@ -242,10 +225,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.geq(right);
-            case QUANTITY -> quantity(left).geq(quantity(right));
-            case DATE_TIME -> dateTime(left).geq(dateTime(right));
-            case DATE -> date(left).geq(date(right));
-            case TIME -> time(left).geq(time(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for geq: " + inputType);
         };
@@ -258,10 +237,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.leq(right);
-            case QUANTITY -> quantity(left).lt(quantity(right)).or(left.equalTo(right));
-            case DATE_TIME -> dateTime(left).lt(dateTime(right)).or(left.equalTo(right));
-            case DATE -> date(left).lt(date(right)).or(left.equalTo(right));
-            case TIME -> time(left).lt(time(right)).or(left.equalTo(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for leq: " + inputType);
         };
@@ -275,7 +250,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> abs(target);
-            case QUANTITY -> quantity(target).abs();
             default -> throw new IllegalArgumentException(
                     "Unsupported result type for abs: " + resultType);
         };
@@ -524,14 +498,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
                 : lit(null);
     }
 
-    @Override
-    @Nonnull
-    public Column visitCastToSystem(@Nonnull CastToSystem castToSystem) {
-        // GetValue converts FHIR types to system types by casting
-        Column childColumn = castToSystem.child().accept(this);
-        DataType sparkType = toSparkDataType(castToSystem.getShape());
-        return childColumn.cast(sparkType);
-    }
 
     @Override
     @Nonnull
@@ -564,22 +530,14 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Type leftType = equals.left().getType();
         Type rightType = equals.right().getType();
 
-        // Normalize FHIR types to their system types for comparison
-        Type normalizedLeftType = leftType instanceof com.example.fhirpath.typing.fhir.FhirType fhirLeft
-                ? fhirLeft.systemType()
-                : leftType;
-        Type normalizedRightType = rightType instanceof com.example.fhirpath.typing.fhir.FhirType fhirRight
-                ? fhirRight.systemType()
-                : rightType;
-
         // Handle null types
-        if (normalizedLeftType == Types.NULL || normalizedRightType == Types.NULL) {
+        if (leftType == Types.NULL || rightType == Types.NULL) {
             return lit(null);
         }
 
         // Check if types are compatible (exact match or numeric coercion)
-        boolean typesCompatible = normalizedLeftType == normalizedRightType ||
-                (isNumericType(normalizedLeftType) && isNumericType(normalizedRightType));
+        boolean typesCompatible = leftType == rightType ||
+                (isNumericType(leftType) && isNumericType(rightType));
 
         if (!typesCompatible) {
             return lit(false);

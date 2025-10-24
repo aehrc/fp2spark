@@ -1,12 +1,13 @@
 package com.example.fhirpath.typing;
 
-import com.example.fhirpath.typing.fhir.FhirType;
-
 import jakarta.annotation.Nonnull;
 import java.util.stream.Stream;
 
 /**
  * Utilities for working with the FHIRPath type system.
+ * <p>
+ * Phase 1: Only System types (INTEGER, DECIMAL, BOOLEAN, STRING) are supported.
+ * FHIR types (Date, DateTime, Time, Quantity, FhirType wrapper) are deferred to Phase 2.
  */
 public final class TypeSystem {
     private TypeSystem() {
@@ -18,23 +19,19 @@ public final class TypeSystem {
      * <p>Implements the adaptation rules from the FHIRPath type system:
      * <ul>
      *   <li>INTEGER → DECIMAL</li>
-     *   <li>DECIMAL → QUANTITY</li>
-     *   <li>DATE → DATE_TIME</li>
-     *   <li>FhirType[Prim] → Prim</li>
      *   <li>NULL → any type</li>
      * </ul>
+     * <p>
+     * Phase 1: Only INTEGER → DECIMAL adaptation is supported.
+     * Additional adaptations (DECIMAL → QUANTITY, DATE → DATE_TIME, FhirType unwrapping)
+     * are deferred to Phase 2.
      */
     public static boolean canCast(Type from, Type to) {
-        if (from instanceof FhirType ft) {
-            return canCast(ft.systemType(), to);
-        }
         if (from == to) return true;
         if (from == PrimitiveType.NULL) return true;
 
-        // Primitive casts (adaptation rules)
+        // Primitive casts (adaptation rules) - Phase 1: only INTEGER → DECIMAL
         if (from == PrimitiveType.INTEGER && to == PrimitiveType.DECIMAL) return true;
-        if (from == PrimitiveType.DECIMAL && to == PrimitiveType.QUANTITY) return true;
-        if (from == PrimitiveType.DATE && to == PrimitiveType.DATE_TIME) return true;
 
         return false;
     }

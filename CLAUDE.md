@@ -4,6 +4,21 @@
 
 This project implements FHIRPath to SQL translation.
 
+## Working Files and Collaborative Documents
+
+**IMPORTANT:** When collaborating on designs, specifications, or other working documents, generate all working versions in the `.local/work/` directory.
+
+This directory is used for:
+- Detailed design documents in progress
+- Architecture proposals and alternatives
+- Analysis and planning documents
+- Other collaborative working files
+
+**Guidelines:**
+- Place work-in-progress documents in `.local/work/`
+- Once finalized, migrate important documents to appropriate locations (e.g., `docs/`, root directory)
+- The `.local/` directory is typically gitignored, so commit important content elsewhere when ready
+
 ## Important References
 
 ### FHIRPath Specification

@@ -4,7 +4,10 @@ package com.example.fhirpath.typing;
  * Enumeration of FHIRPath primitive types.
  *
  * <p>Primitive types represent the fundamental value types in FHIRPath
- * such as integers, strings, booleans, and temporal types.
+ * such as integers, strings, booleans.
+ *
+ * <p>Phase 1 supports System types only (INTEGER, DECIMAL, BOOLEAN, STRING).
+ * FHIR-specific types (Date, DateTime, Time, Quantity) are deferred to Phase 2.
  *
  * <p>In the element-first type system, PrimitiveType represents the element type,
  * while {@link Cardinality} specifies how many elements (0..1 or 0..*).
@@ -12,10 +15,6 @@ package com.example.fhirpath.typing;
 public enum PrimitiveType implements Type {
     INTEGER("integer"),
     DECIMAL("decimal"),
-    QUANTITY("quantity"),
-    DATE("date"),
-    DATE_TIME("dateTime"),
-    TIME("time"),
     BOOLEAN("boolean"),
     STRING("string"),
     NULL("null"),

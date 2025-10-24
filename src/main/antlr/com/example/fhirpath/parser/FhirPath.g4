@@ -35,7 +35,7 @@ expression
         | expression ('*' | '/' | 'div' | 'mod') expression         #multiplicativeExpression
         | expression ('+' | '-' | '&') expression                   #additiveExpression
         | expression ('is' | 'as') typeSpecifier                    #typeExpression
-        | expression '|' expression                                 #unionExpression
+        | expression ('|' | ';') expression                          #combineExpression
         | expression ('<=' | '<' | '>' | '>=') expression           #inequalityExpression
         | expression ('=' | '~' | '!=' | '!~') expression           #equalityExpression
         | expression ('in' | 'contains') expression                 #membershipExpression

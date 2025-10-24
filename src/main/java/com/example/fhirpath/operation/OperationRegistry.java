@@ -37,27 +37,22 @@ public final class OperationRegistry {
         return Map.ofEntries(
 
             // ARITHMETIC OPERATORS (FHIRPath Spec 6.2)
+            // Phase 1: Only numeric types (INTEGER, DECIMAL) and STRING
 
-            // Addition: numeric types, strings, and temporal + Quantity
-            // FHIRPath Spec 3740-3809: Date/DateTime/Time + Quantity
             register("add",
-                forTypes(NUMERIC_WITH_QUANTITY, STRING_LIKE).define(Signatures::binaryOp),
-                forTypes(TEMPORAL).define(Signatures::temporalArithmetic)
+                forTypes(NUMERIC, STRING_LIKE).define(Signatures::binaryOp)
             ),
 
-            // Subtraction: numeric types and temporal - Quantity
-            // FHIRPath Spec 3810-3867: Date/DateTime/Time - Quantity
             register("sub",
-                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::binaryOp),
-                forTypes(TEMPORAL).define(Signatures::temporalArithmetic)
+                forTypes(NUMERIC).define(Signatures::binaryOp)
             ),
 
             register("multiply",
-                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::binaryOp)
+                forTypes(NUMERIC).define(Signatures::binaryOp)
             ),
 
             register("divide",
-                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::binaryOp)
+                forTypes(NUMERIC).define(Signatures::binaryOp)
             ),
 
             register("mod",
@@ -80,83 +75,6 @@ public final class OperationRegistry {
 
             register("leq",
                 forTypes(COMPARABLE).define(Signatures::comparisonOp)
-            ),
-
-            // MATH FUNCTIONS (FHIRPath Spec 6.4)
-
-            register("abs",
-                forTypes(NUMERIC_WITH_QUANTITY).define(Signatures::unaryOp)
-            ),
-
-            register("ceiling",
-                forTypes(NUMERIC).define(Signatures::unaryOp)
-            ),
-
-            register("floor",
-                forTypes(NUMERIC).define(Signatures::unaryOp)
-            ),
-
-            register("truncate",
-                forTypes(NUMERIC).define(Signatures::unaryOp)
-            ),
-
-            register("exp",
-                forTypes(NUMERIC).define(Signatures::unaryOp)
-            ),
-
-            register("ln",
-                forTypes(NUMERIC).define(Signatures::unaryOp)
-            ),
-
-            register("log",
-                forTypes(NUMERIC).define(Signatures::unaryOp)
-            ),
-
-            register("sqrt",
-                forTypes(NUMERIC).define(Signatures::unaryOp)
-            ),
-
-            // STRING FUNCTIONS (FHIRPath Spec 6.5)
-
-            // substring(string, start) and substring(string, start, length)
-            register("substring",
-                Signatures.variadic(
-                    List.of(ParamSpec.single(STRING), ParamSpec.single(INTEGER), ParamSpec.single(INTEGER)),
-                    ResultTypeSpec.single(STRING),
-                    2
-                )
-            ),
-
-            register("startsWith",
-                Signatures.binaryFunc(STRING, STRING, BOOLEAN)
-            ),
-
-            register("endsWith",
-                Signatures.binaryFunc(STRING, STRING, BOOLEAN)
-            ),
-
-            register("contains",
-                Signatures.binaryFunc(STRING, STRING, BOOLEAN)
-            ),
-
-            register("upper",
-                Signatures.unaryOp(STRING)  // T -> T pattern
-            ),
-
-            register("lower",
-                Signatures.unaryOp(STRING)  // T -> T pattern
-            ),
-
-            register("replace",
-                Signatures.ternaryFunc(STRING, STRING, STRING, STRING)
-            ),
-
-            register("matches",
-                Signatures.binaryFunc(STRING, STRING, BOOLEAN)
-            ),
-
-            register("length",
-                Signatures.unaryFunc(STRING, INTEGER)
             ),
 
             // BOOLEAN OPERATORS (FHIRPath Spec 6.8)

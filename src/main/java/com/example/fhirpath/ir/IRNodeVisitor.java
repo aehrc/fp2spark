@@ -47,16 +47,10 @@ public interface IRNodeVisitor<T> {
     T visitResource(@Nonnull Resource node);
 
     /**
-     * Visit a getValue() operation (extract value from FHIR type).
+     * Visit a combine operation (ordered concatenation).
      */
     @Nonnull
-    T visitCastToSystem(@Nonnull CastToSystem node);
-
-    /**
-     * Visit a union operation (collection union).
-     */
-    @Nonnull
-    T visitUnion(@Nonnull Union node);
+    T visitCombine(@Nonnull Combine node);
 
     /**
      * Visit an equals comparison operation.

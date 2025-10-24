@@ -1,4 +1,4 @@
-# Implement FHIRPath Support for SQL on FHIR ShareableViewDefinition
+D# Implement FHIRPath Support for SQL on FHIR ShareableViewDefinition
 
 ## Overview
 
@@ -11,8 +11,11 @@ Implement the FHIRPath language subset required for SQL on FHIR v2 ShareableView
 This implementation includes the following additions/modifications to the ShareableViewDefinition requirements:
 
 - **Boolean literal** (`true`, `false`) - added for completeness
+- **Empty collection literal** (`{}`) - added for testing empty collection semantics
 - **Full comparison operator set** - added `<`, `>=` to the spec's `>`, `<=`
 - **Equality scope clarification** - `=` and `!=` explicitly limited to primitive types only
+- **Ordered concatenation operator** (`;`) - added for Phase 1 to support deterministic collection construction in tests
+- **Union operator** (`|`) - **removed from Phase 1** (out of scope, order undefined in spec)
 
 ## Scope
 
@@ -22,7 +25,18 @@ This implementation includes the following additions/modifications to the Sharea
 - String: `'hello'`, `'Patient/123'`
 - Integer: `42`, `-10`, `0`
 - Decimal: `3.14`, `-0.5`, `100.0`
-- **Boolean**: `true`, `false`
+- Boolean: `true`, `false`
+- **Empty collection: `{}`**
+
+#### Variables & Context
+- **`$this`** - current context in lambda expressions (e.g., within `where()`)
+- **`%resource`** - reference to root resource being evaluated
+- **`%context`** - reference to evaluation context
+
+#### Path Navigation
+- **Field traversal**: `resource.field`, `complexType.field`
+- **Nested traversal**: `resource.nestedComplex.field`
+- **Collection fields**: Support for SINGLE (`?`) and MANY (`*`) cardinality
 
 #### Functions
 - `where(criteria)` - filter collections by boolean expression
@@ -53,7 +67,8 @@ This implementation includes the following additions/modifications to the Sharea
 - `>` - greater than
 - `>=` - greater than or equal
 
-**Collection Access**:
+**Collection**:
+- **`;` - ordered concatenation** (for deterministic test collection construction)
 - Indexer: `collection[0]`, `collection[index]`
 
 #### SQL on FHIR Extension Functions
@@ -77,23 +92,57 @@ This implementation includes the following additions/modifications to the Sharea
 
 ## Implementation Phases
 
-### Phase 1: FHIRPath System Types
-Support for FHIRPath System types only:
-- **Literals**: String, Integer, Decimal, Boolean
-- **Functions**: `where()`, `exists()`, `empty()`, `ofType()`, `first()`
-- **Operators**: All boolean, arithmetic, comparison operators
-- **Collection Access**: Indexer expressions
-- **Excluded**:
-  - No FHIR-specific types or resources
-  - No `extension()` function
-  - No SQL on FHIR extension functions
+### Phase 1: FHIRPath System Types + Basic Navigation
+Support for FHIRPath System types with basic resource/context navigation:
 
-### Phase 2: FHIR Types and Resources
-Add FHIR-specific support:
-- **FHIR Types**: Support for FHIR primitive and complex types
-- **Resource Navigation**: Path navigation through FHIR resource structures
+**Literals & Types:**
+- **Literals**: String, Integer, Decimal, Boolean, `{}` (empty collection)
+- **System Types**: String, Integer, Decimal, Boolean, NULL
+- **Structured Types**:
+  - ComplexType (fields restricted to System types only)
+  - ResourceType (based on ComplexType - fields restricted to System types only)
+
+**Variables & Context:**
+- **`$this`** - current context in lambda expressions (e.g., within `where()`, `exists()`)
+- **`%resource`** - reference to root resource being evaluated
+- **`%context`** - reference to evaluation context (same as implicit `$this` for root)
+- Root resource and context provided at evaluation time
+
+**Path Navigation:**
+- **Field traversal**: `resource.field`, `complexType.field` (System type fields only)
+- **Nested traversal**: `resource.nestedComplex.field`
+- **Collection fields**: Fields can be SINGLE (`?`) or MANY (`*`) cardinality
+
+**Functions:**
+- `where()`, `exists()`, `empty()`, `ofType()`, `first()`
+
+**Operators:**
+- Boolean: `and`, `or`, `not`
+- Arithmetic: `+`, `-`, `*`, `/`
+- Comparison: `=`, `!=`, `<`, `<=`, `>`, `>=`
+- Collection: `;` (ordered concatenation)
+
+**Collection Access:**
+- Indexer expressions: `collection[index]`
+
+**Excluded from Phase 1:**
+- `|` (union) operator - order undefined in spec (deferred to Phase 2)
+- FHIR primitive types: Date, DateTime, Time (no getValue(), no implicit casting)
+- FHIR Quantity type
+- `extension()` function (Phase 2)
+- SQL on FHIR extension functions: `getResourceKey()`, `getReferenceKey()` (Phase 3)
+
+### Phase 2: FHIR Types
+Add FHIR-specific type support:
+- **FHIR Primitive Types**: Date, DateTime, Time with FhirType wrapper
+  - `getValue()` function for unwrapping to System types
+  - Implicit casting from FHIR primitives to System types
+  - Temporal arithmetic operations
+- **FHIR Quantity Type**: Complex type with value/unit/system/code
+  - Quantity arithmetic and comparison
+- **FHIR Complex Types**: Use actual FHIR type definitions (not just System types)
 - **Extension Access**: `extension(url)` function for accessing FHIR extensions
-- **Type System**: Integration with FHIR type system
+- **Union Operator**: Add `|` (union) with undefined order semantics per FHIRPath spec
 
 ### Phase 3: SQL on FHIR Extensions
 Add SQL on FHIR-specific functions:

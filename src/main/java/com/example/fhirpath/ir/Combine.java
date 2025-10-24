@@ -5,15 +5,18 @@ import com.example.fhirpath.typing.Shape;
 import jakarta.annotation.Nonnull;
 
 /**
- * Represents a union operation (|) in FHIRPath.
+ * Represents a combine operation (;) in FHIRPath - ordered concatenation.
  * Result is always MANY cardinality (0..*).
+ *
+ * <p>Note: This is distinct from union (|) which has undefined order per FHIRPath spec.
+ * The combine operator preserves left-to-right ordering.
  */
-public record Union(IRNode left, IRNode right) implements IRNode {
+public record Combine(IRNode left, IRNode right) implements IRNode {
 
     @Override
     @Nonnull
     public Shape getShape() {
-        // Union always produces MANY cardinality
+        // Combine always produces MANY cardinality
         // Element type from left operand (both sides must have same type)
         return Shape.many(left.getType());
     }
@@ -21,6 +24,6 @@ public record Union(IRNode left, IRNode right) implements IRNode {
     @Override
     @Nonnull
     public <T> T accept(@Nonnull IRNodeVisitor<T> visitor) {
-        return visitor.visitUnion(this);
+        return visitor.visitCombine(this);
     }
 }

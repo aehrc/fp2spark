@@ -12,11 +12,7 @@ import org.apache.spark.sql.types.DataType;
 import jakarta.annotation.Nonnull;
 import java.util.List;
 
-import static com.example.fhirpath.codegen.spark.Date.date;
-import static com.example.fhirpath.codegen.spark.DateTime.dateTime;
-import static com.example.fhirpath.codegen.spark.Quantity.quantity;
 import static com.example.fhirpath.codegen.spark.SparkTypeMapper.toSparkDataType;
-import static com.example.fhirpath.codegen.spark.Time.time;
 import static org.apache.spark.sql.functions.*;
 
 /**
@@ -93,27 +89,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             case "geq" -> evaluateGreaterEqual(args, argNodes.get(0).getType());
             case "leq" -> evaluateLessEqual(args, argNodes.get(0).getType());
 
-            // Math functions
-            case "abs" -> evaluateAbs(args, resultType);
-            case "ceiling" -> evaluateCeiling(args, resultType);
-            case "floor" -> evaluateFloor(args, resultType);
-            case "truncate" -> evaluateTruncate(args, resultType);
-            case "exp" -> evaluateExp(args, resultType);
-            case "ln" -> evaluateLn(args, resultType);
-            case "log" -> evaluateLog(args, resultType);
-            case "sqrt" -> evaluateSqrt(args, resultType);
-
-            // String functions
-            case "substring" -> evaluateSubstring(args);
-            case "startsWith" -> evaluateStartsWith(args);
-            case "endsWith" -> evaluateEndsWith(args);
-            case "contains" -> evaluateContains(args);
-            case "upper" -> upper(args.get(0));
-            case "lower" -> lower(args.get(0));
-            case "replace" -> regexp_replace(args.get(0), args.get(1), args.get(2));
-            case "matches" -> evaluateMatches(args);
-            case "length" -> length(args.get(0));
-
             // Boolean operators
             case "and" -> args.get(0).and(args.get(1));
             case "or" -> args.get(0).or(args.get(1));
@@ -148,8 +123,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> left.plus(right);
             case STRING -> concat(left, right);
-            case DATE_TIME -> dateTime(left).plus(quantity(right));
-            case QUANTITY -> quantity(left).plus(quantity(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported result type for add: " + resultType);
         };
@@ -162,7 +135,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> left.minus(right);
-            case DATE_TIME, QUANTITY -> left.minus(right); // Simplified - use direct minus
             default -> throw new IllegalArgumentException(
                     "Unsupported result type for sub: " + resultType);
         };
@@ -175,7 +147,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> left.multiply(right);
-            case QUANTITY -> left.multiply(right); // Use simple multiply for now
             default -> throw new IllegalArgumentException(
                     "Unsupported result type for multiply: " + resultType);
         };
@@ -188,7 +159,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) resultType) {
             case INTEGER, DECIMAL -> left.divide(right);
-            case QUANTITY -> quantity(left).divide(quantity(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported result type for divide: " + resultType);
         };
@@ -210,10 +180,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         // Note: resultType is always BOOLEAN for comparisons
         return switch ((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.gt(right);
-            case QUANTITY -> quantity(left).gt(quantity(right));
-            case DATE_TIME -> dateTime(left).gt(dateTime(right));
-            case DATE -> date(left).gt(date(right));
-            case TIME -> time(left).gt(time(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for gt: " + inputType);
         };
@@ -226,10 +192,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.lt(right);
-            case QUANTITY -> quantity(left).lt(quantity(right));
-            case DATE_TIME -> dateTime(left).lt(dateTime(right));
-            case DATE -> date(left).lt(date(right));
-            case TIME -> time(left).lt(time(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for lt: " + inputType);
         };
@@ -242,10 +204,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.geq(right);
-            case QUANTITY -> quantity(left).geq(quantity(right));
-            case DATE_TIME -> dateTime(left).geq(dateTime(right));
-            case DATE -> date(left).geq(date(right));
-            case TIME -> time(left).geq(time(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for geq: " + inputType);
         };
@@ -258,114 +216,9 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         return switch ((PrimitiveType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.leq(right);
-            case QUANTITY -> quantity(left).lt(quantity(right)).or(left.equalTo(right));
-            case DATE_TIME -> dateTime(left).lt(dateTime(right)).or(left.equalTo(right));
-            case DATE -> date(left).lt(date(right)).or(left.equalTo(right));
-            case TIME -> time(left).lt(time(right)).or(left.equalTo(right));
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for leq: " + inputType);
         };
-    }
-
-    // ========== Math Functions ==========
-
-    @Nonnull
-    private Column evaluateAbs(List<Column> args, Type resultType) {
-        Column target = args.get(0);
-
-        return switch ((PrimitiveType) resultType) {
-            case INTEGER, DECIMAL -> abs(target);
-            case QUANTITY -> quantity(target).abs();
-            default -> throw new IllegalArgumentException(
-                    "Unsupported result type for abs: " + resultType);
-        };
-    }
-
-    @Nonnull
-    private Column evaluateCeiling(List<Column> args, Type resultType) {
-        return ceil(args.get(0));
-    }
-
-    @Nonnull
-    private Column evaluateFloor(List<Column> args, Type resultType) {
-        return floor(args.get(0));
-    }
-
-    @Nonnull
-    private Column evaluateTruncate(List<Column> args, Type resultType) {
-        // Truncate towards zero
-        Column target = args.get(0);
-        return when(target.geq(lit(0)), floor(target))
-                .otherwise(ceil(target));
-    }
-
-    @Nonnull
-    private Column evaluateExp(List<Column> args, Type resultType) {
-        return exp(args.get(0));
-    }
-
-    @Nonnull
-    private Column evaluateLn(List<Column> args, Type resultType) {
-        return log(args.get(0));
-    }
-
-    @Nonnull
-    private Column evaluateLog(List<Column> args, Type resultType) {
-        return log(10.0, args.get(0));
-    }
-
-    @Nonnull
-    private Column evaluateSqrt(List<Column> args, Type resultType) {
-        return sqrt(args.get(0));
-    }
-
-    // ========== String Functions ==========
-
-    @Nonnull
-    private Column evaluateStartsWith(List<Column> args) {
-        return args.get(0).startsWith(args.get(1));
-    }
-
-    @Nonnull
-    private Column evaluateEndsWith(List<Column> args) {
-        return args.get(0).endsWith(args.get(1));
-    }
-
-    @Nonnull
-    private Column evaluateContains(List<Column> args) {
-        return args.get(0).contains(args.get(1));
-    }
-
-    @Nonnull
-    private Column evaluateMatches(List<Column> args) {
-        // For matches, Spark SQL has a regexp_like function that works with column patterns
-        Column target = args.get(0);
-        Column pattern = args.get(1);
-        // Use call_function to dynamically call regexp_like with both columns
-        return functions.call_function("regexp_like", target, pattern);
-    }
-
-    @Nonnull
-    private Column evaluateSubstring(List<Column> args) {
-        final Column targetColumn = args.get(0);
-        // FHIRPath uses 0-based indexing, Spark uses 1-based
-        final Column posColumn = args.get(1).plus(lit(1));
-
-        // Handle optional length parameter
-        final Column nonNullLengthColumn = coalesce(args.get(2), lit(Integer.MAX_VALUE));
-
-        // FHIRPath null propagation rules
-        final Column nullPropagationCondition = targetColumn.isNull()
-                .or(posColumn.isNull());
-
-        final Column posOutOfBoundsCondition = posColumn.leq(0)
-                .or(posColumn.gt(length(targetColumn)));
-
-        final Column nullCondition = nullPropagationCondition
-                .or(posOutOfBoundsCondition);
-
-        return when(not(nullCondition),
-                substr(targetColumn, posColumn, nonNullLengthColumn));
     }
 
     // ========== Collection Functions ==========
@@ -524,34 +377,27 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
                 : lit(null);
     }
 
-    @Override
-    @Nonnull
-    public Column visitCastToSystem(@Nonnull CastToSystem castToSystem) {
-        // GetValue converts FHIR types to system types by casting
-        Column childColumn = castToSystem.child().accept(this);
-        DataType sparkType = toSparkDataType(castToSystem.getShape());
-        return childColumn.cast(sparkType);
-    }
 
     @Override
     @Nonnull
-    public Column visitUnion(@Nonnull Union union) {
-        Column leftColumn = union.left().accept(this);
-        Column rightColumn = union.right().accept(this);
+    public Column visitCombine(@Nonnull Combine combine) {
+        Column leftColumn = combine.left().accept(this);
+        Column rightColumn = combine.right().accept(this);
 
-        // FHIRPath union semantics: {} | x = x, x | {} = x
+        // FHIRPath combine semantics: {} ; x = x, x ; {} = x
         // Empty collections (NULL) should be treated as empty arrays
 
         // Convert to arrays if singular, NULL stays NULL (will be coalesced to empty array)
-        Column leftArray = union.left().isSingular()
+        Column leftArray = combine.left().isSingular()
                 ? when(leftColumn.isNotNull(), functions.array(leftColumn))
                 : leftColumn;
-        Column rightArray = union.right().isSingular()
+        Column rightArray = combine.right().isSingular()
                 ? when(rightColumn.isNotNull(), functions.array(rightColumn))
                 : rightColumn;
 
-        // array_union handles NULL properly: array_union(NULL, arr) = arr
-        return array_union(
+        // concat handles NULL properly: concat(NULL, arr) = arr
+        // Use concat for ordered concatenation (';' operator semantics)
+        return concat(
                 coalesce(leftArray, functions.array()),
                 coalesce(rightArray, functions.array())
         );
@@ -563,22 +409,14 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Type leftType = equals.left().getType();
         Type rightType = equals.right().getType();
 
-        // Normalize FHIR types to their system types for comparison
-        Type normalizedLeftType = leftType instanceof com.example.fhirpath.typing.fhir.FhirType fhirLeft
-                ? fhirLeft.systemType()
-                : leftType;
-        Type normalizedRightType = rightType instanceof com.example.fhirpath.typing.fhir.FhirType fhirRight
-                ? fhirRight.systemType()
-                : rightType;
-
         // Handle null types
-        if (normalizedLeftType == Types.NULL || normalizedRightType == Types.NULL) {
+        if (leftType == Types.NULL || rightType == Types.NULL) {
             return lit(null);
         }
 
         // Check if types are compatible (exact match or numeric coercion)
-        boolean typesCompatible = normalizedLeftType == normalizedRightType ||
-                (isNumericType(normalizedLeftType) && isNumericType(normalizedRightType));
+        boolean typesCompatible = leftType == rightType ||
+                (isNumericType(leftType) && isNumericType(rightType));
 
         if (!typesCompatible) {
             return lit(false);

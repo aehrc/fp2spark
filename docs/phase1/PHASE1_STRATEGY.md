@@ -103,12 +103,15 @@ Transform the prototype into a well-organized software project with:
 - [ ] **Tests**: Integer literals: `42`, `-10`, `0`
 - [ ] **Tests**: Decimal literals: `3.14`, `-0.5`, `100.0`
 - [ ] **Tests**: Boolean literals: `true`, `false`
-- [ ] **Tests**: Type system integration for System types
-- [ ] **Implementation**: Literal parsing for all System types
+- [ ] **Tests**: Empty collection literal: `{}`
+- [ ] **Tests**: Type system integration for System types (String, Integer, Decimal, Boolean, NULL)
+- [ ] **Tests**: ResourceType/ComplexType with System type fields (for testing)
+- [ ] **Implementation**: Literal parsing for all System types and `{}`
 - [ ] **Implementation**: Type system integration
+- [ ] **Implementation**: ResourceType/ComplexType support (fields restricted to System types)
 - [ ] Coverage gate on new/modified code only
 
-**Deliverable**: Complete System type and literal support with tests
+**Deliverable**: Complete System type and literal support with tests, including structured types for testing
 
 ---
 
@@ -224,7 +227,28 @@ Transform the prototype into a well-organized software project with:
 
 ---
 
-### Stage 1.11: Collection Access (Indexer)
+### Stage 1.11: Ordered Concatenation Operator (`;`)
+*Goal: Implement ordered concatenation for deterministic test collections*
+
+**Single Issue**: "Implement Ordered Concatenation Operator (`;`)"
+
+**Task Checklist:**
+- [ ] **Tests**: `{1} ; {2}` → `{1, 2}` (ordered)
+- [ ] **Tests**: `{1} ; {2} ; {3}` → `{1, 2, 3}` (associative)
+- [ ] **Tests**: `{} ; {1}` → `{1}` (empty left)
+- [ ] **Tests**: `{1} ; {}` → `{1}` (empty right)
+- [ ] **Tests**: Type compatibility checking
+- [ ] **Implementation**: Parser support for `;` operator
+- [ ] **Implementation**: IR node (rename Union to Concatenate or new ConcatenateOp)
+- [ ] **Implementation**: Code generation (ordered concatenation semantics)
+- [ ] **Remove**: `|` (union) operator support (out of Phase 1 scope)
+- [ ] Coverage gate on new/modified code only
+
+**Deliverable**: Ordered concatenation operator with tests, union operator removed
+
+---
+
+### Stage 1.12: Collection Access (Indexer)
 *Goal: Implement indexer expressions*
 
 **Single Issue**: "Implement Indexer Expressions"
@@ -242,7 +266,7 @@ Transform the prototype into a well-organized software project with:
 
 ---
 
-### Stage 1.12: Test Coverage & Quality Gates
+### Stage 1.13: Test Coverage & Quality Gates
 *Goal: Achieve comprehensive coverage and enable global gates*
 
 **Single Issue**: "Establish Comprehensive Test Coverage and Quality Gates"
@@ -260,7 +284,7 @@ Transform the prototype into a well-organized software project with:
 
 ---
 
-### Stage 1.13: Implementation Guidelines & Documentation
+### Stage 1.14: Implementation Guidelines & Documentation
 *Goal: Enable future contributors and document Phase 1*
 
 **Single Issue**: "Create Implementation Guidelines and Phase 1 Documentation"

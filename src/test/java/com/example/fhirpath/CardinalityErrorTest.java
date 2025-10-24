@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>Section 3196-3197: Comparison operators require single-valued collections.
  * </ul>
  *
- * <p>These tests verify that expressions like {@code (1 | 2) + 2} are rejected
+ * <p>These tests verify that expressions like {@code (1 ; 2) + 2} are rejected
  * at analysis time with {@link CardinalityMismatchException}.
  */
 class CardinalityErrorTest {
@@ -52,51 +52,51 @@ class CardinalityErrorTest {
     static Stream<Arguments> cardinalityViolations() {
         return Stream.of(
                 // Math operators - left operand MANY
-                Arguments.of("(1 | 2) + 2", "add"),
-                Arguments.of("(1 | 2) - 3", "sub"),
-                Arguments.of("(1 | 2) * 3", "multiply"),
-                Arguments.of("(5 | 10) / 2", "divide"),
-                Arguments.of("(1 | 2 | 3) mod 2", "mod"),
+                Arguments.of("(1 ; 2) + 2", "add"),
+                Arguments.of("(1 ; 2) - 3", "sub"),
+                Arguments.of("(1 ; 2) * 3", "multiply"),
+                Arguments.of("(5 ; 10) / 2", "divide"),
+                Arguments.of("(1 ; 2 ; 3) mod 2", "mod"),
 
                 // Math operators - right operand MANY
-                Arguments.of("2 + (1 | 2)", "add"),
-                Arguments.of("10 - (1 | 2)", "sub"),
-                Arguments.of("5 * (2 | 3)", "multiply"),
-                Arguments.of("10 / (2 | 5)", "divide"),
-                Arguments.of("10 mod (2 | 3)", "mod"),
+                Arguments.of("2 + (1 ; 2)", "add"),
+                Arguments.of("10 - (1 ; 2)", "sub"),
+                Arguments.of("5 * (2 ; 3)", "multiply"),
+                Arguments.of("10 / (2 ; 5)", "divide"),
+                Arguments.of("10 mod (2 ; 3)", "mod"),
 
                 // Math operators - both operands MANY
-                Arguments.of("(1 | 2) + (3 | 4)", "add"),
-                Arguments.of("(1 | 2) - (3 | 4)", "sub"),
-                Arguments.of("(1 | 2) * (3 | 4)", "multiply"),
-                Arguments.of("(10 | 20) / (2 | 5)", "divide"),
+                Arguments.of("(1 ; 2) + (3 ; 4)", "add"),
+                Arguments.of("(1 ; 2) - (3 ; 4)", "sub"),
+                Arguments.of("(1 ; 2) * (3 ; 4)", "multiply"),
+                Arguments.of("(10 ; 20) / (2 ; 5)", "divide"),
 
                 // Comparison operators - left operand MANY
-                Arguments.of("(1 | 2) > 5", "gt"),
-                Arguments.of("(1 | 2) < 5", "lt"),
-                Arguments.of("(1 | 2) >= 5", "geq"),
-                Arguments.of("(1 | 2) <= 5", "leq"),
+                Arguments.of("(1 ; 2) > 5", "gt"),
+                Arguments.of("(1 ; 2) < 5", "lt"),
+                Arguments.of("(1 ; 2) >= 5", "geq"),
+                Arguments.of("(1 ; 2) <= 5", "leq"),
 
                 // Comparison operators - right operand MANY
-                Arguments.of("5 > (1 | 2)", "gt"),
-                Arguments.of("5 < (1 | 2)", "lt"),
-                Arguments.of("5 >= (1 | 2)", "geq"),
-                Arguments.of("5 <= (1 | 2)", "leq"),
+                Arguments.of("5 > (1 ; 2)", "gt"),
+                Arguments.of("5 < (1 ; 2)", "lt"),
+                Arguments.of("5 >= (1 ; 2)", "geq"),
+                Arguments.of("5 <= (1 ; 2)", "leq"),
 
                 // Comparison operators - both operands MANY
-                Arguments.of("(1 | 2) > (3 | 4)", "gt"),
-                Arguments.of("(1 | 2) < (3 | 4)", "lt"),
-                Arguments.of("(1 | 2) >= (3 | 4)", "geq"),
-                Arguments.of("(1 | 2) <= (3 | 4)", "leq"),
+                Arguments.of("(1 ; 2) > (3 ; 4)", "gt"),
+                Arguments.of("(1 ; 2) < (3 ; 4)", "lt"),
+                Arguments.of("(1 ; 2) >= (3 ; 4)", "geq"),
+                Arguments.of("(1 ; 2) <= (3 ; 4)", "leq"),
 
                 // String operations with MANY cardinality
-                Arguments.of("('a' | 'b') + 'c'", "add"),
-                Arguments.of("'prefix' + ('a' | 'b')", "add"),
-                Arguments.of("('hello' | 'world') + ('foo' | 'bar')", "add"),
+                Arguments.of("('a' ; 'b') + 'c'", "add"),
+                Arguments.of("'prefix' + ('a' ; 'b')", "add"),
+                Arguments.of("('hello' ; 'world') + ('foo' ; 'bar')", "add"),
 
-                // Nested unions
-                Arguments.of("((1 | 2) | 3) + 4", "add"),
-                Arguments.of("(1 | (2 | 3)) > 0", "gt")
+                // Nested concatenations
+                Arguments.of("((1 ; 2) ; 3) + 4", "add"),
+                Arguments.of("(1 ; (2 ; 3)) > 0", "gt")
         );
     }
 
@@ -135,17 +135,17 @@ class CardinalityErrorTest {
                 Arguments.of("'a' + 'b'"),
 
                 // Collection operations that accept MANY - valid
-                Arguments.of("(1 | 2).count()"),
-                Arguments.of("(1 | 2).first()"),
-                Arguments.of("(1 | 2 | 3).where($this > 1)"),
-                Arguments.of("(1 | 2).exists()"),
-                Arguments.of("(1 | 2).empty()"),
+                Arguments.of("(1 ; 2).count()"),
+                Arguments.of("(1 ; 2).first()"),
+                Arguments.of("(1 ; 2 ; 3).where($this > 1)"),
+                Arguments.of("(1 ; 2).exists()"),
+                Arguments.of("(1 ; 2).empty()"),
 
                 // Note: first() + math would be valid BUT Phase 1 limitation:
                 // first() returns ?ANY instead of specific element type, so type checking fails
                 // These will work in Phase 2 with type variables
-                // Arguments.of("(1 | 2).first() + 3"),  // Phase 2
-                // Arguments.of("(1 | 2).first() > 0"),  // Phase 2
+                // Arguments.of("(1 ; 2).first() + 3"),  // Phase 2
+                // Arguments.of("(1 ; 2).first() > 0"),  // Phase 2
 
                 // Empty collections - valid (handled at runtime)
                 Arguments.of("{} + 2"),

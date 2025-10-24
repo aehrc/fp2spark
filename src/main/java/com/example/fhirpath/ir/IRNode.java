@@ -16,8 +16,8 @@ import jakarta.annotation.Nonnull;
  * type and cardinality of values it produces.
  */
 public sealed interface IRNode
-        permits Operation, Literal, Traversal, Cast, Resource, CastToSystem,
-        Union, Equals, Lambda, ThisReference {
+        permits Operation, Literal, Traversal, Cast, Resource,
+        Combine, Equals, Lambda, ThisReference {
 
     /**
      * Returns the shape of this expression (element type + cardinality).

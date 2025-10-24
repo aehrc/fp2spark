@@ -89,27 +89,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             case "geq" -> evaluateGreaterEqual(args, argNodes.get(0).getType());
             case "leq" -> evaluateLessEqual(args, argNodes.get(0).getType());
 
-            // Math functions
-            case "abs" -> evaluateAbs(args, resultType);
-            case "ceiling" -> evaluateCeiling(args, resultType);
-            case "floor" -> evaluateFloor(args, resultType);
-            case "truncate" -> evaluateTruncate(args, resultType);
-            case "exp" -> evaluateExp(args, resultType);
-            case "ln" -> evaluateLn(args, resultType);
-            case "log" -> evaluateLog(args, resultType);
-            case "sqrt" -> evaluateSqrt(args, resultType);
-
-            // String functions
-            case "substring" -> evaluateSubstring(args);
-            case "startsWith" -> evaluateStartsWith(args);
-            case "endsWith" -> evaluateEndsWith(args);
-            case "contains" -> evaluateContains(args);
-            case "upper" -> upper(args.get(0));
-            case "lower" -> lower(args.get(0));
-            case "replace" -> regexp_replace(args.get(0), args.get(1), args.get(2));
-            case "matches" -> evaluateMatches(args);
-            case "length" -> length(args.get(0));
-
             // Boolean operators
             case "and" -> args.get(0).and(args.get(1));
             case "or" -> args.get(0).or(args.get(1));
@@ -240,106 +219,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for leq: " + inputType);
         };
-    }
-
-    // ========== Math Functions ==========
-
-    @Nonnull
-    private Column evaluateAbs(List<Column> args, Type resultType) {
-        Column target = args.get(0);
-
-        return switch ((PrimitiveType) resultType) {
-            case INTEGER, DECIMAL -> abs(target);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported result type for abs: " + resultType);
-        };
-    }
-
-    @Nonnull
-    private Column evaluateCeiling(List<Column> args, Type resultType) {
-        return ceil(args.get(0));
-    }
-
-    @Nonnull
-    private Column evaluateFloor(List<Column> args, Type resultType) {
-        return floor(args.get(0));
-    }
-
-    @Nonnull
-    private Column evaluateTruncate(List<Column> args, Type resultType) {
-        // Truncate towards zero
-        Column target = args.get(0);
-        return when(target.geq(lit(0)), floor(target))
-                .otherwise(ceil(target));
-    }
-
-    @Nonnull
-    private Column evaluateExp(List<Column> args, Type resultType) {
-        return exp(args.get(0));
-    }
-
-    @Nonnull
-    private Column evaluateLn(List<Column> args, Type resultType) {
-        return log(args.get(0));
-    }
-
-    @Nonnull
-    private Column evaluateLog(List<Column> args, Type resultType) {
-        return log(10.0, args.get(0));
-    }
-
-    @Nonnull
-    private Column evaluateSqrt(List<Column> args, Type resultType) {
-        return sqrt(args.get(0));
-    }
-
-    // ========== String Functions ==========
-
-    @Nonnull
-    private Column evaluateStartsWith(List<Column> args) {
-        return args.get(0).startsWith(args.get(1));
-    }
-
-    @Nonnull
-    private Column evaluateEndsWith(List<Column> args) {
-        return args.get(0).endsWith(args.get(1));
-    }
-
-    @Nonnull
-    private Column evaluateContains(List<Column> args) {
-        return args.get(0).contains(args.get(1));
-    }
-
-    @Nonnull
-    private Column evaluateMatches(List<Column> args) {
-        // For matches, Spark SQL has a regexp_like function that works with column patterns
-        Column target = args.get(0);
-        Column pattern = args.get(1);
-        // Use call_function to dynamically call regexp_like with both columns
-        return functions.call_function("regexp_like", target, pattern);
-    }
-
-    @Nonnull
-    private Column evaluateSubstring(List<Column> args) {
-        final Column targetColumn = args.get(0);
-        // FHIRPath uses 0-based indexing, Spark uses 1-based
-        final Column posColumn = args.get(1).plus(lit(1));
-
-        // Handle optional length parameter
-        final Column nonNullLengthColumn = coalesce(args.get(2), lit(Integer.MAX_VALUE));
-
-        // FHIRPath null propagation rules
-        final Column nullPropagationCondition = targetColumn.isNull()
-                .or(posColumn.isNull());
-
-        final Column posOutOfBoundsCondition = posColumn.leq(0)
-                .or(posColumn.gt(length(targetColumn)));
-
-        final Column nullCondition = nullPropagationCondition
-                .or(posOutOfBoundsCondition);
-
-        return when(not(nullCondition),
-                substr(targetColumn, posColumn, nonNullLengthColumn));
     }
 
     // ========== Collection Functions ==========

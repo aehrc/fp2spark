@@ -92,7 +92,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             // Boolean operators
             case "and" -> args.get(0).and(args.get(1));
             case "or" -> args.get(0).or(args.get(1));
-            case "xor" -> args.get(0).bitwiseXOR(args.get(1));
+            case "xor" -> evaluateXor(args.get(0), args.get(1));
             case "implies" -> not(args.get(0)).or(args.get(1));
             case "not" -> not(args.get(0));
 
@@ -219,6 +219,31 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for leq: " + inputType);
         };
+    }
+
+    // ========== Boolean Operators ==========
+
+    /**
+     * Evaluates the xor (exclusive or) operator.
+     * <p>
+     * FHIRPath semantics: Returns true if exactly one operand is true,
+     * false if both are true or both are false, empty otherwise.
+     * <p>
+     * Three-valued logic truth table:
+     * - true xor true = false
+     * - true xor false = true
+     * - false xor true = true
+     * - false xor false = false
+     * - Any xor empty = empty
+     */
+    @Nonnull
+    private Column evaluateXor(@Nonnull final Column left, @Nonnull final Column right) {
+        // XOR with three-valued logic:
+        // When both operands are non-null, return left !== right (not equal)
+        // When either operand is null, return null
+        // Use when() to handle null propagation explicitly
+        return when(left.isNull().or(right.isNull()), lit(null))
+                .otherwise(left.notEqual(right));
     }
 
     // ========== Collection Functions ==========

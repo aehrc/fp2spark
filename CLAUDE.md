@@ -4,6 +4,29 @@
 
 This project implements FHIRPath to SQL translation.
 
+## Pathling Reference Implementation
+
+The `.local/pathling/` directory contains the Pathling project, a mature FHIRPath to SparkSQL implementation. Use it as a reference when implementing FHIRPath capabilities:
+
+**When to consult Pathling:**
+- **Parsing FHIRPath literals**: See how String, Integer, Decimal, Boolean literals are parsed
+- **SQL generation**: Study how FHIRPath expressions translate to Spark Column operations
+- **Type system**: Understand FHIRPath type handling and conversions
+- **Operator implementation**: Reference existing operator logic (arithmetic, comparison, boolean)
+- **Function implementation**: Learn patterns for implementing FHIRPath functions
+
+**Key directories:**
+- `.local/pathling/fhirpath/` - FHIRPath implementation
+- `.local/pathling/fhirpath/src/main/java/au/csiro/pathling/fhirpath/` - Core FHIRPath logic
+- `.local/pathling/fhirpath/src/test/java/` - Test patterns and examples
+
+**How to use:**
+- Search for specific operators/functions: `grep -r "LiteralPath" .local/pathling/fhirpath/`
+- Study SQL generation: Look for classes generating Spark Column expressions
+- Understand patterns: Don't copy directly, but learn architectural patterns and approaches
+
+**Important:** Pathling targets full FHIR support (Phase 2+). Our Phase 1 focuses on System types only, so adapt patterns accordingly.
+
 ## Working Files and Collaborative Documents
 
 **IMPORTANT:** When collaborating on designs, specifications, or other working documents, generate all working versions in the `.local/work/` directory.

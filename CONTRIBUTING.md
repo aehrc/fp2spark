@@ -49,18 +49,43 @@ For understanding the project architecture and design decisions, see:
 
 ## Testing
 
+This project uses a fluent DSL for writing FHIRPath tests that are self-documenting and easy to read.
+
+### Testing Guide
+
+**See [TESTING.md](TESTING.md) for comprehensive guidelines including:**
+- Test description format that makes tests understandable without consulting code
+- When to use descriptions vs. when expressions are self-explanatory
+- Examples of good vs. bad description usage
+- Available test methods and context support
+- Group organization and test structure
+
 ### Writing Tests
 
-- Write unit tests for all new functionality
-- Use `@ParameterizedTest` for testing multiple scenarios
-- Follow the testing philosophy: focus on FHIRPath-specific behavior, not underlying SparkSQL operations
+**Use the fluent test builder DSL:**
+
+```java
+@TestFactory
+Stream<DynamicTest> testArithmetic() {
+    return builder()
+        .group("Integer addition")
+        .testEquals(15, "5 + 10")
+        .testEquals(10, "5 + 5")
+        .group("Division")
+        .testEquals(5.0, "10 / 2", "Division always returns decimal")
+        .build();
+}
+```
 
 **Testing Philosophy:**
 - Rely on SparkSQL's underlying implementations to work correctly
 - Focus tests on FHIRPath-specific behavior and edge cases only
 - Do NOT perform exhaustive testing of underlying SQL operations
+- Test descriptions should make the test understandable without reading code
 
-See `src/test/java/com/example/fhirpath/ir/string/SubstringTest.java` for an example.
+**Test output format:** `expression [with context] => expected [: description] [group]`
+
+Example: `5 + 10 => 15 [Integer addition]`
 
 ### Running Tests
 

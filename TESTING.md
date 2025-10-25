@@ -354,3 +354,72 @@ mvn test -Dfhirpath.test.filter="=> 15"
 # Filter by group
 mvn test -Dfhirpath.test.filter="[Context arithmetic]"
 ```
+
+## Troubleshooting
+
+### Debugging Test Failures
+
+**1. Enable DEBUG logging** to see which test is executing:
+
+```bash
+# Add to your Maven command
+mvn test -Dorg.slf4j.simpleLogger.log.com.example.fhirpath.test=DEBUG
+```
+
+This logs each test as it runs:
+```
+DEBUG c.e.f.test.FhirPathTestExecutor - Executing test: 5 + 10 => 15 [Integer addition]
+```
+
+**2. Run single failing test** for faster iteration:
+
+```bash
+# By test class and method
+mvn test -Dtest=LiteralExpressionsTest#testArithmetic
+
+# By description filter
+mvn test -Dfhirpath.test.filter="specific failing expression"
+```
+
+**3. Use IDE debugger** for detailed inspection:
+- Open test class in IntelliJ IDEA
+- Run test method to see dynamic test tree
+- Right-click failing test → "Debug"
+- Set breakpoints in `FhirPathTestExecutor.executeTest()`
+
+### Common Failure Patterns
+
+**Type mismatch**: Expected Integer but got Decimal
+- FHIRPath division always returns Decimal: `10 / 2` → `5.0`
+- Check operator semantics in specs/FHIRPath.md
+
+**Cardinality errors**: Expected single value but got collection
+- Use `.first()` or ensure expression returns ONE element
+- Review cardinality rules in FHIRPath spec
+
+**Empty vs null confusion**:
+- Empty collection `{}` → `null` in Java
+- Use `testEmpty()` for empty collection assertions
+- Empty propagates in most operations: `{} + 10` → `{}`
+
+**Assertion failures with collections**:
+- Collections return as `List<?>` in Java
+- Use `List.of(...)` for expected values with collections
+- Order matters in list comparison
+
+### Debug Logging Levels
+
+The test infrastructure logs at different levels:
+
+- **DEBUG**: Individual test execution (test descriptions)
+- **INFO**: Test suite summary (not currently implemented)
+- **ERROR**: Test failures with stack traces (default)
+
+Enable specific package logging:
+```bash
+# All test infrastructure
+mvn test -Dorg.slf4j.simpleLogger.log.com.example.fhirpath.test=DEBUG
+
+# Entire FHIRPath package
+mvn test -Dorg.slf4j.simpleLogger.log.com.example.fhirpath=DEBUG
+```

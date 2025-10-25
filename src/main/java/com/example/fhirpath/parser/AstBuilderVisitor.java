@@ -70,9 +70,11 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
     // Literal handling
     @Override
     public AstNode visitStringLiteral(FhirPathParser.StringLiteralContext ctx) {
-        String text = ctx.STRING().getText();
-        // Remove surrounding quotes and handle basic escaping
-        String value = text.substring(1, text.length() - 1);
+        final String text = ctx.STRING().getText();
+        // Remove surrounding quotes
+        final String quotesRemoved = text.substring(1, text.length() - 1);
+        // Process escape sequences per FHIRPath spec
+        final String value = StringEscapeUtils.unescapeFhirPathString(quotesRemoved);
         return new AstLiteral(value);
     }
 

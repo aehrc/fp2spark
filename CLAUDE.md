@@ -189,6 +189,45 @@ mvn test -Dtest=CapabilityTest
 
 All tests must pass before creating PR.
 
+### Critical Implementation Guidelines
+
+**Learned from Stage 1.4 retrospective - follow these principles to avoid regressions:**
+
+**When Test Failures Occur:**
+
+1. **Assume existing tests are CORRECT** until proven otherwise
+2. **Read the test code** to understand what it's testing
+3. **Consult the spec** to verify expected behavior
+4. **Only change tests** if they genuinely contradict the FHIRPath specification
+5. **Document WHY** the test was wrong in your commit message
+
+**Before Making Changes:**
+
+- [ ] Verify your understanding against FHIRPath spec (not assumptions)
+- [ ] Check if similar patterns exist elsewhere in codebase
+- [ ] Ask: "Is the test wrong, or is my understanding wrong?"
+- [ ] When in doubt, consult spec FIRST before changing code
+
+**Core Semantic Rules:**
+
+- **FHIRPath collections are ALWAYS one-dimensional arrays** - no nested arrays
+- **Traversing MANY → MANY requires flatten** - e.g., `name.given` returns flat array
+- **Specs are ground truth** - When in doubt, trust the spec over your mental model
+- **Existing tests encode knowledge** - They may be teaching you something important
+
+**Example - Collection Semantics:**
+
+```java
+// Given: Patient with multiple names, each with multiple given names
+// name: [{ given: ["John", "James"] }, { given: ["Jane"] }]
+
+// CORRECT: name.given returns flat array
+List.of("John", "James", "Jane")
+
+// WRONG: name.given does NOT return nested arrays
+List.of(List.of("John", "James"), List.of("Jane"))  // ❌
+```
+
 ### FHIRPath Function/Operator Unit Tests
 
 For writing or reviewing unit tests for FHIRPath functions and operators, use the **fhirpath-test-writer agent**:

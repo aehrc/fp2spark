@@ -1,4 +1,4 @@
-# Claude Code Reference
+Ra# Claude Code Reference
 
 ## Project Overview
 
@@ -15,15 +15,35 @@ The `.local/pathling/` directory contains the Pathling project, a mature FHIRPat
 - **Operator implementation**: Reference existing operator logic (arithmetic, comparison, boolean)
 - **Function implementation**: Learn patterns for implementing FHIRPath functions
 
-**Key directories:**
+**Accessing Pathling:**
+
+The `.local/pathling` directory is a **symlink** to the Pathling reference implementation.
+
+**IMPORTANT:** Use symlink-following options when searching:
+```bash
+# Find files (use -L to follow symlinks)
+find -L .local/pathling -name "StringCollection.java"
+
+# Search code (use -R to follow symlinks, not -r)
+grep -R "substring" .local/pathling/fhirpath/
+```
+
+**Key directories (relative paths via symlink):**
 - `.local/pathling/fhirpath/` - FHIRPath implementation
 - `.local/pathling/fhirpath/src/main/java/au/csiro/pathling/fhirpath/` - Core FHIRPath logic
 - `.local/pathling/fhirpath/src/test/java/` - Test patterns and examples
+- `.local/pathling/utilities/src/main/java/au/csiro/pathling/fhirpath/literal/` - Literal parsing utilities
 
 **How to use:**
-- Search for specific operators/functions: `grep -r "LiteralPath" .local/pathling/fhirpath/`
+- Search for specific operators/functions: `grep -R "substring" .local/pathling/fhirpath/`
+- Find specific classes: `find -L .local/pathling -name "StringLiteral.java"`
 - Study SQL generation: Look for classes generating Spark Column expressions
 - Understand patterns: Don't copy directly, but learn architectural patterns and approaches
+
+**Examples to reference:**
+- String escape sequences: `au.csiro.pathling.fhirpath.literal.StringLiteral`
+- String operations: `au.csiro.pathling.fhirpath.collection.StringCollection`
+- Test patterns: `au.csiro.pathling.fhirpath.dsl.SystemDslTest`
 
 **Important:** Pathling targets full FHIR support (Phase 2+). Our Phase 1 focuses on System types only, so adapt patterns accordingly.
 

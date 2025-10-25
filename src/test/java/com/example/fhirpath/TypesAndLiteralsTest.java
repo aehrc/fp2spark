@@ -192,8 +192,8 @@ public class TypesAndLiteralsTest extends FhirPathTestBase {
                         )
                 )
                 .testEquals(List.of("Smith", "Doe"), "name.family", "Array of nested string fields")
-                .testEquals(List.of(List.of("John", "James"), List.of("Jane")), "name.given",
-                        "Array of nested string arrays")
+                .testEquals(List.of("John", "James", "Jane"), "name.given",
+                        "Flattened array from nested string arrays")
                 .testEquals(List.of("phone", "email"), "contact.type", "Array of nested strings")
                 .testEquals(List.of("Boston", "Cambridge"), "contact.address.city",
                         "Array with deep nesting")

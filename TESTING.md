@@ -229,3 +229,64 @@ If **no** to all four → skip the description!
 - What category it belongs to (group)
 
 Only add description if it adds value beyond these four things.
+
+## Running Specific Tests
+
+### IDE (Fastest for Single Tests)
+
+1. Open test class in IntelliJ IDEA
+2. Run the test method to see all dynamic tests in tree view
+3. Right-click individual failing test → "Run '...'"
+4. Best for debugging single failing tests
+
+### Maven Test Filtering
+
+#### Run Entire Test Class
+```bash
+mvn test -Dtest=LiteralExpressionsTest
+```
+
+#### Run Specific Test Method
+```bash
+mvn test -Dtest=LiteralExpressionsTest#testArithmetic
+```
+
+This runs all DynamicTests within that method (may be many tests).
+
+#### Run Tests Matching Pattern
+
+Use the `fhirpath.test.filter` system property to filter tests by description:
+
+```bash
+# Run only tests containing "5 + 10"
+mvn test -Dfhirpath.test.filter="5 + 10"
+
+# Run all tests in "Integer addition" group
+mvn test -Dfhirpath.test.filter="Integer addition"
+
+# Run all division tests
+mvn test -Dfhirpath.test.filter="division"
+
+# Run specific test by full description
+mvn test -Dfhirpath.test.filter="5 + 10 => 15"
+```
+
+**Filter Behavior:**
+- Case-insensitive substring matching
+- Matches against full test description: `expression [with context] => expected [: description] [group]`
+
+**Examples:**
+
+```bash
+# Combine with test class filter for faster execution
+mvn test -Dtest=LiteralExpressionsTest -Dfhirpath.test.filter="5 + 10"
+
+# Filter across all test classes
+mvn test -Dfhirpath.test.filter="addition"
+
+# Filter by expected value
+mvn test -Dfhirpath.test.filter="=> 15"
+
+# Filter by group
+mvn test -Dfhirpath.test.filter="[Context arithmetic]"
+```

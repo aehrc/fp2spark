@@ -9,6 +9,7 @@ import org.junit.jupiter.api.DynamicTest;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -413,6 +414,9 @@ public class FhirPathTestBuilder {
      * Build a stream of JUnit 5 dynamic tests from the configured test cases.
      * <p>
      * This method creates DynamicTest instances that delegate execution to the executor.
+     * <p>
+     * Tests can be filtered using the system property {@code fhirpath.test.filter}.
+     * Only tests whose descriptions contain the filter pattern (case-insensitive) will be included.
      *
      * @return A stream of DynamicTest instances
      */
@@ -422,7 +426,15 @@ public class FhirPathTestBuilder {
             return Stream.empty();
         }
 
-        return testCases.stream()
+        // Apply filter if specified
+        final TestFilter filter = TestFilter.fromSystemProperty();
+        Stream<TestCase> testStream = testCases.stream();
+        if (filter.isActive()) {
+            // Recreate stream after count() terminal operation
+            testStream = testCases.stream()
+                    .filter(tc -> filter.matches(tc.description()));
+        }
+        return testStream
                 .map(tc -> DynamicTest.dynamicTest(
                         tc.description(),
                         () -> executor.executeTest(tc)
@@ -434,10 +446,10 @@ public class FhirPathTestBuilder {
      * Build comprehensive test description in format:
      * expression [with context] => expected [: description] [group]
      *
-     * @param expression       The FHIRPath expression being tested
-     * @param context          Optional context (null if not used)
-     * @param expectedDisplay  String representation of expected value
-     * @param userDescription  Optional user-provided description (null if not provided)
+     * @param expression      The FHIRPath expression being tested
+     * @param context         Optional context (null if not used)
+     * @param expectedDisplay String representation of expected value
+     * @param userDescription Optional user-provided description (null if not provided)
      * @return Formatted test description
      */
     @Nonnull

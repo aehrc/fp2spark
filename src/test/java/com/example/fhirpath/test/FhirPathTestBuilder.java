@@ -153,10 +153,17 @@ public class FhirPathTestBuilder {
             @Nullable Object expected,
             @Nonnull String expression,
             @Nullable Context context,
-            @Nonnull String description
+            @Nullable String description
     ) {
+        String testDescription = buildTestDescription(
+                expression,
+                context,
+                formatExpected(expected),
+                description
+        );
+
         testCases.add(new TestCase(
-                fullDescription(description),
+                testDescription,
                 expression,
                 context,
                 new EqualsAssertion(expected)
@@ -304,9 +311,16 @@ public class FhirPathTestBuilder {
      * @return This builder for method chaining
      */
     @Nonnull
-    public FhirPathTestBuilder testEmpty(@Nonnull String expression, @Nullable Context context, @Nonnull String description) {
+    public FhirPathTestBuilder testEmpty(@Nonnull String expression, @Nullable Context context, @Nullable String description) {
+        String testDescription = buildTestDescription(
+                expression,
+                context,
+                "empty",  // Special marker for empty collections
+                description
+        );
+
         testCases.add(new TestCase(
-                fullDescription(description),
+                testDescription,
                 expression,
                 context,
                 new EmptyAssertion()
@@ -377,10 +391,17 @@ public class FhirPathTestBuilder {
             @Nonnull Class<? extends Exception> expectedExceptionType,
             @Nonnull String expression,
             @Nullable Context context,
-            @Nonnull String description
+            @Nullable String description
     ) {
+        String testDescription = buildTestDescription(
+                expression,
+                context,
+                formatExpectedException(expectedExceptionType),
+                description
+        );
+
         testCases.add(new TestCase(
-                fullDescription(description),
+                testDescription,
                 expression,
                 context,
                 new ErrorAssertion(expectedExceptionType)
@@ -410,9 +431,88 @@ public class FhirPathTestBuilder {
 
 
     /**
-     * Create full test description by combining group name (if present) with description.
+     * Build comprehensive test description in format:
+     * expression [with context] => expected [: description] [group]
+     *
+     * @param expression       The FHIRPath expression being tested
+     * @param context          Optional context (null if not used)
+     * @param expectedDisplay  String representation of expected value
+     * @param userDescription  Optional user-provided description (null if not provided)
+     * @return Formatted test description
      */
     @Nonnull
+    private String buildTestDescription(
+            @Nonnull String expression,
+            @Nullable Context context,
+            @Nonnull String expectedDisplay,
+            @Nullable String userDescription
+    ) {
+        StringBuilder desc = new StringBuilder();
+
+        // Core: expression [with context] => expected
+        desc.append(expression);
+
+        if (context != null) {
+            desc.append(" with ").append(context.expression());
+        }
+
+        desc.append(" => ").append(expectedDisplay);
+
+        // Optional: user description
+        if (userDescription != null && !userDescription.equals(expression)) {
+            desc.append(" : ").append(userDescription);
+        }
+
+        // Optional: group (as metadata at the end)
+        if (currentGroup != null) {
+            desc.append(" [").append(currentGroup).append("]");
+        }
+
+        return desc.toString();
+    }
+
+    /**
+     * Format expected value for display in test description.
+     *
+     * @param expected The expected value (can be any type)
+     * @return String representation suitable for test descriptions
+     */
+    @Nonnull
+    private String formatExpected(@Nullable Object expected) {
+        if (expected == null) {
+            return "null";
+        }
+        if (expected instanceof String str) {
+            return "'" + str + "'";  // String values in quotes
+        }
+        if (expected instanceof Boolean) {
+            return expected.toString();  // true/false
+        }
+        if (expected instanceof List<?> list) {
+            return list.toString();  // [1, 2, 3]
+        }
+        return expected.toString();  // Numbers, etc.
+    }
+
+    /**
+     * Format expected exception for display in test description.
+     *
+     * @param exceptionType The expected exception class
+     * @return Simple class name for display
+     */
+    @Nonnull
+    private String formatExpectedException(@Nonnull Class<? extends Exception> exceptionType) {
+        return exceptionType.getSimpleName();
+    }
+
+    /**
+     * Create full test description by combining group name (if present) with description.
+     * This is the legacy method - kept for backward compatibility if needed.
+     *
+     * @deprecated Use {@link #buildTestDescription} instead
+     */
+    @Nonnull
+    @Deprecated
     private String fullDescription(@Nonnull String description) {
         return currentGroup != null
                 ? currentGroup + " - " + description

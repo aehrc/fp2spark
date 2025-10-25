@@ -275,6 +275,15 @@ mvn test -Dfhirpath.test.filter="5 + 10 => 15"
 - Case-insensitive substring matching
 - Matches against full test description: `expression [with context] => expected [: description] [group]`
 
+**Debug Logging:**
+
+Test execution is logged at DEBUG level with the full test description:
+```
+DEBUG c.e.f.test.FhirPathTestExecutor - Executing test: 5 + 10 => 15 [Integer addition]
+```
+
+This helps identify which test is currently running when debugging failures.
+
 **Examples:**
 
 ```bash

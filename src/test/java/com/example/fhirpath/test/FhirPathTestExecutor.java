@@ -5,6 +5,8 @@ import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -25,6 +27,8 @@ import java.util.List;
  */
 class FhirPathTestExecutor {
 
+    private static final Logger log = LoggerFactory.getLogger(FhirPathTestExecutor.class);
+
     private final SparkSession spark;
 
     /**
@@ -43,6 +47,8 @@ class FhirPathTestExecutor {
      * @throws AssertionError if the test fails
      */
     void executeTest(@Nonnull TestCase testCase) {
+        log.debug("Executing test: {}", testCase.description());
+
         try {
             // Use FhirPath API to compile and execute (includes all logging)
             // If context is provided, use the two-parameter API

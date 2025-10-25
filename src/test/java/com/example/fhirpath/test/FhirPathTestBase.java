@@ -50,11 +50,14 @@ public abstract class FhirPathTestBase {
 
     /**
      * Create a new test builder for constructing FHIRPath test cases.
+     * <p>
+     * The builder is configured with an executor that uses this test's SparkSession.
      *
      * @return A new FhirPathTestBuilder instance
      */
     @Nonnull
     protected FhirPathTestBuilder builder() {
-        return new FhirPathTestBuilder(spark);
+        FhirPathTestExecutor executor = new FhirPathTestExecutor(spark);
+        return new FhirPathTestBuilder(executor);
     }
 }

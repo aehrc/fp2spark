@@ -1,5 +1,9 @@
 package com.example.fhirpath.codegen.spark;
 
+import com.example.fhirpath.codegen.spark.handler.AnnotatedOperationHandler;
+import com.example.fhirpath.codegen.spark.handler.CodeGenContext;
+import com.example.fhirpath.codegen.spark.handler.HandlerRegistry;
+import com.example.fhirpath.codegen.spark.handler.InvocationBinder;
 import com.example.fhirpath.ir.*;
 import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
@@ -22,6 +26,12 @@ import static org.apache.spark.sql.functions.*;
  * Each visit method transforms an IR node into a Spark Column that can be
  * executed by the Spark SQL engine.
  * <p>
+ * Supports two code generation modes:
+ * <ul>
+ *   <li>Legacy switch-based dispatch (default, backward compatible)</li>
+ *   <li>Handler-based dispatch via HandlerRegistry (opt-in, extensible)</li>
+ * </ul>
+ * <p>
  * Immutable: each instance may have a bound $this column for lambda evaluation.
  */
 public class SparkCodeGenerator implements IRNodeVisitor<Column> {
@@ -29,18 +39,43 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     @Nullable
     private final Column thisColumn;
 
+    @Nullable
+    private final HandlerRegistry handlerRegistry;
+
+    @Nullable
+    private final CodeGenContext codeGenContext;
+
     /**
      * Default constructor for top-level code generation (no $this binding).
+     * Uses legacy switch-based dispatch.
      */
     public SparkCodeGenerator() {
-        this(null);
+        this(null, null, null);
     }
 
     /**
-     * Private constructor for creating instances with a bound $this column.
+     * Constructor with handler registry for extensible code generation.
+     * Enables handler-based dispatch with fallback to switch-based dispatch.
+     *
+     * @param handlerRegistry The handler registry
+     * @param codeGenContext The code generation context
      */
-    private SparkCodeGenerator(@Nullable Column thisColumn) {
+    public SparkCodeGenerator(
+            @Nonnull final HandlerRegistry handlerRegistry,
+            @Nonnull final CodeGenContext codeGenContext) {
+        this(null, handlerRegistry, codeGenContext);
+    }
+
+    /**
+     * Private constructor for creating instances with all options.
+     */
+    private SparkCodeGenerator(
+            @Nullable final Column thisColumn,
+            @Nullable final HandlerRegistry handlerRegistry,
+            @Nullable final CodeGenContext codeGenContext) {
         this.thisColumn = thisColumn;
+        this.handlerRegistry = handlerRegistry;
+        this.codeGenContext = codeGenContext;
     }
 
     /**
@@ -49,7 +84,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
      */
     @Nonnull
     private SparkCodeGenerator withThisColumn(@Nonnull Column thisColumn) {
-        return new SparkCodeGenerator(thisColumn);
+        return new SparkCodeGenerator(thisColumn, this.handlerRegistry, this.codeGenContext);
     }
 
     @Override
@@ -72,9 +107,29 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
     /**
      * Central dispatch for all operations.
+     * <p>
+     * Dispatch priority:
+     * <ol>
+     *   <li>Handler registry (if available)</li>
+     *   <li>Legacy switch-based dispatch (fallback)</li>
+     * </ol>
      */
     @Nonnull
     private Column evaluateOperation(String name, List<Column> args, Type resultType, List<IRNode> argNodes) {
+        // Try handler registry first if available
+        if (handlerRegistry != null && handlerRegistry.hasHandler(name)) {
+            // Use dispatch type from first argument, or result type if no arguments
+            final Type dispatchType = argNodes.isEmpty() ? resultType : argNodes.get(0).getType();
+
+            final AnnotatedOperationHandler handler =
+                    handlerRegistry.createHandler(name, dispatchType, codeGenContext);
+
+            if (handler != null) {
+                return InvocationBinder.invoke(handler, name, args, argNodes);
+            }
+        }
+
+        // Fall back to legacy switch-based dispatch
         return switch (name) {
             // Arithmetic
             case "add" -> evaluateAdd(args, resultType);

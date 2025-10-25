@@ -22,15 +22,17 @@ public record EqualsAssertion(@Nullable Object expected) implements Assertion {
     @Override
     public void assertResult(@Nullable Object actual) {
         // Adapt expected value to match actual value's type
+        // This also converts Scala collections to Java collections
         Object adaptedExpected = TYPE_ADAPTER.adaptToActualType(expected, actual);
+        Object adaptedActual = TYPE_ADAPTER.convertScalaToJava(actual);
 
         // Compare adapted values
-        if (adaptedExpected instanceof List<?> expectedList && actual instanceof List<?> actualList) {
+        if (adaptedExpected instanceof List<?> expectedList && adaptedActual instanceof List<?> actualList) {
             assertListEquals(expectedList, actualList);
         } else {
             assertEquals(
                     adaptedExpected,
-                    actual,
+                    adaptedActual,
                     "Expression result does not match expected value"
             );
         }
@@ -38,6 +40,7 @@ public record EqualsAssertion(@Nullable Object expected) implements Assertion {
 
     /**
      * Assert that two lists are equal element-by-element.
+     * Recursively handles nested collections and Scala/Java type conversions.
      *
      * @param expected The expected list
      * @param actual   The actual list
@@ -49,9 +52,16 @@ public record EqualsAssertion(@Nullable Object expected) implements Assertion {
                 "List sizes don't match"
         );
         for (int i = 0; i < expected.size(); i++) {
+            Object expectedElement = expected.get(i);
+            Object actualElement = actual.get(i);
+
+            // Recursively adapt and compare nested elements
+            Object adaptedExpected = TYPE_ADAPTER.adaptToActualType(expectedElement, actualElement);
+            Object adaptedActual = TYPE_ADAPTER.convertScalaToJava(actualElement);
+
             assertEquals(
-                    expected.get(i),
-                    actual.get(i),
+                    adaptedExpected,
+                    adaptedActual,
                     "List element at index " + i + " doesn't match"
             );
         }

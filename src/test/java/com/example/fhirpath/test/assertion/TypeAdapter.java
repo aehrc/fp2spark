@@ -4,6 +4,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.util.List;
+import scala.collection.JavaConverters;
 
 /**
  * Adapts expected test values to match actual value types returned by Spark.
@@ -40,20 +41,50 @@ class TypeAdapter {
             return expected;
         }
 
+        // Convert Scala collections to Java collections for comparison
+        Object convertedActual = convertScalaToJava(actual);
+
         // Handle lists: adapt each element to match actual list's element type
-        if (expected instanceof List<?> expectedList && actual instanceof List<?> actualList) {
-            // Detect actual list element type from first non-null element
-            Class<?> actualElementType = detectListElementType(actualList);
-            if (actualElementType != null) {
-                return expectedList.stream()
-                        .map(e -> adaptValue(e, actualElementType))
-                        .toList();
-            }
-            return expectedList;
+        if (expected instanceof List<?> expectedList && convertedActual instanceof List<?> actualList) {
+            // Recursively adapt nested elements
+            return expectedList.stream()
+                    .map(e -> {
+                        // Find corresponding actual element to determine target type
+                        int index = expectedList.indexOf(e);
+                        if (index >= 0 && index < actualList.size()) {
+                            return adaptToActualType(e, actualList.get(index));
+                        }
+                        return e;
+                    })
+                    .toList();
         }
 
         // Handle scalar values: adapt to actual type
-        return adaptValue(expected, actual.getClass());
+        return adaptValue(expected, convertedActual.getClass());
+    }
+
+    /**
+     * Convert Scala collections to Java collections recursively.
+     *
+     * @param value The value to convert
+     * @return Java collection if value is Scala collection, otherwise original value
+     */
+    @Nullable
+    Object convertScalaToJava(@Nullable Object value) {
+        if (value == null) {
+            return null;
+        }
+
+        // Convert Scala Seq to Java List
+        if (value instanceof scala.collection.Seq<?> scalaSeq) {
+            List<?> javaList = JavaConverters.seqAsJavaList(scalaSeq);
+            // Recursively convert nested collections
+            return javaList.stream()
+                    .map(this::convertScalaToJava)
+                    .toList();
+        }
+
+        return value;
     }
 
     /**

@@ -350,12 +350,9 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column target = trav.target().accept(this);
         Column result = target.getField(trav.fieldSpec().getName());
 
-        // Handle collection traversals - need to filter nulls and flatten if necessary
+        // Handle collection traversals - filter out null elements
         if (!trav.target().isSingular()) {
             result = functions.filter(result, Column::isNotNull);
-            if (!trav.fieldSpec().isSingular()) {
-                result = functions.flatten(result);
-            }
         }
         return result;
     }

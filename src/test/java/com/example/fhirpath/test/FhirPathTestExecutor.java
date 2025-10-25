@@ -1,6 +1,7 @@
 package com.example.fhirpath.test;
 
 import com.example.fhirpath.FhirPath;
+import com.example.fhirpath.typing.ResourceType;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -50,15 +51,48 @@ class FhirPathTestExecutor {
         log.debug("Executing test: {}", testCase.description());
 
         try {
-            // Use FhirPath API to compile and execute (includes all logging)
-            // If context is provided, use the two-parameter API
-            Column column = testCase.context() != null
-                    ? FhirPath.toColumn(testCase.expression(), testCase.context().expression())
-                    : FhirPath.toColumn(testCase.expression());
+            // Determine if we need resource type info
+            final ResourceType resourceType = testCase.resource() != null
+                    ? testCase.resource().inferResourceType()
+                    : null;
 
-            // Execute with Spark (literal expressions don't need input data)
-            // Use range(1) to create a single-row dataset for evaluation
-            Dataset<Row> result = spark.range(1).toDF().select(column.alias("result"));
+            // Use FhirPath API to compile expression
+            // Choose appropriate overload based on context and resource presence
+            final Column column;
+            if (resourceType != null && testCase.context() != null) {
+                // Both resource and context
+                column = FhirPath.toColumn(
+                        testCase.expression(),
+                        testCase.context().expression(),
+                        resourceType
+                );
+            } else if (resourceType != null) {
+                // Resource only
+                column = FhirPath.toColumn(testCase.expression(), resourceType);
+            } else if (testCase.context() != null) {
+                // Context only
+                column = FhirPath.toColumn(
+                        testCase.expression(),
+                        testCase.context().expression()
+                );
+            } else {
+                // Neither - literal expression
+                column = FhirPath.toColumn(testCase.expression());
+            }
+
+            // Execute with Spark
+            // If resource is provided, use the resource dataset
+            // Otherwise use range(1) for literal expressions
+            final Dataset<Row> inputDataset = testCase.resource() != null
+                    ? ResourceDatasetConverter.toDataset(spark, testCase.resource())
+                    : spark.range(1).toDF();
+
+            // Select result column (use resource type name as column name if available)
+            final String resultAlias = testCase.resource() != null
+                    ? testCase.resource().getResourceTypeName()
+                    : "result";
+
+            final Dataset<Row> result = inputDataset.select(column.alias(resultAlias));
 
             // Extract and normalize result value
             Object actualValue = extractResult(result);

@@ -51,6 +51,7 @@ public class FhirPathTestBuilder {
     private final FhirPathTestExecutor executor;
     private final List<TestCase> testCases = new ArrayList<>();
     private String currentGroup = null;
+    private ResourceTestData currentResource = null;
 
     /**
      * Create a new test builder with the provided executor.
@@ -88,6 +89,38 @@ public class FhirPathTestBuilder {
     @Nonnull
     public FhirPathTestBuilder group(@Nonnull String groupName) {
         this.currentGroup = groupName;
+        return this;
+    }
+
+    /**
+     * Set the current resource test data. All subsequent test cases will use this resource.
+     *
+     * <p>This method accepts a Consumer that builds the resource data using {@link ResourceDataBuilder}.
+     *
+     * <p><b>Example:</b>
+     * <pre>{@code
+     * builder()
+     *     .withSubject("Patient", sb -> sb
+     *         .string("id", "patient-1")
+     *         .integer("age", 30)
+     *         .element("name", n -> n.string("family", "Smith"))
+     *     )
+     *     .testEquals("Smith", "name.family")
+     *     .testEquals(30, "age")
+     * }</pre>
+     *
+     * @param resourceTypeName The name of the resource type (e.g., "Patient")
+     * @param builderConsumer  Consumer that builds the resource data
+     * @return This builder for method chaining
+     */
+    @Nonnull
+    public FhirPathTestBuilder withSubject(
+            @Nonnull final String resourceTypeName,
+            @Nonnull final java.util.function.Consumer<ResourceDataBuilder> builderConsumer
+    ) {
+        final ResourceDataBuilder dataBuilder = new ResourceDataBuilder();
+        builderConsumer.accept(dataBuilder);
+        this.currentResource = ResourceTestData.of(resourceTypeName, dataBuilder.build());
         return this;
     }
 
@@ -167,6 +200,7 @@ public class FhirPathTestBuilder {
                 testDescription,
                 expression,
                 context,
+                currentResource,
                 new EqualsAssertion(expected)
         ));
         return this;
@@ -324,6 +358,7 @@ public class FhirPathTestBuilder {
                 testDescription,
                 expression,
                 context,
+                currentResource,
                 new EmptyAssertion()
         ));
         return this;
@@ -405,6 +440,7 @@ public class FhirPathTestBuilder {
                 testDescription,
                 expression,
                 context,
+                currentResource,
                 new ErrorAssertion(expectedExceptionType)
         ));
         return this;

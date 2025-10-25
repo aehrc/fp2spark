@@ -188,6 +188,61 @@ import static com.example.fhirpath.test.FhirPathTestBuilder.context;
 .testEquals(15, "5 + %context", context("10"), "Add to context value")
 ```
 
+## Resource Tests
+
+Use the `withSubject()` method to test FHIRPath expressions that traverse resource fields:
+
+```java
+@TestFactory
+Stream<DynamicTest> testResourceFieldAccess() {
+    return builder()
+        .group("Field access")
+        .withSubject("Patient", p -> p
+            .string("id", "patient-1")
+            .integer("age", 30)
+            .element("name", n -> n
+                .string("family", "Smith")
+                .stringArray("given", "John", "Jane")
+            )
+        )
+        .testEquals("patient-1", "id")
+        .testEquals(30, "age")
+        .testEquals("Smith", "name.family")
+        .testEquals(2, "name.given.count()")
+        .build();
+}
+```
+
+### Resource Builder Methods
+
+The `withSubject()` method accepts a resource type name and a builder consumer. The builder provides:
+
+**Primitive fields:**
+- `string(name, value)` - String field
+- `integer(name, value)` - Integer field
+- `decimal(name, value)` - Decimal field (Double)
+- `bool(name, value)` - Boolean field
+
+**Array fields:**
+- `stringArray(name, values...)` - String array
+- `integerArray(name, values...)` - Integer array
+- `decimalArray(name, values...)` - Decimal array
+- `boolArray(name, values...)` - Boolean array
+
+**Complex fields:**
+- `element(name, builderConsumer)` - Single nested element
+- `elementArray(name, consumers...)` - Array of nested elements
+
+### Resource Test Execution
+
+When a test includes resource data:
+1. Type inference analyzes the Map structure to build a ResourceType
+2. The Map data is converted to a Spark Dataset with proper schema
+3. The FHIRPath expression is compiled with resource type context
+4. The expression executes against the resource Dataset
+
+All resource tests share the same fluent DSL and test description format as literal and context tests.
+
 ## Error Tests
 
 Test for expected exceptions:

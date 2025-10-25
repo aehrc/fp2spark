@@ -553,18 +553,4 @@ public class FhirPathTestBuilder {
         return exceptionType.getSimpleName();
     }
 
-    /**
-     * Create full test description by combining group name (if present) with description.
-     * This is the legacy method - kept for backward compatibility if needed.
-     *
-     * @deprecated Use {@link #buildTestDescription} instead
-     */
-    @Nonnull
-    @Deprecated
-    private String fullDescription(@Nonnull String description) {
-        return currentGroup != null
-                ? currentGroup + " - " + description
-                : description;
-    }
-
 }

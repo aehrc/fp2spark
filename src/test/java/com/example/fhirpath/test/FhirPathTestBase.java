@@ -33,12 +33,7 @@ public abstract class FhirPathTestBase {
 
     @BeforeAll
     void setupSpark() {
-        spark = SparkSession.builder()
-                .appName("fhirpath-test")
-                .master("local[*]")
-                .config("spark.ui.enabled", "false")
-                .config("spark.sql.warehouse.dir", "target/spark-warehouse")
-                .getOrCreate();
+        spark = SparkSessionFactory.createTestSession();
     }
 
     @AfterAll

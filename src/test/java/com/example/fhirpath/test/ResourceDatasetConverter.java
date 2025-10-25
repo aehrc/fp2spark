@@ -1,17 +1,15 @@
 package com.example.fhirpath.test;
 
-import com.example.fhirpath.typing.*;
+import com.example.fhirpath.typing.ResourceType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -45,6 +43,7 @@ import java.util.Map;
 class ResourceDatasetConverter {
 
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+    private static final SparkSchemaConverter SCHEMA_CONVERTER = new SparkSchemaConverter();
 
     /**
      * Convert ResourceTestData to a Spark Dataset.
@@ -66,7 +65,7 @@ class ResourceDatasetConverter {
             final ResourceType resourceType = resource.inferResourceType();
 
             // Step 2: Convert ResourceType to Spark schema (struct of fields)
-            final StructType fieldsSchema = toSparkSchema(resourceType);
+            final StructType fieldsSchema = SCHEMA_CONVERTER.toStructType(resourceType);
 
             // Step 3: Create outer schema with resource type name as column
             final StructType outerSchema = DataTypes.createStructType(new StructField[]{
@@ -97,90 +96,5 @@ class ResourceDatasetConverter {
                     e
             );
         }
-    }
-
-    /**
-     * Convert a ResourceType to a Spark StructType schema.
-     *
-     * @param resourceType The ResourceType to convert
-     * @return The corresponding Spark StructType
-     */
-    @Nonnull
-    private static StructType toSparkSchema(@Nonnull final ResourceType resourceType) {
-        final List<StructField> fields = new ArrayList<>();
-
-        for (final FieldSpec fieldSpec : resourceType.getFields()) {
-            final String fieldName = fieldSpec.getName();
-            final DataType sparkType = toSparkDataType(fieldSpec.getShape());
-            final boolean nullable = true; // FHIRPath fields can be empty
-            fields.add(DataTypes.createStructField(fieldName, sparkType, nullable));
-        }
-
-        return DataTypes.createStructType(fields);
-    }
-
-    /**
-     * Convert a FHIRPath Shape to a Spark DataType.
-     *
-     * @param shape The Shape to convert
-     * @return The corresponding Spark DataType
-     */
-    @Nonnull
-    private static DataType toSparkDataType(@Nonnull final Shape shape) {
-        final Type elementType = shape.elementType();
-        final DataType baseType = toSparkBaseType(elementType);
-
-        // If cardinality is MANY, wrap in ArrayType
-        if (shape.isMany()) {
-            return DataTypes.createArrayType(baseType, true);
-        }
-
-        return baseType;
-    }
-
-    /**
-     * Convert a FHIRPath Type to a Spark base DataType (non-array).
-     *
-     * @param type The Type to convert
-     * @return The corresponding Spark DataType
-     */
-    @Nonnull
-    private static DataType toSparkBaseType(@Nonnull final Type type) {
-        if (type instanceof PrimitiveType primitiveType) {
-            return switch (primitiveType) {
-                case INTEGER -> DataTypes.IntegerType;
-                case DECIMAL -> DataTypes.DoubleType;
-                case BOOLEAN -> DataTypes.BooleanType;
-                case STRING -> DataTypes.StringType;
-                case NULL -> DataTypes.NullType;
-                case ANY -> DataTypes.StringType; // Default to String for ANY
-            };
-        }
-
-        if (type instanceof ComplexType complexType) {
-            return toSparkSchema(complexType);
-        }
-
-        throw new IllegalArgumentException("Unsupported type: " + type.getClass().getName());
-    }
-
-    /**
-     * Convert a ComplexType to a Spark StructType.
-     *
-     * @param complexType The ComplexType to convert
-     * @return The corresponding Spark StructType
-     */
-    @Nonnull
-    private static StructType toSparkSchema(@Nonnull final ComplexType complexType) {
-        final List<StructField> fields = new ArrayList<>();
-
-        for (final FieldSpec fieldSpec : complexType.getFields()) {
-            final String fieldName = fieldSpec.getName();
-            final DataType sparkType = toSparkDataType(fieldSpec.getShape());
-            final boolean nullable = true;
-            fields.add(DataTypes.createStructField(fieldName, sparkType, nullable));
-        }
-
-        return DataTypes.createStructType(fields);
     }
 }

@@ -2,6 +2,7 @@ package com.example.fhirpath.test;
 
 import com.example.fhirpath.typing.*;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,11 +53,17 @@ import java.util.Map;
 class ResourceTypeInference {
 
     /**
+     * Maximum nesting depth for type inference to prevent stack overflow.
+     */
+    private static final int MAX_DEPTH = 20;
+
+    /**
      * Infer a ResourceType from the given resource name and Map data.
      *
      * @param resourceTypeName The name of the resource type (e.g., "Patient")
      * @param data             The Map data structure to infer from
      * @return A ResourceType with inferred field specifications
+     * @throws IllegalArgumentException if nesting depth exceeds MAX_DEPTH
      */
     @Nonnull
     static ResourceType infer(
@@ -68,7 +75,7 @@ class ResourceTypeInference {
         for (final Map.Entry<String, Object> entry : data.entrySet()) {
             final String fieldName = entry.getKey();
             final Object value = entry.getValue();
-            final Shape shape = inferShape(value);
+            final Shape shape = inferShape(value, 0);
             fieldSpecs.add(new FieldSpec(fieldName, shape));
         }
 
@@ -79,20 +86,28 @@ class ResourceTypeInference {
      * Infer the shape (type + cardinality) from a value.
      *
      * @param value The value to analyze (can be primitive, List, Map, or null)
+     * @param depth Current recursion depth
      * @return The inferred Shape
+     * @throws IllegalArgumentException if depth exceeds MAX_DEPTH
      */
     @Nonnull
-    private static Shape inferShape(@Nonnull final Object value) {
+    private static Shape inferShape(@Nullable final Object value, final int depth) {
+        if (depth > MAX_DEPTH) {
+            throw new IllegalArgumentException(
+                    "Maximum nesting depth " + MAX_DEPTH + " exceeded during type inference"
+            );
+        }
+
         if (value == null) {
             return Shape.single(PrimitiveType.NULL);
         }
 
         if (value instanceof List<?> list) {
-            return inferListShape(list);
+            return inferListShape(list, depth);
         }
 
         if (value instanceof Map<?, ?> map) {
-            return inferMapShape(map);
+            return inferMapShape(map, depth);
         }
 
         // Primitive value - infer type and use SINGLE cardinality
@@ -104,10 +119,11 @@ class ResourceTypeInference {
      * Infer shape from a List value (always MANY cardinality).
      *
      * @param list The list to analyze
+     * @param depth Current recursion depth
      * @return Shape with MANY cardinality
      */
     @Nonnull
-    private static Shape inferListShape(@Nonnull final List<?> list) {
+    private static Shape inferListShape(@Nonnull final List<?> list, final int depth) {
         if (list.isEmpty()) {
             // Empty list - use ANY type
             return Shape.many(PrimitiveType.ANY);
@@ -117,7 +133,7 @@ class ResourceTypeInference {
         final Object firstElement = list.get(0);
         if (firstElement instanceof Map<?, ?> map) {
             // List of complex types
-            final ComplexType elementType = inferComplexType(map);
+            final ComplexType elementType = inferComplexType(map, depth + 1);
             return Shape.many(elementType);
         } else {
             // List of primitives
@@ -130,13 +146,24 @@ class ResourceTypeInference {
      * Infer shape from a Map value (complex type with SINGLE cardinality).
      *
      * @param map The map to analyze
+     * @param depth Current recursion depth
      * @return Shape with ComplexType element type and SINGLE cardinality
+     * @throws IllegalArgumentException if map contains non-String keys
      */
     @Nonnull
-    private static Shape inferMapShape(@Nonnull final Map<?, ?> map) {
+    private static Shape inferMapShape(@Nonnull final Map<?, ?> map, final int depth) {
+        // Validate that all keys are Strings before casting
+        for (final Object key : map.keySet()) {
+            if (!(key instanceof String)) {
+                throw new IllegalArgumentException(
+                        "Map keys must be Strings for type inference, found: " + key.getClass().getName()
+                );
+            }
+        }
+
         @SuppressWarnings("unchecked")
         final Map<String, Object> typedMap = (Map<String, Object>) map;
-        final ComplexType complexType = inferComplexType(typedMap);
+        final ComplexType complexType = inferComplexType(typedMap, depth + 1);
         return Shape.single(complexType);
     }
 
@@ -144,10 +171,21 @@ class ResourceTypeInference {
      * Infer a ComplexType from a Map structure.
      *
      * @param map The map representing a complex type
+     * @param depth Current recursion depth
      * @return The inferred ComplexType
+     * @throws IllegalArgumentException if map contains non-String keys
      */
     @Nonnull
-    private static ComplexType inferComplexType(@Nonnull final Map<?, ?> map) {
+    private static ComplexType inferComplexType(@Nonnull final Map<?, ?> map, final int depth) {
+        // Validate that all keys are Strings before casting
+        for (final Object key : map.keySet()) {
+            if (!(key instanceof String)) {
+                throw new IllegalArgumentException(
+                        "Map keys must be Strings for type inference, found: " + key.getClass().getName()
+                );
+            }
+        }
+
         @SuppressWarnings("unchecked")
         final Map<String, Object> typedMap = (Map<String, Object>) map;
 
@@ -155,7 +193,7 @@ class ResourceTypeInference {
         for (final Map.Entry<String, Object> entry : typedMap.entrySet()) {
             final String fieldName = entry.getKey();
             final Object value = entry.getValue();
-            final Shape shape = inferShape(value);
+            final Shape shape = inferShape(value, depth);
             fieldSpecs.add(new FieldSpec(fieldName, shape));
         }
 

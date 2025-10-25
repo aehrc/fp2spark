@@ -56,8 +56,7 @@ class SparkSchemaConverter {
         for (final FieldSpec fieldSpec : resourceType.getFields()) {
             final String fieldName = fieldSpec.getName();
             final DataType sparkType = toDataType(fieldSpec.getShape());
-            final boolean nullable = true; // FHIRPath fields can be empty
-            fields.add(DataTypes.createStructField(fieldName, sparkType, nullable));
+            fields.add(DataTypes.createStructField(fieldName, sparkType, true));
         }
 
         return DataTypes.createStructType(fields);
@@ -76,8 +75,7 @@ class SparkSchemaConverter {
         for (final FieldSpec fieldSpec : complexType.getFields()) {
             final String fieldName = fieldSpec.getName();
             final DataType sparkType = toDataType(fieldSpec.getShape());
-            final boolean nullable = true;
-            fields.add(DataTypes.createStructField(fieldName, sparkType, nullable));
+            fields.add(DataTypes.createStructField(fieldName, sparkType, true));
         }
 
         return DataTypes.createStructType(fields);

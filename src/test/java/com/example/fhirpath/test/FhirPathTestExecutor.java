@@ -37,7 +37,7 @@ class FhirPathTestExecutor {
      *
      * @param spark The SparkSession for query execution
      */
-    FhirPathTestExecutor(@Nonnull SparkSession spark) {
+    FhirPathTestExecutor(@Nonnull final SparkSession spark) {
         this.spark = spark;
     }
 
@@ -47,7 +47,7 @@ class FhirPathTestExecutor {
      * @param testCase The test case to execute
      * @throws AssertionError if the test fails
      */
-    void executeTest(@Nonnull TestCase testCase) {
+    void executeTest(@Nonnull final TestCase testCase) {
         log.debug("Executing test: {}", testCase.description());
 
         try {
@@ -95,12 +95,12 @@ class FhirPathTestExecutor {
             final Dataset<Row> result = inputDataset.select(column.alias(resultAlias));
 
             // Extract and normalize result value
-            Object actualValue = extractResult(result);
+            final Object actualValue = extractResult(result);
 
             // Perform assertion
             testCase.assertion().assertResult(actualValue);
 
-        } catch (Exception exception) {
+        } catch (final Exception exception) {
             // Delegate error handling to assertion (unified interface)
             testCase.assertion().assertError(exception);
         }
@@ -115,17 +115,17 @@ class FhirPathTestExecutor {
      * @return The extracted value (null for empty collections)
      */
     @Nullable
-    private Object extractResult(@Nonnull Dataset<Row> result) {
-        List<Row> rows = result.collectAsList();
+    private Object extractResult(@Nonnull final Dataset<Row> result) {
+        final List<Row> rows = result.collectAsList();
         if (rows.isEmpty() || rows.get(0).isNullAt(0)) {
             return null;
         }
 
-        Object value = rows.get(0).get(0);
+        final Object value = rows.get(0).get(0);
 
         // Handle Spark arrays (convert to Java List and normalize elements)
         if (value instanceof scala.collection.Seq<?> seq) {
-            List<?> javaList = scala.jdk.javaapi.CollectionConverters.asJava(seq);
+            final List<?> javaList = scala.jdk.javaapi.CollectionConverters.asJava(seq);
             // Normalize BigDecimal values in list
             return javaList.stream()
                     .map(this::normalizeValue)
@@ -145,7 +145,7 @@ class FhirPathTestExecutor {
      * @return The normalized value
      */
     @Nullable
-    private Object normalizeValue(@Nullable Object value) {
+    private Object normalizeValue(@Nullable final Object value) {
         if (value instanceof BigDecimal bd) {
             return bd.stripTrailingZeros();
         }

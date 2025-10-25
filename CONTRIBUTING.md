@@ -243,8 +243,13 @@ A contribution is considered complete when ALL applicable criteria are met:
 
 ### For Tests
 
+- [ ] **Test class named by capability**: Use `[Capability]Test` format (e.g., `TypesAndLiteralsTest`, `ArithmeticOperatorsTest`)
+  - ✅ GOOD: `StringFunctionsTest` (named after FHIRPath capability)
+  - ❌ BAD: `Stage14Test` (tied to implementation stage)
+  - ❌ BAD: `Issue15Test` (tied to issue number)
 - [ ] Tests follow [TESTING.md](TESTING.md) guidelines (fluent DSL, descriptions when needed)
 - [ ] Tests are focused on FHIRPath-specific behavior (not exhaustive SQL testing)
+- [ ] **Spec-driven test coverage**: All examples and edge cases from referenced FHIRPath spec sections are tested
 - [ ] Test descriptions make tests understandable without reading code
 - [ ] All tests pass (`mvn test`)
 - [ ] Zero compilation warnings (`mvn clean compile`)

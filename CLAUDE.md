@@ -103,6 +103,92 @@ The FHIR-specific extensions and bindings for FHIRPath are documented in `specs/
 
 ## Testing Guidelines
 
+### Test Naming Conventions
+
+**Test classes MUST be named by capability, not by implementation details:**
+
+- ✅ **GOOD**: `TypesAndLiteralsTest`, `ArithmeticOperatorsTest`, `StringFunctionsTest`
+- ❌ **BAD**: `Stage14Test`, `Issue15Test`, `Phase1Test`
+
+**Rationale:** Test names should reflect what FHIRPath capability is being tested, making them:
+- Discoverable by capability area
+- Stable across refactorings
+- Self-documenting
+
+### Test Creation Workflow
+
+When implementing a new FHIRPath capability, follow this workflow to ensure spec compliance:
+
+**1. Identify Specification Sections**
+
+From the GitHub issue, locate the FHIRPath spec sections:
+```bash
+# Example: Find string literal spec section
+grep -n "String" specs/FHIRPath.md | grep -i literal
+```
+
+**2. Read Complete Spec Sections**
+
+Read the ENTIRE referenced spec section(s), not just summaries:
+```bash
+# Use Read tool with offset/limit for large files
+# Example: Read section starting at line 395
+```
+
+Extract ALL of:
+- Required behaviors
+- Examples provided in spec
+- Edge cases mentioned
+- Error conditions
+- Special rules (e.g., escape sequences)
+
+**3. Create Comprehensive Test Class**
+
+Name format: `[Capability]Test.java`
+
+Example structure:
+```java
+/**
+ * Tests for FHIRPath [Capability Name].
+ *
+ * <p>Based on FHIRPath specification section X.Y: [Section Name]
+ *
+ * <p>Covers:
+ * - All spec examples from section X.Y
+ * - Edge cases: [list key edge cases]
+ * - Error conditions: [list error conditions tested]
+ */
+public class CapabilityTest extends FhirPathTestBase {
+
+    @TestFactory
+    Stream<DynamicTest> testSpecExamples() {
+        // Tests for ALL examples from spec
+    }
+
+    @TestFactory
+    Stream<DynamicTest> testEdgeCases() {
+        // Tests for edge cases mentioned in spec
+    }
+}
+```
+
+**4. Verify Completeness**
+
+Before considering tests complete:
+- [ ] Cross-reference against spec section(s)
+- [ ] Verify EVERY example in spec has a test
+- [ ] Verify EVERY edge case is covered
+- [ ] Verify test class name reflects capability (not stage/issue)
+- [ ] Verify tests are organized by spec subsections
+
+**5. Run and Validate**
+
+```bash
+mvn test -Dtest=CapabilityTest
+```
+
+All tests must pass before creating PR.
+
 ### FHIRPath Function/Operator Unit Tests
 
 For writing or reviewing unit tests for FHIRPath functions and operators, use the **fhirpath-test-writer agent**:

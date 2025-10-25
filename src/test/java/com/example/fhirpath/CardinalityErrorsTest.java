@@ -8,7 +8,7 @@ import org.junit.jupiter.api.TestFactory;
 import java.util.stream.Stream;
 
 /**
- * Tests for cardinality constraint violations using the DSL framework.
+ * Tests for cardinality constraint violations.
  *
  * <p>Per FHIRPath specification:
  * <ul>
@@ -19,7 +19,7 @@ import java.util.stream.Stream;
  * <p>These tests verify that expressions like {@code (1 ; 2) + 2} are rejected
  * at analysis time with {@link CardinalityMismatchException}.
  */
-public class CardinalityErrorsDslTest extends FhirPathTestBase {
+public class CardinalityErrorsTest extends FhirPathTestBase {
 
     @TestFactory
     Stream<DynamicTest> testMathOperatorsLeftOperandMany() {

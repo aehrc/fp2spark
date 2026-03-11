@@ -6,18 +6,9 @@ import org.apache.spark.sql.SparkSession;
 /**
  * Context for code generation, passed to all handlers.
  * <p>
- * Currently minimal - just holds SparkSession for creating UDFs if needed.
- * SparkSession is optional; handlers that don't need UDFs can work with null.
- * Can be extended with additional context as needed (e.g., resource schema).
+ * SparkSession is optional; handlers that do not require UDF registration can work with null.
+ *
+ * @param spark the Spark session, or null if UDF registration is not needed
  */
 public record CodeGenContext(@Nullable SparkSession spark) {
-
-    /**
-     * Creates a code generation context.
-     *
-     * @param spark The Spark session (nullable for handlers that don't need UDFs)
-     */
-    public CodeGenContext {
-        // Compact constructor - validation if needed
-    }
 }

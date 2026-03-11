@@ -17,8 +17,8 @@ import jakarta.annotation.Nonnull;
  */
 public abstract class AnnotatedOperationHandler {
 
-    protected final String operation;
-    protected final Type dispatchType;
+    private final String operation;
+    private final Type dispatchType;
     protected final CodeGenContext context;
 
     /**

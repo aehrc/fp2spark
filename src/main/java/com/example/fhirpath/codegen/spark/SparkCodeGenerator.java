@@ -26,11 +26,8 @@ import static org.apache.spark.sql.functions.*;
  * Each visit method transforms an IR node into a Spark Column that can be
  * executed by the Spark SQL engine.
  * <p>
- * Supports two code generation modes:
- * <ul>
- *   <li>Legacy switch-based dispatch (default, backward compatible)</li>
- *   <li>Handler-based dispatch via HandlerRegistry (opt-in, extensible)</li>
- * </ul>
+ * Uses handler-based dispatch via {@link HandlerRegistry} for registered operations,
+ * with switch-based dispatch as a fallback for operations not yet migrated to handlers.
  * <p>
  * Immutable: each instance may have a bound $this column for lambda evaluation.
  */
@@ -39,26 +36,17 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     @Nullable
     private final Column thisColumn;
 
-    @Nullable
+    @Nonnull
     private final HandlerRegistry handlerRegistry;
 
-    @Nullable
+    @Nonnull
     private final CodeGenContext codeGenContext;
 
     /**
-     * Default constructor for top-level code generation (no $this binding).
-     * Uses legacy switch-based dispatch.
-     */
-    public SparkCodeGenerator() {
-        this(null, null, null);
-    }
-
-    /**
-     * Constructor with handler registry for extensible code generation.
-     * Enables handler-based dispatch with fallback to switch-based dispatch.
+     * Creates a code generator with handler-based dispatch.
      *
-     * @param handlerRegistry The handler registry
-     * @param codeGenContext The code generation context
+     * @param handlerRegistry the handler registry for operation dispatch
+     * @param codeGenContext the code generation context
      */
     public SparkCodeGenerator(
             @Nonnull final HandlerRegistry handlerRegistry,
@@ -67,12 +55,12 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     }
 
     /**
-     * Private constructor for creating instances with all options.
+     * Private constructor for creating instances with a bound $this column.
      */
     private SparkCodeGenerator(
             @Nullable final Column thisColumn,
-            @Nullable final HandlerRegistry handlerRegistry,
-            @Nullable final CodeGenContext codeGenContext) {
+            @Nonnull final HandlerRegistry handlerRegistry,
+            @Nonnull final CodeGenContext codeGenContext) {
         this.thisColumn = thisColumn;
         this.handlerRegistry = handlerRegistry;
         this.codeGenContext = codeGenContext;
@@ -108,19 +96,18 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     /**
      * Central dispatch for all operations.
      * <p>
-     * Dispatch priority:
-     * <ol>
-     *   <li>Handler registry (if available)</li>
-     *   <li>Legacy switch-based dispatch (fallback)</li>
-     * </ol>
+     * Tries handler registry first, then falls back to switch-based dispatch
+     * for operations not yet migrated to handlers.
      */
     @Nonnull
-    private Column evaluateOperation(String name, List<Column> args, Type resultType, List<IRNode> argNodes) {
-        // Try handler registry first if available
-        if (handlerRegistry != null && handlerRegistry.hasHandler(name)) {
-            // Use dispatch type from first argument, or result type if no arguments
+    private Column evaluateOperation(
+            @Nonnull final String name,
+            @Nonnull final List<Column> args,
+            @Nonnull final Type resultType,
+            @Nonnull final List<IRNode> argNodes) {
+        // Try handler registry first
+        if (handlerRegistry.hasHandler(name)) {
             final Type dispatchType = argNodes.isEmpty() ? resultType : argNodes.get(0).getType();
-
             final AnnotatedOperationHandler handler =
                     handlerRegistry.createHandler(name, dispatchType, codeGenContext);
 
@@ -129,7 +116,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             }
         }
 
-        // Fall back to legacy switch-based dispatch
+        // Fall back to switch-based dispatch for unmigrated operations
         return switch (name) {
             // Arithmetic
             case "add" -> evaluateAdd(args, resultType);
@@ -143,13 +130,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             case "lt" -> evaluateLessThan(args, argNodes.get(0).getType());
             case "geq" -> evaluateGreaterEqual(args, argNodes.get(0).getType());
             case "leq" -> evaluateLessEqual(args, argNodes.get(0).getType());
-
-            // Boolean operators
-            case "and" -> args.get(0).and(args.get(1));
-            case "or" -> args.get(0).or(args.get(1));
-            case "xor" -> evaluateXor(args.get(0), args.get(1));
-            case "implies" -> not(args.get(0)).or(args.get(1));
-            case "not" -> not(args.get(0));
 
             // Collection functions
             case "count" -> evaluateCount(args.get(0), argNodes.get(0).isSingular());
@@ -274,31 +254,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
             default -> throw new IllegalArgumentException(
                     "Unsupported input type for leq: " + inputType);
         };
-    }
-
-    // ========== Boolean Operators ==========
-
-    /**
-     * Evaluates the xor (exclusive or) operator.
-     * <p>
-     * FHIRPath semantics: Returns true if exactly one operand is true,
-     * false if both are true or both are false, empty otherwise.
-     * <p>
-     * Three-valued logic truth table:
-     * - true xor true = false
-     * - true xor false = true
-     * - false xor true = true
-     * - false xor false = false
-     * - Any xor empty = empty
-     */
-    @Nonnull
-    private Column evaluateXor(@Nonnull final Column left, @Nonnull final Column right) {
-        // XOR with three-valued logic:
-        // When both operands are non-null, return left !== right (not equal)
-        // When either operand is null, return null
-        // Use when() to handle null propagation explicitly
-        return when(left.isNull().or(right.isNull()), lit(null))
-                .otherwise(left.notEqual(right));
     }
 
     // ========== Collection Functions ==========

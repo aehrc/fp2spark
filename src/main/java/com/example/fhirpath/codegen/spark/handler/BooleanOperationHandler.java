@@ -3,8 +3,7 @@ package com.example.fhirpath.codegen.spark.handler;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
-
-import static org.apache.spark.sql.functions.*;
+import org.apache.spark.sql.functions;
 
 /**
  * Handler for boolean logic operations.
@@ -33,14 +32,16 @@ public final class BooleanOperationHandler extends AnnotatedOperationHandler {
     /**
      * Logical AND with three-valued logic.
      * <p>
-     * Truth table:
-     * - true and true = true
-     * - true and false = false
-     * - false and X = false
-     * - true and empty = empty
-     * - empty and true = empty
-     * - empty and false = false
-     * - empty and empty = empty
+     * Truth table (FHIRPath spec section 6.5):
+     * <pre>
+     *          | true  | false | empty
+     * ---------+-------+-------+------
+     * true     | true  | false | empty
+     * false    | false | false | false
+     * empty    | empty | false | empty
+     * </pre>
+     * <p>
+     * Spark's SQL-92 three-valued AND matches FHIRPath semantics exactly.
      */
     @Operation("and")
     @Nonnull
@@ -51,13 +52,16 @@ public final class BooleanOperationHandler extends AnnotatedOperationHandler {
     /**
      * Logical OR with three-valued logic.
      * <p>
-     * Truth table:
-     * - true or X = true
-     * - false or false = false
-     * - false or empty = empty
-     * - empty or true = true
-     * - empty or false = empty
-     * - empty or empty = empty
+     * Truth table (FHIRPath spec section 6.5):
+     * <pre>
+     *          | true  | false | empty
+     * ---------+-------+-------+------
+     * true     | true  | true  | true
+     * false    | true  | false | empty
+     * empty    | true  | empty | empty
+     * </pre>
+     * <p>
+     * Spark's SQL-92 three-valued OR matches FHIRPath semantics exactly.
      */
     @Operation("or")
     @Nonnull
@@ -68,57 +72,58 @@ public final class BooleanOperationHandler extends AnnotatedOperationHandler {
     /**
      * Exclusive OR (XOR) with three-valued logic.
      * <p>
-     * Truth table:
-     * - true xor false = true
-     * - false xor true = true
-     * - true xor true = false
-     * - false xor false = false
-     * - Any xor empty = empty
+     * Truth table (FHIRPath spec section 6.5):
+     * <pre>
+     *          | true  | false | empty
+     * ---------+-------+-------+------
+     * true     | false | true  | empty
+     * false    | true  | false | empty
+     * empty    | empty | empty | empty
+     * </pre>
      * <p>
-     * Implementation: When both non-null, return left !== right.
-     * When either is null, return null.
+     * When both operands are non-null, XOR is equivalent to not-equal.
+     * When either operand is null, result is null (empty).
      */
     @Operation("xor")
     @Nonnull
     public Column xor(@Nonnull final Column left, @Nonnull final Column right) {
-        // XOR with three-valued logic:
-        // When both operands are non-null, return left !== right (not equal)
-        // When either operand is null, return null
-        return when(left.isNull().or(right.isNull()), lit(null))
+        return functions.when(left.isNull().or(right.isNull()), functions.lit(null))
                 .otherwise(left.notEqual(right));
     }
 
     /**
      * Material implication with three-valued logic.
      * <p>
-     * Truth table:
-     * - true implies true = true
-     * - true implies false = false
-     * - true implies empty = empty
-     * - false implies X = true (vacuously true)
-     * - empty implies true = true
-     * - empty implies false = empty
-     * - empty implies empty = empty
+     * Truth table (FHIRPath spec section 6.5):
+     * <pre>
+     *          | true  | false | empty
+     * ---------+-------+-------+------
+     * true     | true  | false | empty
+     * false    | true  | true  | true
+     * empty    | true  | empty | empty
+     * </pre>
      * <p>
-     * Implementation: !left OR right
+     * Equivalent to: NOT left OR right.
      */
     @Operation("implies")
     @Nonnull
     public Column implies(@Nonnull final Column left, @Nonnull final Column right) {
-        return not(left).or(right);
+        return functions.not(left).or(right);
     }
 
     /**
      * Logical negation with three-valued logic.
      * <p>
-     * Truth table:
-     * - not true = false
-     * - not false = true
-     * - not empty = empty
+     * Truth table (FHIRPath spec section 6.5):
+     * <pre>
+     * not true  = false
+     * not false = true
+     * not empty = empty
+     * </pre>
      */
     @Operation("not")
     @Nonnull
     public Column not(@Nonnull final Column operand) {
-        return not(operand);
+        return functions.not(operand);
     }
 }

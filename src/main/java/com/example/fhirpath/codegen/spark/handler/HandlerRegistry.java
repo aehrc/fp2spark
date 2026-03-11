@@ -23,42 +23,31 @@ import java.util.Map;
  */
 public final class HandlerRegistry {
 
-    // Factory function: (operation, dispatchType, context) -> Handler
+    @Nonnull
     private final Map<String, TriFunction<String, Type, CodeGenContext, AnnotatedOperationHandler>> operationHandlers;
 
-    private HandlerRegistry() {
-        this.operationHandlers = new HashMap<>();
+    private HandlerRegistry(
+            @Nonnull final Map<String, TriFunction<String, Type, CodeGenContext, AnnotatedOperationHandler>> handlers) {
+        this.operationHandlers = Map.copyOf(handlers);
     }
 
     /**
      * Creates the standard handler registry with all built-in operations.
      *
-     * @return A registry with all standard FHIRPath operation handlers
+     * @return a registry with all standard FHIRPath operation handlers
      */
     @Nonnull
     public static HandlerRegistry standard() {
-        final HandlerRegistry registry = new HandlerRegistry();
+        final Map<String, TriFunction<String, Type, CodeGenContext, AnnotatedOperationHandler>> handlers =
+                new HashMap<>();
 
-        // Register boolean operation handler for all boolean operations
-        registry.registerOperationHandler("and", BooleanOperationHandler::new);
-        registry.registerOperationHandler("or", BooleanOperationHandler::new);
-        registry.registerOperationHandler("xor", BooleanOperationHandler::new);
-        registry.registerOperationHandler("implies", BooleanOperationHandler::new);
-        registry.registerOperationHandler("not", BooleanOperationHandler::new);
+        handlers.put("and", BooleanOperationHandler::new);
+        handlers.put("or", BooleanOperationHandler::new);
+        handlers.put("xor", BooleanOperationHandler::new);
+        handlers.put("implies", BooleanOperationHandler::new);
+        handlers.put("not", BooleanOperationHandler::new);
 
-        return registry;
-    }
-
-    /**
-     * Registers an operation-based handler factory.
-     *
-     * @param operation The operation name
-     * @param factory Factory function to create handler instances
-     */
-    private void registerOperationHandler(
-            @Nonnull final String operation,
-            @Nonnull final TriFunction<String, Type, CodeGenContext, AnnotatedOperationHandler> factory) {
-        operationHandlers.put(operation, factory);
+        return new HandlerRegistry(handlers);
     }
 
     /**

@@ -3,6 +3,8 @@ package com.example.fhirpath;
 import com.example.fhirpath.analyzer.Analyzer;
 import com.example.fhirpath.ast.AstNode;
 import com.example.fhirpath.codegen.spark.SparkCodeGenerator;
+import com.example.fhirpath.codegen.spark.handler.CodeGenContext;
+import com.example.fhirpath.codegen.spark.handler.HandlerRegistry;
 import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.parser.ParserFacade;
 import com.example.fhirpath.typing.ResourceType;
@@ -117,8 +119,10 @@ public final class FhirPath {
         IRNode ir = analyzer.analyze(ast);
         log.debug("IR: {}", ir);
 
-        // Generate Spark SQL Column from IR
-        Column column = ir.accept(new SparkCodeGenerator());
+        // Generate Spark SQL Column from IR using handler-based dispatch
+        final HandlerRegistry registry = HandlerRegistry.standard();
+        final CodeGenContext codeGenContext = new CodeGenContext(null);
+        Column column = ir.accept(new SparkCodeGenerator(registry, codeGenContext));
         log.debug("SQL: {}", column);
 
         return column;

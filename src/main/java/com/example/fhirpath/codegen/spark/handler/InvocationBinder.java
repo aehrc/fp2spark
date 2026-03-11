@@ -13,15 +13,8 @@ import java.util.List;
 /**
  * Binds handler method invocations using reflection and automatic boxing/unboxing.
  * <p>
- * Finds @Operation annotated methods on handler instances and invokes them with
- * appropriate type conversions:
- * <ul>
- *   <li>Column to domain wrappers (Collection, Quantity, LambdaExpression)</li>
- *   <li>Domain wrappers back to Column</li>
- * </ul>
- * <p>
- * Currently supports direct Column-to-Column invocation for boolean operators.
- * Future: Add boxing/unboxing for Collection, Quantity, LambdaExpression.
+ * Finds {@link Operation @Operation} annotated methods on handler instances and invokes them
+ * with appropriate type conversions between Spark Column and domain wrapper types.
  */
 public final class InvocationBinder {
 
@@ -88,24 +81,13 @@ public final class InvocationBinder {
     }
 
     /**
-     * Boxes Column arguments to domain wrapper types if needed.
-     * <p>
-     * Currently supports:
-     * <ul>
-     *   <li>Column -> Column (pass through for boolean operators)</li>
-     * </ul>
-     * <p>
-     * Future extensions:
-     * <ul>
-     *   <li>Column -> Collection (for collection operations)</li>
-     *   <li>Column -> Quantity (for quantity operations)</li>
-     *   <li>IR Lambda -> LambdaExpression (for higher-order functions)</li>
-     * </ul>
+     * Boxes Column arguments to domain wrapper types based on method parameter types.
      *
-     * @param method The handler method
-     * @param columnArgs The Column arguments
-     * @param irArgs The IR nodes (for type information)
-     * @return Boxed arguments ready for invocation
+     * @param method the handler method
+     * @param columnArgs the Column arguments
+     * @param irArgs the IR nodes (for type information)
+     * @return boxed arguments ready for invocation
+     * @throws IllegalStateException if argument count does not match parameter count
      */
     @Nonnull
     private static Object[] boxArguments(
@@ -114,47 +96,31 @@ public final class InvocationBinder {
             @Nonnull final List<IRNode> irArgs) {
 
         final Class<?>[] paramTypes = method.getParameterTypes();
+
+        if (columnArgs.size() != paramTypes.length) {
+            throw new IllegalStateException(String.format(
+                    "Arity mismatch invoking %s: expected %d arguments, got %d",
+                    method.getName(), paramTypes.length, columnArgs.size()));
+        }
+
         final Object[] boxedArgs = new Object[paramTypes.length];
 
         for (int i = 0; i < paramTypes.length; i++) {
-            final Class<?> paramType = paramTypes[i];
-            final Column columnArg = columnArgs.get(i);
-
-            // For now, all parameters are Column type (boolean operators)
-            // Future: Check paramType and box accordingly
-            // - If paramType == Collection.class -> new Collection(columnArg, isSingular)
-            // - If paramType == Quantity.class -> new Quantity(columnArg)
-            // - If paramType == LambdaExpression.class -> box IR Lambda
-            boxedArgs[i] = columnArg;
+            boxedArgs[i] = columnArgs.get(i);
         }
 
         return boxedArgs;
     }
 
     /**
-     * Unboxes the result from a handler method.
-     * <p>
-     * Currently supports:
-     * <ul>
-     *   <li>Column -> Column (pass through for boolean operators)</li>
-     * </ul>
-     * <p>
-     * Future extensions:
-     * <ul>
-     *   <li>Collection -> Column (call toColumn())</li>
-     *   <li>Quantity -> Column (call toColumn())</li>
-     * </ul>
+     * Unboxes the result from a handler method to a Spark Column.
      *
-     * @param result The result from handler method
-     * @return The result Column
+     * @param result the result from handler method
+     * @return the result Column
+     * @throws IllegalStateException if result is not a supported type
      */
     @Nonnull
     private static Column unboxResult(@Nonnull final Object result) {
-        // For now, all results are Column type (boolean operators)
-        // Future: Check result type and unbox accordingly
-        // - If result instanceof Collection -> ((Collection) result).toColumn()
-        // - If result instanceof Quantity -> ((Quantity) result).toColumn()
-
         if (result instanceof Column column) {
             return column;
         }

@@ -100,10 +100,10 @@ Type information is resolved during analysis and stored in IR nodes:
 **Architecture**: See [docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)
 
 **Key Design**:
-- **Stateful Handlers**: Command objects created per invocation with operation, type, context
-- **Hybrid Organization**: Operation-based, type-based, and generic handlers
-- **Automatic Boxing/Unboxing**: `InvocationBinder` converts between `Column` and domain wrappers
-- **Domain Wrappers**: `Collection`, `Quantity`, `LambdaExpression` used sparingly where they add value
+- **Functional Operation Registry**: Operations are pure functions registered in `SparkOperationRegistry`
+- **Simple dispatch**: `SparkCodeGenerator.visitOperation()` looks up operation by name and calls the function
+- **Grouped registration**: Operations organized by domain in `ops/` package (`BooleanOps`, `ArithmeticOps`, etc.)
+- **No reflection, annotations, or base classes** — just functions
 
 **Code generators implement** `IRNodeVisitor<T>` where `T` is target type:
 - `SparkCodeGenerator implements IRNodeVisitor<Column>`
@@ -166,47 +166,33 @@ SignatureDefinition(params, result, minArity)
 
 **Full documentation**: [docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)
 
-### Stateful Handlers (Command Pattern)
+### Functional Operation Registry
 
-Handlers are created **per invocation** with:
-- `operation` - Operation name
-- `dispatchType` - Type determining handler selection
-- `context` - Code generation context
+Operations are pure functions dispatched through `SparkOperationRegistry`:
 
-**Benefit**: Operation methods have clean signatures - no context parameter needed.
+```java
+@FunctionalInterface
+public interface SparkOperationDef {
+    Column generate(List<Column> args, List<IRNode> argNodes,
+                    Type resultType, SparkCodeGenerator generator);
+}
+```
 
-### Handler Organization
+### Convenience Registration
 
-**Three handler types**:
+- `registry.binary(name, fn)` — simple two-argument ops (e.g., `Column::and`)
+- `registry.unary(name, fn)` — simple one-argument ops (e.g., `functions::not`)
+- `registry.register(name, def)` — full control for type-dispatched or complex ops
 
-1. **Operation-Based**: For heavily overloaded operations (comparison, arithmetic, math)
-   - Benefit: Adding new comparison operator touches ONE file
+### Operation Groups
 
-2. **Type-Based**: For type-specific operations (string ops, quantity ops)
-   - Benefit: All operations for a type in one place
+Operations are organized by domain in the `ops/` package:
 
-3. **Generic**: For polymorphic operations (collection ops: count, where, select)
-   - Benefit: Work on any type without specialization
-
-### Automatic Boxing/Unboxing
-
-`InvocationBinder` converts between SparkSQL `Column` and domain wrappers:
-
-**Boxing** (when invoking handlers):
-- `Column` → `Collection(column, isSingular)` for cardinality-aware operations
-- `Column` → `Quantity(column)` for complex struct field access
-- IR `Lambda` → `LambdaExpression(lambda, context)` for lambda operations
-
-**Unboxing** (handler results):
-- Wrappers → `Column` via `toColumn()`
-
-**Philosophy**: Use wrappers **sparingly** - only where they add value. Most primitive operations work directly with raw `Column`.
-
-### Domain Wrappers
-
-**Collection**: Cardinality-aware operations (count, where, select)
-**Quantity**: Complex struct field access (getValue, getUnit)
-**LambdaExpression**: Lambda evaluation with `$this` binding
+- **BooleanOps**: `and`, `or`, `xor`, `implies`, `not`
+- **ArithmeticOps**: `add`, `sub`, `multiply`, `divide`, `mod`
+- **ComparisonOps**: `gt`, `lt`, `geq`, `leq`
+- **CollectionOps**: `count`, `exists`, `empty`, `first`
+- **FilteringOps**: `where`, `iif`
 
 ---
 
@@ -273,14 +259,8 @@ The `OperationRegistry` maps operation names to signature definitions.
 ### Adding a New Function
 
 1. Add signature to `OperationRegistry` (~5 lines)
-2. Add handler method with `@Operation` annotation (~5-10 lines)
+2. Register the operation in appropriate `*Ops` class or create a new one (~1-5 lines)
 3. Tests (~10-20 lines)
-
-### Adding a New Handler
-
-1. Extend `AnnotatedOperationHandler`
-2. Implement operation methods with `@Operation` annotations
-3. Register in `HandlerRegistry.standard()`
 
 ### Adding a New Target
 
@@ -328,22 +308,28 @@ com.example.fhirpath/
 │   ├── Operation.java
 │   ├── Literal.java
 │   └── ...
-└── codegen/               - Code generation (future home)
+└── codegen/
+    └── spark/
+        ├── SparkCodeGenerator.java    - IR → Column visitor
+        ├── SparkOperationDef.java     - Functional interface for operations
+        ├── SparkOperationRegistry.java - Operation name → function map
+        ├── SparkTypeMapper.java       - FHIRPath → Spark type mapping
+        ├── EvalHelper.java            - Evaluation utilities
+        └── ops/                       - Grouped operation registrations
+            ├── BooleanOps.java
+            ├── ArithmeticOps.java
+            ├── ComparisonOps.java
+            ├── CollectionOps.java
+            └── FilteringOps.java
 ```
 
 ---
 
 ## Testing Strategy
 
-**Full documentation**: [docs/CODEGEN_TESTING_STRATEGY.md](docs/CODEGEN_TESTING_STRATEGY.md)
-
-**Two-layer approach**:
-
-1. **Component Tests**: Wrappers, utilities in isolation
-2. **FHIRPath Expression Tests**: Full pipeline with FHIRPath expressions (primary strategy)
+**Primary strategy**: FHIRPath expression tests (full pipeline)
 
 **Philosophy**:
-- Skip handler/CodeGen tests (plumbing between components)
 - Invest in comprehensive, reusable FHIRPath expression test suite
 - Tests serve as specification compliance suite, reusable across implementations
 
@@ -354,8 +340,7 @@ com.example.fhirpath/
 ### Design Documents
 
 - **[docs/TYPE_SYSTEM_DESIGN.md](docs/TYPE_SYSTEM_DESIGN.md)** - Type system design, element-first model, implementation phases
-- **[docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)** - Code generator architecture, stateful handlers, domain wrappers
-- **[docs/CODEGEN_TESTING_STRATEGY.md](docs/CODEGEN_TESTING_STRATEGY.md)** - Testing strategy and philosophy
+- **[docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)** - Code generator architecture, functional operation registry
 
 ### Specifications
 

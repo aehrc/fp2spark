@@ -202,17 +202,27 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
     @Override
     public AstNode visitAndExpression(FhirPathParser.AndExpressionContext ctx) {
-        throw new UnsupportedOperationException("Logical AND expressions are not yet supported");
+        AstNode left = visit(ctx.expression(0));
+        AstNode right = visit(ctx.expression(1));
+
+        return new AstBinaryOperator("and", left, right);
     }
 
     @Override
     public AstNode visitOrExpression(FhirPathParser.OrExpressionContext ctx) {
-        throw new UnsupportedOperationException("Logical OR expressions are not yet supported");
+        AstNode left = visit(ctx.expression(0));
+        AstNode right = visit(ctx.expression(1));
+
+        String op = ctx.getChild(1).getText(); // Could be "or" or "xor"
+        return new AstBinaryOperator(op, left, right);
     }
 
     @Override
     public AstNode visitImpliesExpression(FhirPathParser.ImpliesExpressionContext ctx) {
-        throw new UnsupportedOperationException("Implies expressions are not yet supported");
+        AstNode left = visit(ctx.expression(0));
+        AstNode right = visit(ctx.expression(1));
+
+        return new AstBinaryOperator("implies", left, right);
     }
 
     @Override

@@ -1,7 +1,6 @@
 package com.example.fhirpath.codegen.spark;
 
 import com.example.fhirpath.ir.*;
-import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nullable;
@@ -17,30 +16,41 @@ import static org.apache.spark.sql.functions.*;
 
 /**
  * Generates Spark Column expressions from FHIRPath IR trees.
- * <p>
- * This visitor implements target-specific code generation for Apache Spark SQL.
+ *
+ * <p>This visitor implements target-specific code generation for Apache Spark SQL.
  * Each visit method transforms an IR node into a Spark Column that can be
  * executed by the Spark SQL engine.
- * <p>
- * Immutable: each instance may have a bound $this column for lambda evaluation.
+ *
+ * <p>All operations are dispatched through a {@link SparkOperationRegistry} —
+ * a simple map from operation name to pure function.
+ *
+ * <p>Immutable: each instance may have a bound $this column for lambda evaluation.
  */
 public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
     @Nullable
     private final Column thisColumn;
 
+    @Nonnull
+    private final SparkOperationRegistry registry;
+
     /**
-     * Default constructor for top-level code generation (no $this binding).
+     * Creates a code generator with the given operation registry.
+     *
+     * @param registry the operation registry for dispatch
      */
-    public SparkCodeGenerator() {
-        this(null);
+    public SparkCodeGenerator(@Nonnull final SparkOperationRegistry registry) {
+        this(null, registry);
     }
 
     /**
      * Private constructor for creating instances with a bound $this column.
      */
-    private SparkCodeGenerator(@Nullable Column thisColumn) {
+    private SparkCodeGenerator(
+            @Nullable final Column thisColumn,
+            @Nonnull final SparkOperationRegistry registry) {
         this.thisColumn = thisColumn;
+        this.registry = registry;
     }
 
     /**
@@ -48,15 +58,14 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
      * Used for lambda body evaluation.
      */
     @Nonnull
-    private SparkCodeGenerator withThisColumn(@Nonnull Column thisColumn) {
-        return new SparkCodeGenerator(thisColumn);
+    SparkCodeGenerator withThisColumn(@Nonnull Column thisColumn) {
+        return new SparkCodeGenerator(thisColumn, this.registry);
     }
 
     @Override
     @Nonnull
     public Column visitOperation(@Nonnull Operation op) {
         // Recursively visit child arguments to generate their columns
-        // Handle null arguments (e.g., optional parameters that weren't provided)
         // Special case: don't evaluate Lambda nodes - they need to be handled specially
         List<Column> argColumns = op.args().stream()
                 .map(arg -> {
@@ -66,215 +75,22 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
                 })
                 .toList();
 
-        // Dispatch to appropriate evaluation method based on operation name
-        return evaluateOperation(op.name(), argColumns, op.getType(), op.args());
+        // Dispatch through registry
+        SparkOperationDef def = registry.get(op.name());
+        if (def == null) {
+            throw new UnsupportedOperationException(
+                    "Unknown operation: " + op.name() + " with result type: " + op.getType());
+        }
+        return def.generate(argColumns, op.args(), op.getType(), this);
     }
+
+    // ========== Filtering and Conditional (package-private for ops classes) ==========
 
     /**
-     * Central dispatch for all operations.
+     * Evaluates a where() filtering operation.
      */
     @Nonnull
-    private Column evaluateOperation(String name, List<Column> args, Type resultType, List<IRNode> argNodes) {
-        return switch (name) {
-            // Arithmetic
-            case "add" -> evaluateAdd(args, resultType);
-            case "sub" -> evaluateSub(args, resultType);
-            case "multiply" -> evaluateMultiply(args, resultType);
-            case "divide" -> evaluateDivide(args, resultType);
-            case "mod" -> evaluateMod(args, resultType);
-
-            // Comparison - use input type from first argument, not result type
-            case "gt" -> evaluateGreaterThan(args, argNodes.get(0).getType());
-            case "lt" -> evaluateLessThan(args, argNodes.get(0).getType());
-            case "geq" -> evaluateGreaterEqual(args, argNodes.get(0).getType());
-            case "leq" -> evaluateLessEqual(args, argNodes.get(0).getType());
-
-            // Boolean operators
-            case "and" -> args.get(0).and(args.get(1));
-            case "or" -> args.get(0).or(args.get(1));
-            case "xor" -> args.get(0).bitwiseXOR(args.get(1));
-            case "implies" -> not(args.get(0)).or(args.get(1));
-            case "not" -> not(args.get(0));
-
-            // Collection functions
-            case "count" -> evaluateCount(args.get(0), argNodes.get(0).isSingular());
-            case "exists" -> evaluateExists(args.get(0));
-            case "empty" -> evaluateEmpty(args.get(0));
-            case "first" -> evaluateFirst(args.get(0), argNodes.get(0).isSingular());
-
-            // Filtering and projection
-            case "where" -> evaluateWhere(args.get(0), argNodes.get(0).isSingular(), argNodes.get(1));
-
-            // Conditional operations
-            case "iif" -> evaluateIif(args.get(0), argNodes.get(1), argNodes.get(2));
-
-            default -> throw new UnsupportedOperationException(
-                    "Unknown operation: " + name + " with result type: " + resultType);
-        };
-    }
-
-    // ========== Arithmetic Operations ==========
-
-    @Nonnull
-    private Column evaluateAdd(List<Column> args, Type resultType) {
-        Column left = args.get(0);
-        Column right = args.get(1);
-
-        return switch ((PrimitiveType) resultType) {
-            case INTEGER, DECIMAL -> left.plus(right);
-            case STRING -> concat(left, right);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported result type for add: " + resultType);
-        };
-    }
-
-    @Nonnull
-    private Column evaluateSub(List<Column> args, Type resultType) {
-        Column left = args.get(0);
-        Column right = args.get(1);
-
-        return switch ((PrimitiveType) resultType) {
-            case INTEGER, DECIMAL -> left.minus(right);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported result type for sub: " + resultType);
-        };
-    }
-
-    @Nonnull
-    private Column evaluateMultiply(List<Column> args, Type resultType) {
-        Column left = args.get(0);
-        Column right = args.get(1);
-
-        return switch ((PrimitiveType) resultType) {
-            case INTEGER, DECIMAL -> left.multiply(right);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported result type for multiply: " + resultType);
-        };
-    }
-
-    @Nonnull
-    private Column evaluateDivide(List<Column> args, Type resultType) {
-        Column left = args.get(0);
-        Column right = args.get(1);
-
-        return switch ((PrimitiveType) resultType) {
-            case INTEGER, DECIMAL -> left.divide(right);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported result type for divide: " + resultType);
-        };
-    }
-
-    @Nonnull
-    private Column evaluateMod(List<Column> args, Type resultType) {
-        return args.get(0).mod(args.get(1));
-    }
-
-    // ========== Comparison Operations ==========
-
-    @Nonnull
-    private Column evaluateGreaterThan(List<Column> args, Type inputType) {
-        Column left = args.get(0);
-        Column right = args.get(1);
-
-        // Get input type from first argument's type (before comparison)
-        // Note: resultType is always BOOLEAN for comparisons
-        return switch ((PrimitiveType) inputType) {
-            case INTEGER, DECIMAL, STRING -> left.gt(right);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported input type for gt: " + inputType);
-        };
-    }
-
-    @Nonnull
-    private Column evaluateLessThan(List<Column> args, Type inputType) {
-        Column left = args.get(0);
-        Column right = args.get(1);
-
-        return switch ((PrimitiveType) inputType) {
-            case INTEGER, DECIMAL, STRING -> left.lt(right);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported input type for lt: " + inputType);
-        };
-    }
-
-    @Nonnull
-    private Column evaluateGreaterEqual(List<Column> args, Type inputType) {
-        Column left = args.get(0);
-        Column right = args.get(1);
-
-        return switch ((PrimitiveType) inputType) {
-            case INTEGER, DECIMAL, STRING -> left.geq(right);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported input type for geq: " + inputType);
-        };
-    }
-
-    @Nonnull
-    private Column evaluateLessEqual(List<Column> args, Type inputType) {
-        Column left = args.get(0);
-        Column right = args.get(1);
-
-        return switch ((PrimitiveType) inputType) {
-            case INTEGER, DECIMAL, STRING -> left.leq(right);
-            default -> throw new IllegalArgumentException(
-                    "Unsupported input type for leq: " + inputType);
-        };
-    }
-
-    // ========== Collection Functions ==========
-
-    @Nonnull
-    private Column evaluateCount(Column childColumn, boolean isSingular) {
-        // Handle based on singularity
-        if (isSingular) {
-            return when(childColumn.isNotNull(), lit(1)).otherwise(lit(0));
-        } else {
-            return when(childColumn.isNotNull(), functions.size(childColumn)).otherwise(lit(0));
-        }
-    }
-
-    @Nonnull
-    private Column evaluateExists(Column childColumn) {
-        return when(childColumn.isNotNull(), lit(true)).otherwise(lit(false));
-    }
-
-    @Nonnull
-    private Column evaluateEmpty(Column childColumn) {
-        return when(childColumn.isNull(), lit(true)).otherwise(lit(false));
-    }
-
-    @Nonnull
-    private Column evaluateFirst(final Column childColumn, final boolean isSingular) {
-        // FHIRPath semantics:
-        // - Empty collection (NULL) returns empty (NULL)
-        // - Singular values return themselves (they ARE the first element)
-        // - Multi-element collections return element at index 0
-
-        if (isSingular) {
-            // Singular value: return the value itself
-            return childColumn;
-        } else {
-            // Collection: extract first element using get() with 0-based index
-            // Returns null if array is null or empty
-            return functions.get(childColumn, lit(0));
-        }
-    }
-
-    // ========== Filtering and Projection ==========
-
-    @Nonnull
-    private Column evaluateWhere(final Column collection, final boolean isSingular, @Nonnull final IRNode lambdaNode) {
-        if (!(lambdaNode instanceof Lambda lambda)) {
-            throw new IllegalArgumentException(
-                    "where() requires a Lambda argument, got: " + lambdaNode.getClass()
-            );
-        }
-
-        // FHIRPath semantics:
-        // - Empty collection (NULL) returns empty (NULL)
-        // - Singular values are treated as single-element collections
-        // - Multi-element collections are filtered
-
+    public Column evaluateWhere(final Column collection, final boolean isSingular, @Nonnull final Lambda lambda) {
         if (isSingular) {
             // Singular value: evaluate lambda directly with the value as $this
             // Return the value if criteria matches, NULL otherwise
@@ -292,36 +108,19 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         }
     }
 
-    // ========== Conditional Operations ==========
-
     /**
      * Evaluates iif() collection-level conditional.
-     * <p>
-     * FHIRPath semantics:
+     *
+     * <p>FHIRPath semantics:
      * - Both lambdas are evaluated with $this bound to the entire collection
      * - If criterion returns true, return true-result
      * - Otherwise, return empty (null in Spark representation)
-     * <p>
-     * Example: (1 | 2).iif(exists(), $this) → [1, 2]
-     * Example: (1 | 2 | 3).iif(count() > 2, first()) → 1
      */
     @Nonnull
-    private Column evaluateIif(
+    public Column evaluateIif(
             final Column collection,
-            @Nonnull final IRNode criterionLambda,
-            @Nonnull final IRNode trueResultLambda
-    ) {
-        if (!(criterionLambda instanceof Lambda criterion)) {
-            throw new IllegalArgumentException(
-                    "iif() criterion must be a Lambda, got: " + criterionLambda.getClass()
-            );
-        }
-        if (!(trueResultLambda instanceof Lambda trueResult)) {
-            throw new IllegalArgumentException(
-                    "iif() true-result must be a Lambda, got: " + trueResultLambda.getClass()
-            );
-        }
-
+            @Nonnull final Lambda criterion,
+            @Nonnull final Lambda trueResult) {
         // Evaluate both lambdas with $this bound to entire collection
         final SparkCodeGenerator collectionGen = withThisColumn(collection);
         final Column criterionResult = criterion.body().accept(collectionGen);

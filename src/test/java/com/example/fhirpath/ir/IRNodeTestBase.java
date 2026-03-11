@@ -1,8 +1,7 @@
 package com.example.fhirpath.ir;
 
 import com.example.fhirpath.codegen.spark.SparkCodeGenerator;
-import com.example.fhirpath.codegen.spark.handler.CodeGenContext;
-import com.example.fhirpath.codegen.spark.handler.HandlerRegistry;
+import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import org.apache.spark.sql.Column;
@@ -49,7 +48,7 @@ public abstract class IRNodeTestBase {
      */
     @Nullable
     protected Object evaluateIRNode(IRNode node) {
-        Column column = node.accept(new SparkCodeGenerator(HandlerRegistry.standard(), new CodeGenContext(null)));
+        Column column = node.accept(new SparkCodeGenerator(SparkOperationRegistry.standard()));
         Dataset<Row> result = spark.range(1).select(column.alias("result"));
         Row row = result.first();
         return row.isNullAt(0) ? null : row.get(0);

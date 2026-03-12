@@ -14,6 +14,7 @@ import org.junit.jupiter.api.TestFactory;
  *
  * <ul>
  *   <li>count() on singular values, empty collections, and multi-element collections
+ *   <li>empty() on singular values, empty collections, and multi-element collections
  *   <li>exists() on singular values, empty collections, and multi-element collections
  *   <li>first() on singular values, empty collections, and multi-element collections
  *   <li>first() on resource fields with nested structures
@@ -45,6 +46,33 @@ public class CollectionFunctionsTest extends FhirPathTestBase {
         .group("count() on collections")
         .testEquals(2, "(1 ; 2).count()", "Count of 2-element collection")
         .testEquals(3, "('a' ; 'b' ; 'c').count()", "Count of 3-element collection")
+        .build();
+  }
+
+  // ========== empty() ==========
+
+  @TestFactory
+  Stream<DynamicTest> testEmptyOnEmptyCollection() {
+    return builder()
+        .group("empty() on empty collection")
+        .testTrue("{}.empty()", "Empty collection is empty")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testEmptyOnSingularValues() {
+    return builder()
+        .group("empty() on singular values")
+        .testFalse("'xxx'.empty()", "String is not empty")
+        .testFalse("1.empty()", "Integer is not empty")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testEmptyOnCollections() {
+    return builder()
+        .group("empty() on collections")
+        .testFalse("(1 ; 2).empty()", "Collection is not empty")
         .build();
   }
 

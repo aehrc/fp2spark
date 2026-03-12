@@ -9,7 +9,7 @@ import org.junit.jupiter.api.TestFactory;
 /**
  * Tests for FHIRPath iif() function.
  *
- * <p>Based on FHIRPath specification section 5.1 (Utility functions).
+ * <p>Based on FHIRPath specification: Conversion &gt; iif().
  *
  * <p>Covers:
  *

@@ -9,7 +9,7 @@ import org.junit.jupiter.api.TestFactory;
 /**
  * Tests for FHIRPath arithmetic operators.
  *
- * <p>Based on FHIRPath specification sections 6.6.1-6.6.6 (Math):
+ * <p>Based on FHIRPath specification section 6.2 (Math):
  *
  * <ul>
  *   <li>Addition (+): Integer, Decimal, String
@@ -170,6 +170,16 @@ class ArithmeticOperatorsTest extends FhirPathTestBase {
   }
 
   @TestFactory
+  Stream<DynamicTest> testNegativeIntegerDivision() {
+    return builder()
+        .group("Negative integer division (div)")
+        .testEquals(-3L, "(-7) div 2", "Truncation toward zero, not floor")
+        .testEquals(-3L, "7 div (-2)", "Negative divisor")
+        .testEquals(3L, "(-7) div (-2)", "Both negative")
+        .build();
+  }
+
+  @TestFactory
   Stream<DynamicTest> testDivByZero() {
     return builder()
         .group("div by zero")
@@ -196,6 +206,16 @@ class ArithmeticOperatorsTest extends FhirPathTestBase {
         .group("Decimal modulo")
         .testEquals(0.6, "5.5 mod 0.7", "Spec example: 5.5 mod 0.7 = 0.6")
         .testEquals(0.0, "4.0 mod 2.0")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testNegativeModulo() {
+    return builder()
+        .group("Negative modulo")
+        .testEquals(-1, "(-7) mod 2", "Negative dividend")
+        .testEquals(1, "7 mod (-2)", "Negative divisor")
+        .testEquals(-1, "(-7) mod (-2)", "Both negative")
         .build();
   }
 

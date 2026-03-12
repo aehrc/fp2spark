@@ -2,12 +2,12 @@ package com.example.fhirpath.codegen.spark.ops;
 
 import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.concat;
-import static org.apache.spark.sql.functions.floor;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.typing.PrimitiveType;
+import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
 
 /**
@@ -22,10 +22,13 @@ public final class ArithmeticOps {
 
   /**
    * Wraps an expression with a division-by-zero guard. Returns null when the divisor is zero, per
-   * FHIRPath spec.
+   * FHIRPath spec. Casts the divisor to double for the comparison to handle both Integer and
+   * Decimal types uniformly.
    */
-  private static Column guardDivisionByZero(final Column divisor, final Column result) {
-    return when(divisor.notEqual(lit(0)), result).otherwise(lit(null));
+  @Nonnull
+  private static Column guardDivisionByZero(
+      @Nonnull final Column divisor, @Nonnull final Column result) {
+    return when(divisor.cast("double").notEqual(lit(0.0)), result).otherwise(lit(null));
   }
 
   /**
@@ -63,9 +66,9 @@ public final class ArithmeticOps {
                       "Unsupported result type for multiply: " + type);
             });
 
-    // Division always returns DECIMAL per FHIRPath spec.
+    // Division always returns DECIMAL per FHIRPath spec (divisionOp signature enforces this).
+    // No type-dispatch needed since both Integer and Decimal inputs produce Decimal output.
     // Division by zero returns empty (null).
-    // Cast to double to ensure decimal division (avoids integer truncation).
     registry.register(
         "divide",
         (args, nodes, type, gen) ->
@@ -78,6 +81,8 @@ public final class ArithmeticOps {
         (args, nodes, type, gen) -> guardDivisionByZero(args.get(1), args.get(0).mod(args.get(1))));
 
     // Integer division (truncated toward zero): division by zero returns empty (null).
+    // Uses integer cast which truncates toward zero per JVM/Spark semantics,
+    // matching the FHIRPath spec ("the division that ignores any remainder").
     registry.register(
         "div",
         (args, nodes, type, gen) ->
@@ -85,10 +90,10 @@ public final class ArithmeticOps {
               case INTEGER ->
                   guardDivisionByZero(
                       args.get(1),
-                      floor(args.get(0).cast("double").divide(args.get(1).cast("double")))
-                          .cast("long"));
+                      args.get(0).cast("double").divide(args.get(1).cast("double")).cast("long"));
               case DECIMAL ->
-                  guardDivisionByZero(args.get(1), floor(args.get(0).divide(args.get(1))));
+                  guardDivisionByZero(
+                      args.get(1), args.get(0).divide(args.get(1)).cast("long").cast("double"));
               default ->
                   throw new IllegalArgumentException("Unsupported result type for div: " + type);
             });

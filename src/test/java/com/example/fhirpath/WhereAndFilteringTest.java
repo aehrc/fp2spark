@@ -163,6 +163,62 @@ public class WhereAndFilteringTest extends FhirPathTestBase {
         .build();
   }
 
+  // ========== $this with arithmetic ==========
+
+  @TestFactory
+  Stream<DynamicTest> testThisWithArithmetic() {
+    return builder()
+        .group("$this with arithmetic in where()")
+        .testEquals(List.of(2, 3), "(1 ; 2 ; 3).where($this + 1 > 2)", "Filter with addition")
+        .testEquals(
+            List.of(20, 30), "(10 ; 20 ; 30).where($this * 2 > 25)", "Filter with multiplication")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testThisFieldAccessOnElements() {
+    return builder()
+        .group("$this field access on elements")
+        .withSubject(
+            "Patient",
+            p ->
+                p.elementArray(
+                    "name",
+                    n ->
+                        n.string("family", "Szul")
+                            .stringArray("given", "Piotr")
+                            .string("use", "official"),
+                    n ->
+                        n.string("family", "Brown")
+                            .stringArray("given", "John")
+                            .string("use", "alias")))
+        .testEquals(1, "name.where($this.family = 'Szul').count()", "Explicit $this.field access")
+        .testEquals(
+            "Szul",
+            "name.where($this.use = 'official').family.first()",
+            "Explicit $this.use vs implicit use")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testThisInNestedLambdaContexts() {
+    return builder()
+        .group("$this rebinding in nested lambdas")
+        .withSubject(
+            "Patient",
+            p ->
+                p.elementArray(
+                    "name",
+                    n -> n.stringArray("given", "Piotr", "Jaroslaw"),
+                    n -> n.stringArray("given", "John", "Mark")))
+        // Inner $this refers to the string elements, not the name elements
+        .testEquals(
+            "Piotr",
+            "name.where(given.where($this = 'Piotr').exists()).given.first().first()",
+            "Inner $this rebinds to inner collection element")
+        .build();
+  }
+
   // ========== exists(criteria) on literal collections ==========
 
   @TestFactory

@@ -3,6 +3,7 @@ package com.example.fhirpath;
 import static com.example.fhirpath.test.FhirPathTestBuilder.context;
 
 import com.example.fhirpath.test.FhirPathTestBase;
+import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -96,6 +97,67 @@ public class VariablesAndContextTest extends FhirPathTestBase {
                         "name", n -> n.string("use", "official"), n -> n.string("use", "alias")))
         .testEquals(1, "%resource.count()")
         .testTrue("exists()")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testResourceFieldAccess() {
+    return builder()
+        .group("%resource field access")
+        .withSubject(
+            "Patient",
+            p ->
+                p.string("gender", "male")
+                    .elementArray(
+                        "name",
+                        n -> n.string("family", "Szul").string("use", "official"),
+                        n -> n.string("family", "Brown").string("use", "alias")))
+        .testEquals("male", "%resource.gender", "Direct field access")
+        .testEquals(2, "%resource.name.count()", "Nested collection count")
+        .testEquals(
+            List.of("official", "alias"),
+            "%resource.name.use",
+            "Nested field traversal returns flat list")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testContextNestedAccess() {
+    return builder()
+        .group("%context nested access")
+        .withSubject(
+            "Patient",
+            p ->
+                p.string("gender", "male")
+                    .elementArray(
+                        "name",
+                        n -> n.string("family", "Szul").string("use", "official"),
+                        n -> n.string("family", "Brown").string("use", "alias")))
+        .testEquals(
+            List.of("official", "alias"), "%context.name.use", "Nested field through context")
+        .testEquals(2, "%context.name.count()", "Collection count through context")
+        .testEquals(
+            "Szul",
+            "%context.name.where(use = 'official').family.first()",
+            "Collection ops on context")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testContextResourceEquivalence() {
+    return builder()
+        .group("%context and %resource equivalence")
+        .withSubject(
+            "Patient",
+            p ->
+                p.string("gender", "male")
+                    .elementArray(
+                        "name",
+                        n -> n.string("family", "Szul").string("use", "official"),
+                        n -> n.string("family", "Brown").string("use", "alias")))
+        .testTrue(
+            "%context.gender = %resource.gender",
+            "Context and resource refer to same value when context is resource")
         .build();
   }
 }

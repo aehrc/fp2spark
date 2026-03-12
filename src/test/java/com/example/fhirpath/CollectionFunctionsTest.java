@@ -65,6 +65,8 @@ public class CollectionFunctionsTest extends FhirPathTestBase {
         .group("empty() on singular values")
         .testFalse("'xxx'.empty()", "String is not empty")
         .testFalse("1.empty()", "Integer is not empty")
+        .testFalse("true.empty()", "Boolean is not empty")
+        .testFalse("5.5.empty()", "Decimal is not empty")
         .build();
   }
 
@@ -72,7 +74,26 @@ public class CollectionFunctionsTest extends FhirPathTestBase {
   Stream<DynamicTest> testEmptyOnCollections() {
     return builder()
         .group("empty() on collections")
-        .testFalse("(1 ; 2).empty()", "Collection is not empty")
+        .testFalse("(1 ; 2).empty()", "2-element collection is not empty")
+        .testFalse("(1 ; 2 ; 3).empty()", "3-element collection is not empty")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testEmptyAfterFiltering() {
+    return builder()
+        .group("empty() after filtering")
+        .testTrue("(1 ; 2 ; 3).where($this > 5).empty()", "Empty after filtering all elements")
+        .testFalse("(1 ; 2 ; 3).where($this > 1).empty()", "Not empty after partial filtering")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testEmptyChainedWithNot() {
+    return builder()
+        .group("empty() chained with not()")
+        .testFalse("{}.empty().not()", "Empty collection: empty().not() is false")
+        .testTrue("(1 ; 2).empty().not()", "Non-empty collection: empty().not() is true")
         .build();
   }
 

@@ -38,6 +38,7 @@ public final class OperatorNormalizer {
           Map.entry("%", "mod"),
           Map.entry("=", "equals"),
           Map.entry("!=", "notEquals"),
+          Map.entry("&", "stringConcat"),
           Map.entry(";", "combine"));
 
   private OperatorNormalizer() {

@@ -65,6 +65,17 @@ public final class Signatures {
     return binaryFunc(type, type, type);
   }
 
+  /**
+   * Division operation where result is always DECIMAL: (?T, ?T) → ?DECIMAL.
+   *
+   * <p>Per FHIRPath spec, the `/` operator always returns a Decimal value, even when both operands
+   * are Integer.
+   */
+  @Nonnull
+  public static SignatureDefinition divisionOp(@Nonnull final Type type) {
+    return binaryFunc(type, type, Types.DECIMAL);
+  }
+
   // Phase 2: Temporal arithmetic deferred
   // /**
   //  * Temporal arithmetic operation: (?Temporal, ?Quantity) → ?Temporal

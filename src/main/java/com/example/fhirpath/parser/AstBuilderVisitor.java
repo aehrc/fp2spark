@@ -61,7 +61,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
           default -> throw new IllegalArgumentException("Unknown polarity operator: " + op);
         };
 
-    return new AstFunctionCall(functionName, List.of(operand));
+    return new AstFunctionCall(functionName, operand, List.of());
   }
 
   // Term handling

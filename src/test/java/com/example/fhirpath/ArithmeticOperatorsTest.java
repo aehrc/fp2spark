@@ -154,9 +154,9 @@ class ArithmeticOperatorsTest extends FhirPathTestBase {
   Stream<DynamicTest> testIntegerDivision() {
     return builder()
         .group("Integer division (div)")
-        .testEquals(2L, "5 div 2", "Spec example")
-        .testEquals(0L, "1 div 3", "Smaller / larger")
-        .testEquals(3L, "10 div 3")
+        .testEquals(2, "5 div 2", "Spec example")
+        .testEquals(0, "1 div 3", "Smaller / larger")
+        .testEquals(3, "10 div 3")
         .build();
   }
 
@@ -173,9 +173,9 @@ class ArithmeticOperatorsTest extends FhirPathTestBase {
   Stream<DynamicTest> testNegativeIntegerDivision() {
     return builder()
         .group("Negative integer division (div)")
-        .testEquals(-3L, "(-7) div 2", "Truncation toward zero, not floor")
-        .testEquals(-3L, "7 div (-2)", "Negative divisor")
-        .testEquals(3L, "(-7) div (-2)", "Both negative")
+        .testEquals(-3, "(-7) div 2", "Truncation toward zero, not floor")
+        .testEquals(-3, "7 div (-2)", "Negative divisor")
+        .testEquals(3, "(-7) div (-2)", "Both negative")
         .build();
   }
 

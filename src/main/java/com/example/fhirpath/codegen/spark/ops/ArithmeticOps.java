@@ -1,14 +1,19 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static com.example.fhirpath.codegen.spark.SparkTypeMapper.DECIMAL_TYPE;
+import static org.apache.spark.sql.functions.abs;
 import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.concat;
+import static org.apache.spark.sql.functions.floor;
 import static org.apache.spark.sql.functions.lit;
+import static org.apache.spark.sql.functions.signum;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.typing.PrimitiveType;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
+import org.apache.spark.sql.types.DataTypes;
 
 /**
  * Arithmetic operator registrations.
@@ -21,14 +26,23 @@ public final class ArithmeticOps {
   private ArithmeticOps() {}
 
   /**
+   * Truncates a numeric value toward zero. Uses {@code signum(x) * floor(abs(x))} to avoid overflow
+   * that would occur with an integer cast for large decimal values.
+   */
+  @Nonnull
+  private static Column truncateTowardZero(@Nonnull final Column value) {
+    return signum(value).multiply(floor(abs(value)));
+  }
+
+  /**
    * Wraps an expression with a division-by-zero guard. Returns null when the divisor is zero, per
-   * FHIRPath spec. Casts the divisor to double for the comparison to handle both Integer and
+   * FHIRPath spec. Casts the divisor to DECIMAL for the comparison to handle both Integer and
    * Decimal types uniformly.
    */
   @Nonnull
   private static Column guardDivisionByZero(
       @Nonnull final Column divisor, @Nonnull final Column result) {
-    return when(divisor.cast("double").notEqual(lit(0.0)), result).otherwise(lit(null));
+    return when(divisor.cast(DECIMAL_TYPE).notEqual(lit(0)), result).otherwise(lit(null));
   }
 
   /**
@@ -73,7 +87,8 @@ public final class ArithmeticOps {
         "divide",
         (args, nodes, type, gen) ->
             guardDivisionByZero(
-                args.get(1), args.get(0).cast("double").divide(args.get(1).cast("double"))));
+                args.get(1),
+                args.get(0).cast(DECIMAL_TYPE).divide(args.get(1).cast(DECIMAL_TYPE))));
 
     // Modulo: division by zero returns empty (null).
     registry.register(
@@ -90,10 +105,13 @@ public final class ArithmeticOps {
               case INTEGER ->
                   guardDivisionByZero(
                       args.get(1),
-                      args.get(0).cast("double").divide(args.get(1).cast("double")).cast("long"));
+                      truncateTowardZero(
+                              args.get(0).cast(DECIMAL_TYPE).divide(args.get(1).cast(DECIMAL_TYPE)))
+                          .cast(DataTypes.IntegerType));
               case DECIMAL ->
                   guardDivisionByZero(
-                      args.get(1), args.get(0).divide(args.get(1)).cast("long").cast("double"));
+                      args.get(1),
+                      truncateTowardZero(args.get(0).divide(args.get(1))).cast(DECIMAL_TYPE));
               default ->
                   throw new IllegalArgumentException("Unsupported result type for div: " + type);
             });

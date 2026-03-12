@@ -191,7 +191,7 @@ Operations are organized by domain in the `ops/` package:
 - **BooleanOps**: `and`, `or`, `xor`, `implies`, `not`
 - **ArithmeticOps**: `add`, `sub`, `multiply`, `divide`, `mod`, `div`, `stringConcat`, `unaryPlus`, `unaryMinus`
 - **ComparisonOps**: `gt`, `lt`, `geq`, `leq`
-- **CollectionOps**: `count`, `exists`, `empty`, `first`
+- **CollectionOps**: `count`, `exists`, `empty`, `first`, `indexer`
 - **FilteringOps**: `where`, `iif`
 
 ---

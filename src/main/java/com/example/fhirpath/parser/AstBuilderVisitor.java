@@ -179,7 +179,9 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
   @Override
   public AstNode visitIndexerExpression(final FhirPathParser.IndexerExpressionContext ctx) {
-    throw new UnsupportedOperationException("Indexer expressions ([]) are not yet supported");
+    final AstNode target = visit(ctx.expression(0));
+    final AstNode index = visit(ctx.expression(1));
+    return new AstFunctionCall("indexer", target, List.of(index));
   }
 
   @Override

@@ -22,6 +22,9 @@ import org.junit.jupiter.api.TestFactory;
  *   <li>Arithmetic operations with %context
  *   <li>Complex context expressions with multi-value contexts
  *   <li>%resource on resource subjects
+ *   <li>%resource field access and nested collection traversal
+ *   <li>%context nested access with where(), count(), and field navigation
+ *   <li>%context and %resource equivalence when context is the resource root
  * </ul>
  */
 public class VariablesAndContextTest extends FhirPathTestBase {
@@ -45,7 +48,6 @@ public class VariablesAndContextTest extends FhirPathTestBase {
   Stream<DynamicTest> testContextCount() {
     return builder()
         .group("Context count operations")
-        .testEquals(1, "%context.count()", context("'x'"))
         .testEquals(1, "%context.count()", context("'x'"), "Single value context")
         .testEquals(0, "%context.count()", context("{}"), "Empty context")
         .build();
@@ -55,9 +57,7 @@ public class VariablesAndContextTest extends FhirPathTestBase {
   Stream<DynamicTest> testImplicitContext() {
     return builder()
         .group("Implicit context for functions")
-        .testTrue("exists()", context("'x'"))
         .testTrue("exists()", context("'x'"), "Implicit exists on context")
-        .testFalse("%context.exists()", context("{}"))
         .testFalse("%context.exists()", context("{}"), "Empty context has no existence")
         .build();
   }
@@ -66,7 +66,6 @@ public class VariablesAndContextTest extends FhirPathTestBase {
   Stream<DynamicTest> testArithmeticWithContext() {
     return builder()
         .group("Arithmetic operations with context")
-        .testEquals(15, "5 + %context", context("10"))
         .testEquals(15, "5 + %context", context("10"), "Add to context value")
         .testEquals(50, "5 * %context", context("10"), "Multiply by context")
         .build();

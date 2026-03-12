@@ -211,11 +211,15 @@ public class WhereAndFilteringTest extends FhirPathTestBase {
                     "name",
                     n -> n.stringArray("given", "Piotr", "Jaroslaw"),
                     n -> n.stringArray("given", "John", "Mark")))
-        // Inner $this refers to the string elements, not the name elements
+        // Inner $this refers to the string elements, not the outer name elements
+        .testEquals(
+            List.of("Piotr", "Jaroslaw"),
+            "name.where(given.where($this = 'Piotr').exists()).given",
+            "Inner $this refers to given element, not name element")
         .testEquals(
             "Piotr",
             "name.where(given.where($this = 'Piotr').exists()).given.first().first()",
-            "Inner $this rebinds to inner collection element")
+            "Inner $this rebinds with chained first()")
         .build();
   }
 

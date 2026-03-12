@@ -18,6 +18,8 @@ import org.junit.jupiter.api.TestFactory;
  *   <li>exists() on singular values, empty collections, and multi-element collections
  *   <li>first() on singular values, empty collections, and multi-element collections
  *   <li>first() on resource fields with nested structures
+ *   <li>empty() after filtering (all elements removed, partial filtering)
+ *   <li>empty() chained with not()
  * </ul>
  */
 public class CollectionFunctionsTest extends FhirPathTestBase {

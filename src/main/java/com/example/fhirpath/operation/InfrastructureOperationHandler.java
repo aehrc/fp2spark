@@ -68,12 +68,28 @@ public final class InfrastructureOperationHandler {
         Stream.concat(Stream.of(targetIr), call.arguments().stream().map(argumentAnalyzer))
             .toList();
 
-    return switch (call.functionName()) {
-      case "equals" -> new Equality(EqualityOperator.EQUALS, args.get(0), args.get(1));
-      case "notEquals" -> new Equality(EqualityOperator.NOT_EQUALS, args.get(0), args.get(1));
-      case "combine", ";" -> new Combine(args.get(0), args.get(1));
-      default ->
-          throw new UnsupportedFeatureException("Function '" + call.functionName() + "'", null);
+    return handle(call.functionName(), args.get(0), args.get(1));
+  }
+
+  /**
+   * Constructs the appropriate IR node for an infrastructure operation from pre-analyzed operands.
+   *
+   * @param operationName the canonical operation name (e.g., "equals", "combine")
+   * @param left the left operand (already analyzed)
+   * @param right the right operand (already analyzed)
+   * @return the constructed IR node
+   * @throws UnsupportedFeatureException if the operation name is not recognized
+   */
+  @Nonnull
+  public static IRNode handle(
+      @Nonnull final String operationName,
+      @Nonnull final IRNode left,
+      @Nonnull final IRNode right) {
+    return switch (operationName) {
+      case "equals" -> new Equality(EqualityOperator.EQUALS, left, right);
+      case "notEquals" -> new Equality(EqualityOperator.NOT_EQUALS, left, right);
+      case "combine", ";" -> new Combine(left, right);
+      default -> throw new UnsupportedFeatureException("Function '" + operationName + "'", null);
     };
   }
 }

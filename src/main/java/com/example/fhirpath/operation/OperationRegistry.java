@@ -79,6 +79,10 @@ public final class OperationRegistry {
         // Collection<T> → T (extracts element type)
         register("first", Signatures.elementExtractor(ANY)),
 
+        // indexer ([]) returns the element at the given index (0-based)
+        // Collection<T>[Integer] → T
+        register("indexer", Signatures.indexer(ANY)),
+
         // count() returns the number of items in the collection
         register("count", Signatures.collectionAggregator(ANY, INTEGER)),
 

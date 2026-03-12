@@ -128,6 +128,18 @@ public final class Signatures {
   }
 
   /**
+   * Indexer: (*T, ?INTEGER) → ?T. Extracts element at given index.
+   *
+   * <p>Example: (1 ; 2 ; 3)[1] → 2
+   */
+  @Nonnull
+  public static SignatureDefinition indexer(@Nonnull final Type elementType) {
+    return new SignatureDefinition(
+        List.of(many(elementType), single(Types.INTEGER)),
+        ResultTypeSpec.effectiveInputType(Cardinality.SINGLE));
+  }
+
+  /**
    * Collection preserver: (*T, ...) → *T. Preserves MANY cardinality.
    *
    * <p>Example: *T.where(Lambda) → *T

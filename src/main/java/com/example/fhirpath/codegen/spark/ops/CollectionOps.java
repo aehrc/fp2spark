@@ -50,5 +50,20 @@ public final class CollectionOps {
             return functions.get(col, lit(0));
           }
         });
+
+    registry.register(
+        "indexer",
+        (args, nodes, type, gen) -> {
+          final var col = args.get(0);
+          final var index = args.get(1);
+          if (nodes.get(0).isSingular()) {
+            // Singular value: only index 0 returns the value
+            return when(index.equalTo(lit(0)), col).otherwise(lit(null));
+          } else {
+            // Collection: use Spark's get() (0-based, returns null for out-of-bounds)
+            // Guard against negative indices: Spark's get() indexes from end for negatives
+            return when(index.lt(lit(0)), lit(null)).otherwise(functions.get(col, index));
+          }
+        });
   }
 }

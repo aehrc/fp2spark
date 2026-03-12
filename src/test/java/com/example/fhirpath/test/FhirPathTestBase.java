@@ -1,17 +1,16 @@
 package com.example.fhirpath.test;
 
+import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 
-import jakarta.annotation.Nonnull;
-
 /**
  * Base class for FHIRPath DSL tests providing SparkSession setup and test builder factory.
  *
- * <p>Test classes extending this base can use the fluent DSL to create readable,
- * well-organized tests:
+ * <p>Test classes extending this base can use the fluent DSL to create readable, well-organized
+ * tests:
  *
  * <pre>{@code
  * @TestFactory
@@ -29,30 +28,30 @@ import jakarta.annotation.Nonnull;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class FhirPathTestBase {
 
-    protected SparkSession spark;
+  protected SparkSession spark;
 
-    @BeforeAll
-    void setupSpark() {
-        spark = SparkSessionFactory.createTestSession();
-    }
+  @BeforeAll
+  void setupSpark() {
+    spark = SparkSessionFactory.createTestSession();
+  }
 
-    @AfterAll
-    void teardownSpark() {
-        if (spark != null) {
-            spark.stop();
-        }
+  @AfterAll
+  void teardownSpark() {
+    if (spark != null) {
+      spark.stop();
     }
+  }
 
-    /**
-     * Create a new test builder for constructing FHIRPath test cases.
-     * <p>
-     * The builder is configured with an executor that uses this test's SparkSession.
-     *
-     * @return A new FhirPathTestBuilder instance
-     */
-    @Nonnull
-    protected FhirPathTestBuilder builder() {
-        FhirPathTestExecutor executor = new FhirPathTestExecutor(spark);
-        return new FhirPathTestBuilder(executor);
-    }
+  /**
+   * Create a new test builder for constructing FHIRPath test cases.
+   *
+   * <p>The builder is configured with an executor that uses this test's SparkSession.
+   *
+   * @return A new FhirPathTestBuilder instance
+   */
+  @Nonnull
+  protected FhirPathTestBuilder builder() {
+    FhirPathTestExecutor executor = new FhirPathTestExecutor(spark);
+    return new FhirPathTestBuilder(executor);
+  }
 }

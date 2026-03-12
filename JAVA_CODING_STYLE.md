@@ -26,7 +26,7 @@ hey are based on industry best practices and project specific requirements.
 ## Formatting and Style
 
 - **Indentation:** Use 2 spaces for indentation, no tabs.
-- **Line length:** Limit lines to 120 characters where practical.
+- **Line length:** Limit lines to 100 characters (enforced by Google Java Format).
 - **Always use braces `{}`** for `if`, `else`, `for`, `while`, and `do` statements, even for single statements.
 - **Use `final`** for variables, parameters, and methods that should not change.
 - **Avoid magic numbers;** define constants with meaningful names.
@@ -124,6 +124,14 @@ hey are based on industry best practices and project specific requirements.
 - **Ensure code is free of major bugs, vulnerabilities, and code smells** as reported by SonarQube.
 - **Run static analysis tools** regularly to maintain code quality.
 - **Address code review feedback** promptly and thoroughly.
+
+## Automated Enforcement
+
+- **Formatting** is enforced by [Google Java Format](https://github.com/google/google-java-format) via the
+  [Spotless](https://github.com/diffplug/spotless) Maven plugin. Run `mvn spotless:apply` to auto-format code.
+- **Semantic checks** (naming, imports, `final` usage, Javadoc, etc.) are enforced by
+  [Checkstyle](https://checkstyle.org/) with the configuration in `config/checkstyle/checkstyle.xml`.
+- Both plugins run automatically during `mvn compile` and will fail the build on violations.
 
 ---
 

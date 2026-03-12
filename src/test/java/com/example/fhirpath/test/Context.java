@@ -4,11 +4,12 @@ import jakarta.annotation.Nonnull;
 
 /**
  * Wrapper for FHIRPath context expressions in tests.
- * <p>
- * This wrapper class provides type safety to distinguish context parameters from
- * description strings in test method calls.
- * <p>
- * Usage:
+ *
+ * <p>This wrapper class provides type safety to distinguish context parameters from description
+ * strings in test method calls.
+ *
+ * <p>Usage:
+ *
  * <pre>{@code
  * import static com.example.fhirpath.test.FhirPathTestBuilder.context;
  *
@@ -17,5 +18,4 @@ import jakarta.annotation.Nonnull;
  *     .testEquals(1, "%context.count()", context("'x'"), "Count single value")
  * }</pre>
  */
-public record Context(@Nonnull String expression) {
-}
+public record Context(@Nonnull String expression) {}

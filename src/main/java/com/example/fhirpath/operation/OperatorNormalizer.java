@@ -37,6 +37,7 @@ public final class OperatorNormalizer {
           Map.entry("/", "divide"),
           Map.entry("%", "mod"),
           Map.entry("=", "equals"),
+          Map.entry("!=", "notEquals"),
           Map.entry(";", "combine"));
 
   private OperatorNormalizer() {

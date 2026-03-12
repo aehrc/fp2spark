@@ -16,7 +16,15 @@ import jakarta.annotation.Nonnull;
  */
 @SuppressWarnings("checkstyle:AbbreviationAsWordInName")
 public sealed interface IRNode
-    permits Operation, Literal, Traversal, Cast, Resource, Combine, Equals, Lambda, ThisReference {
+    permits Operation,
+        Literal,
+        Traversal,
+        Cast,
+        Resource,
+        Combine,
+        Equality,
+        Lambda,
+        ThisReference {
 
   /**
    * Returns the shape of this expression (element type + cardinality). For operations, this is the

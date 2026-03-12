@@ -9,7 +9,8 @@ import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.ir.Cast;
 import com.example.fhirpath.ir.Combine;
-import com.example.fhirpath.ir.Equals;
+import com.example.fhirpath.ir.Equality;
+import com.example.fhirpath.ir.EqualityOperator;
 import com.example.fhirpath.ir.IRNodeVisitor;
 import com.example.fhirpath.ir.Lambda;
 import com.example.fhirpath.ir.Literal;
@@ -211,11 +212,12 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
   @Override
   @Nonnull
-  public Column visitEquals(@Nonnull final Equals equals) {
-    final Type leftType = equals.left().getType();
-    final Type rightType = equals.right().getType();
+  public Column visitEquality(@Nonnull final Equality equality) {
+    final Type leftType = equality.left().getType();
+    final Type rightType = equality.right().getType();
+    final boolean isNotEquals = equality.operator() == EqualityOperator.NOT_EQUALS;
 
-    // Handle null types
+    // Handle null types (empty collection semantics)
     if (leftType == Types.NULL || rightType == Types.NULL) {
       return lit(null);
     }
@@ -225,13 +227,29 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         leftType == rightType || (isNumericType(leftType) && isNumericType(rightType));
 
     if (!typesCompatible) {
-      return lit(false);
+      // Incompatible types: = returns false, != returns true
+      return lit(isNotEquals);
     }
 
-    // If types are compatible, perform actual equality comparison
-    final Column left = equals.left().accept(this);
-    final Column right = equals.right().accept(this);
-    return left.equalTo(right);
+    // Generate columns for both sides
+    final Column left = equality.left().accept(this);
+    final Column right = equality.right().accept(this);
+    final boolean leftSingular = equality.left().isSingular();
+    final boolean rightSingular = equality.right().isSingular();
+
+    // Normalize cardinality following Pathling's approach:
+    // - Both singular: compare directly (scalar = scalar)
+    // - Mixed or both plural: normalize to arrays (array = array)
+    final Column result;
+    if (leftSingular && rightSingular) {
+      result = left.equalTo(right);
+    } else {
+      final Column leftArray = leftSingular ? functions.array(left) : left;
+      final Column rightArray = rightSingular ? functions.array(right) : right;
+      result = leftArray.equalTo(rightArray);
+    }
+
+    return isNotEquals ? functions.not(result) : result;
   }
 
   /** Check if a type is numeric (INTEGER or DECIMAL). */

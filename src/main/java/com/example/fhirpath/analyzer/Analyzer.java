@@ -12,7 +12,8 @@ import com.example.fhirpath.ast.AstTraversal;
 import com.example.fhirpath.ast.AstVariable;
 import com.example.fhirpath.ast.WithTarget;
 import com.example.fhirpath.ir.Combine;
-import com.example.fhirpath.ir.Equals;
+import com.example.fhirpath.ir.Equality;
+import com.example.fhirpath.ir.EqualityOperator;
 import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.ir.Lambda;
 import com.example.fhirpath.ir.Literal;
@@ -430,7 +431,10 @@ public class Analyzer {
     // Special handling for infrastructure operations (equals, combine)
     // These bypass normal signature resolution
     if ("equals".equals(operationName)) {
-      return new Equals(leftArg, rightArg);
+      return new Equality(EqualityOperator.EQUALS, leftArg, rightArg);
+    }
+    if ("notEquals".equals(operationName)) {
+      return new Equality(EqualityOperator.NOT_EQUALS, leftArg, rightArg);
     }
     if ("combine".equals(operationName)) {
       return new Combine(leftArg, rightArg);

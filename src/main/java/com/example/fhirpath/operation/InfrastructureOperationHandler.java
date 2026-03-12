@@ -3,7 +3,8 @@ package com.example.fhirpath.operation;
 import com.example.fhirpath.analyzer.UnsupportedFeatureException;
 import com.example.fhirpath.ast.AstFunctionCall;
 import com.example.fhirpath.ir.Combine;
-import com.example.fhirpath.ir.Equals;
+import com.example.fhirpath.ir.Equality;
+import com.example.fhirpath.ir.EqualityOperator;
 import com.example.fhirpath.ir.IRNode;
 import jakarta.annotation.Nonnull;
 import java.util.List;
@@ -25,7 +26,7 @@ import java.util.stream.Stream;
  * <p>Supported operations:
  *
  * <ul>
- *   <li>{@code equals()} - Equality comparison
+ *   <li>{@code equals()} / {@code notEquals()} - Equality comparison
  *   <li>{@code combine} / {@code ;} - Ordered collection concatenation
  * </ul>
  */
@@ -43,7 +44,7 @@ public final class InfrastructureOperationHandler {
    */
   public static boolean isInfrastructureOperation(@Nonnull final String functionName) {
     return switch (functionName) {
-      case "equals", "combine", ";" -> true;
+      case "equals", "notEquals", "combine", ";" -> true;
       default -> false;
     };
   }
@@ -68,7 +69,8 @@ public final class InfrastructureOperationHandler {
             .toList();
 
     return switch (call.functionName()) {
-      case "equals" -> new Equals(args.get(0), args.get(1));
+      case "equals" -> new Equality(EqualityOperator.EQUALS, args.get(0), args.get(1));
+      case "notEquals" -> new Equality(EqualityOperator.NOT_EQUALS, args.get(0), args.get(1));
       case "combine", ";" -> new Combine(args.get(0), args.get(1));
       default ->
           throw new UnsupportedFeatureException("Function '" + call.functionName() + "'", null);

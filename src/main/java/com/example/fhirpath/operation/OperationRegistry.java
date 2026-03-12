@@ -7,6 +7,7 @@ import static com.example.fhirpath.typing.TypeSets.STRING_LIKE;
 import static com.example.fhirpath.typing.Types.ANY;
 import static com.example.fhirpath.typing.Types.BOOLEAN;
 import static com.example.fhirpath.typing.Types.INTEGER;
+import static com.example.fhirpath.typing.Types.STRING;
 
 import com.example.fhirpath.operation.signature.SignatureDefinition;
 import com.example.fhirpath.operation.signature.Signatures;
@@ -42,8 +43,12 @@ public final class OperationRegistry {
         register("add", forTypes(NUMERIC, STRING_LIKE).define(Signatures::binaryOp)),
         register("sub", forTypes(NUMERIC).define(Signatures::binaryOp)),
         register("multiply", forTypes(NUMERIC).define(Signatures::binaryOp)),
-        register("divide", forTypes(NUMERIC).define(Signatures::binaryOp)),
+        register("divide", forTypes(NUMERIC).define(Signatures::divisionOp)),
         register("mod", forTypes(NUMERIC).define(Signatures::binaryOp)),
+        register("div", forTypes(NUMERIC).define(Signatures::binaryOp)),
+        register("stringConcat", Signatures.binaryOp(STRING)),
+        register("unaryPlus", forTypes(NUMERIC).define(Signatures::unaryOp)),
+        register("unaryMinus", forTypes(NUMERIC).define(Signatures::unaryOp)),
 
         // COMPARISON OPERATORS (FHIRPath Spec 6.3)
 

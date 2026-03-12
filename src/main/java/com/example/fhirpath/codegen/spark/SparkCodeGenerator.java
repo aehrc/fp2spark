@@ -217,7 +217,9 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     final Type rightType = equality.right().getType();
     final boolean isNotEquals = equality.operator() == EqualityOperator.NOT_EQUALS;
 
-    // Handle null types (empty collection semantics)
+    // Handle null types (empty collection semantics).
+    // Both = and != return empty ({}) when either operand is empty.
+    // This is correct for != because Spark's NOT(NULL) = NULL.
     if (leftType == Types.NULL || rightType == Types.NULL) {
       return lit(null);
     }
@@ -253,7 +255,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   }
 
   /** Check if a type is numeric (INTEGER or DECIMAL). */
-  private boolean isNumericType(final Type type) {
+  private boolean isNumericType(@Nonnull final Type type) {
     return type == Types.INTEGER || type == Types.DECIMAL;
   }
 

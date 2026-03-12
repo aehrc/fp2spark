@@ -12,7 +12,9 @@ import jakarta.annotation.Nonnull;
  * @param left the left operand
  * @param right the right operand
  */
-public record Equality(EqualityOperator operator, IRNode left, IRNode right) implements IRNode {
+public record Equality(
+    @Nonnull EqualityOperator operator, @Nonnull IRNode left, @Nonnull IRNode right)
+    implements IRNode {
 
   @Override
   @Nonnull

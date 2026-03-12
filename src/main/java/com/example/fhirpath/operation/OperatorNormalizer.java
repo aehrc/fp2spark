@@ -16,8 +16,8 @@ import java.util.Map;
  *   <li>{@code "+"} → {@code "add"}
  *   <li>{@code ">"} → {@code "gt"}
  *   <li>{@code "="} → {@code "equals"}
- *   <li>{@code "|"} → {@code "union"} (deprecated in Phase 1)
- *   <li>{@code ";"} → {@code "union"} (ordered concatenation)
+ *   <li>{@code "!="} → {@code "notEquals"}
+ *   <li>{@code ";"} → {@code "combine"} (ordered concatenation)
  * </ul>
  */
 public final class OperatorNormalizer {

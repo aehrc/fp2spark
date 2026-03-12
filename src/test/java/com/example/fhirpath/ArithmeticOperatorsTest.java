@@ -313,6 +313,18 @@ class ArithmeticOperatorsTest extends FhirPathTestBase {
         .build();
   }
 
+  // ========== Resource field arithmetic ==========
+
+  @TestFactory
+  Stream<DynamicTest> testArithmeticOnResourceFields() {
+    return builder()
+        .group("Arithmetic on resource fields")
+        .withSubject("Patient", p -> p.integer("age", 55))
+        .testEquals(65, "age + 10")
+        .testEquals(65.3, "10.3 + age")
+        .build();
+  }
+
   // ========== Compound expressions ==========
 
   @TestFactory

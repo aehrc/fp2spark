@@ -128,9 +128,18 @@ public final class Signatures {
   }
 
   /**
-   * Indexer: (*T, ?INTEGER) → ?T. Extracts element at given index.
+   * Indexer: (*T, ?INTEGER) → ?T. Extracts element at given index (0-based).
    *
-   * <p>Example: (1 ; 2 ; 3)[1] → 2
+   * <p>The first parameter accepts both MANY (*T) and SINGLE (?T) collections. A singular value
+   * behaves as a one-element collection per the FHIRPath specification.
+   *
+   * <p>Examples:
+   *
+   * <ul>
+   *   <li>{@code (1 ; 2 ; 3)[1] → 2}
+   *   <li>{@code 5[0] → 5} (singular treated as one-element collection)
+   *   <li>{@code (1 ; 2)[3] → {}} (out-of-bounds → empty)
+   * </ul>
    */
   @Nonnull
   public static SignatureDefinition indexer(@Nonnull final Type elementType) {

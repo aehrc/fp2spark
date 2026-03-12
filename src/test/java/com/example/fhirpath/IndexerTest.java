@@ -62,6 +62,14 @@ public class IndexerTest extends FhirPathTestBase {
   }
 
   @TestFactory
+  Stream<DynamicTest> testNullIndex() {
+    return builder()
+        .group("Null index")
+        .testEmpty("(1 ; 2 ; 3)[{}]", "Null/empty index returns empty")
+        .build();
+  }
+
+  @TestFactory
   Stream<DynamicTest> testSingularValue() {
     return builder()
         .group("Singular value indexing")

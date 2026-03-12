@@ -7,7 +7,7 @@ import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import org.apache.spark.sql.functions;
 
 /**
- * Collection function registrations (count, exists, empty, first).
+ * Collection function registrations (count, exists, empty, first, indexer).
  *
  * <p>Uses full registration to access isSingular() from argument IR nodes.
  */

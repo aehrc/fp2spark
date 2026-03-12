@@ -1,111 +1,56 @@
 package com.example.fhirpath;
 
 import com.example.fhirpath.test.FhirPathTestBase;
+import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
 /**
- * Tests for FHIRPath expressions that operate on resource data.
+ * Tests for FHIRPath where() function and exists(criteria) function.
  *
- * <p>Ported from {@link FhirPathIntegrationTest#testFhirPathExpressionsWithResource()}. Tests
- * complex resource structures including nested elements and arrays.
+ * <p>Based on FHIRPath specification section 5.2 (Filtering and projection).
+ *
+ * <p>Covers:
+ *
+ * <ul>
+ *   <li>where() with $this reference on literal collections
+ *   <li>where() edge cases (empty collection, singular value, empty lambda)
+ *   <li>where() on resource fields with equality and comparison operators
+ *   <li>where() with explicit $this on resource fields
+ *   <li>Chained where() clauses
+ *   <li>where() with nested field access
+ *   <li>where() preserves collection structure
+ *   <li>exists(criteria) on literal and resource collections
+ *   <li>exists(criteria) with comparison operators
+ *   <li>exists(criteria) on empty collection
+ *   <li>Nested exists(criteria)
+ * </ul>
  */
-class ResourceExpressionsTest extends FhirPathTestBase {
+public class WhereAndFilteringTest extends FhirPathTestBase {
+
+  // ========== where() on literal collections ==========
 
   @TestFactory
-  Stream<DynamicTest> testSimpleResourceFields() {
+  Stream<DynamicTest> testWhereWithThisReference() {
     return builder()
-        .group("Simple resource fields")
-        .withSubject(
-            "Patient",
-            p ->
-                p.string("id", "id1")
-                    .integer("age", 55)
-                    .string("gender", "male")
-                    .string("value", "344.1000")
-                    .elementArray(
-                        "name",
-                        n ->
-                            n.string("family", "Szul")
-                                .stringArray("given", "Piotr", "Jaroslaw")
-                                .string("use", "official"),
-                        n ->
-                            n.string("family", "Brown")
-                                .stringArray("given", "John", "Mark")
-                                .string("use", "alias"),
-                        n -> {} // Empty name element
-                        ))
-        .testEquals("id1", "id")
-        .testEquals(55, "age")
-        .testEquals("male", "gender")
-        .testEquals("344.1000", "value")
+        .group("where() with $this reference")
+        .testEquals(List.of(2, 3), "(1 ; 2 ; 3).where($this > 1)", "Filter integers > 1")
         .build();
   }
 
   @TestFactory
-  Stream<DynamicTest> testNestedArrayFields() {
+  Stream<DynamicTest> testWhereEdgeCases() {
     return builder()
-        .group("Nested array fields")
-        .withSubject(
-            "Patient",
-            p ->
-                p.string("id", "id1")
-                    .elementArray(
-                        "name",
-                        n ->
-                            n.string("family", "Szul")
-                                .stringArray("given", "Piotr", "Jaroslaw")
-                                .string("use", "official"),
-                        n ->
-                            n.string("family", "Brown")
-                                .stringArray("given", "John", "Mark")
-                                .string("use", "alias"),
-                        n -> {} // Empty name element
-                        ))
-        .testEquals("Szul", "name.first().family")
-        // TODO: Port "%context.name.use" test from original (line 230)
-        // Requires implicit resource-as-context support
+        .group("where() edge cases")
+        .testEmpty("{}.where($this > 1)", "where() on empty collection")
+        .testEquals(2, "2.where($this > 1)", "where() on singular value (match)")
+        .testEmpty("'foo'.where($this = 'bar')", "where() on singular value (no match)")
+        .testEmpty("(1 ; 2 ; 3).where({})", "where() with empty lambda")
         .build();
   }
 
-  @TestFactory
-  Stream<DynamicTest> testResourceWithContext() {
-    return builder()
-        .group("Resource with context")
-        .withSubject(
-            "Patient",
-            p ->
-                p.string("gender", "male")
-                    .elementArray(
-                        "name", n -> n.string("use", "official"), n -> n.string("use", "alias")))
-        .testEquals(1, "%resource.count()")
-        .testTrue("exists()")
-        // TODO: Add support for implicit resource-as-context (line 230, 233 from original test)
-        // The original test uses %context to refer to the Patient resource itself
-        // Currently our harness requires explicit context() which doesn't match this pattern
-        // .testTrue("%context.gender = %resource.gender")
-        .build();
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testArithmeticOnResourceFields() {
-    return builder()
-        .group("Arithmetic on resource fields")
-        .withSubject("Patient", p -> p.integer("age", 55))
-        .testEquals(65, "age + 10")
-        .testEquals(65.3, "10.3 + age")
-        .build();
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testComparisonOnResourceFields() {
-    return builder()
-        .group("Comparison on resource fields")
-        .withSubject("Patient", p -> p.string("gender", "male"))
-        .testTrue("gender = 'male'")
-        .build();
-  }
+  // ========== where() on resource fields ==========
 
   @TestFactory
   Stream<DynamicTest> testWhereOnResourceFields() {
@@ -218,10 +163,29 @@ class ResourceExpressionsTest extends FhirPathTestBase {
         .build();
   }
 
+  // ========== exists(criteria) on literal collections ==========
+
   @TestFactory
-  Stream<DynamicTest> testExistsWithCriteria() {
+  Stream<DynamicTest> testExistsWithCriteriaOnLiterals() {
     return builder()
-        .group("exists(criteria) function")
+        .group("exists(criteria) on empty collection")
+        .testFalse("{}.exists($this > 1)", "Empty collection returns false")
+        .group("exists(criteria) on singular values")
+        .testTrue("2.exists($this > 1)", "Singular value matching")
+        .testFalse("'foo'.exists($this = 'bar')", "Singular value not matching")
+        .group("exists(criteria) on collections")
+        .testTrue("(1 ; 2 ; 3).exists($this > 1)", "Collection with matches")
+        .testFalse("(1 ; 2 ; 3).exists($this > 5)", "Collection without matches")
+        .testTrue("('a' ; 'b' ; 'c').exists($this = 'b')", "String collection with match")
+        .build();
+  }
+
+  // ========== exists(criteria) on resource fields ==========
+
+  @TestFactory
+  Stream<DynamicTest> testExistsWithCriteriaOnResources() {
+    return builder()
+        .group("exists(criteria) function on resources")
         .withSubject(
             "Patient",
             p ->
@@ -258,9 +222,9 @@ class ResourceExpressionsTest extends FhirPathTestBase {
   }
 
   @TestFactory
-  Stream<DynamicTest> testExistsOnEmptyCollection() {
+  Stream<DynamicTest> testExistsOnEmptyFilteredCollection() {
     return builder()
-        .group("exists(criteria) on empty collection")
+        .group("exists(criteria) on empty filtered collection")
         .withSubject("Patient", p -> p.elementArray("name", n -> n.string("family", "Szul")))
         .testFalse("name.where(family = 'Unknown').exists(use = 'official')")
         .build();
@@ -280,23 +244,6 @@ class ResourceExpressionsTest extends FhirPathTestBase {
         .testTrue("name.exists(given.exists())")
         .testTrue("name.exists(given.count() > 1)")
         .testTrue("name.given.exists($this = 'John')")
-        .build();
-  }
-
-  @TestFactory
-  Stream<DynamicTest> testFirstOnResourceFields() {
-    return builder()
-        .group("first() on resource fields")
-        .withSubject(
-            "Patient",
-            p ->
-                p.elementArray(
-                    "name",
-                    n -> n.string("family", "Szul").stringArray("given", "Piotr", "Jaroslaw"),
-                    n -> n.string("family", "Brown").stringArray("given", "John", "Mark")))
-        .testEquals("Szul", "name.first().family")
-        // Chaining first() on nested collections
-        .testEquals("Piotr", "name.first().given.first()")
         .build();
   }
 }

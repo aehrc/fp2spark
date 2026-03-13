@@ -13,6 +13,7 @@ import com.example.fhirpath.ir.Operation;
 import com.example.fhirpath.ir.Resource;
 import com.example.fhirpath.ir.ThisReference;
 import com.example.fhirpath.ir.Traversal;
+import com.example.fhirpath.typing.TemporalValue;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -143,8 +144,9 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     if (lit.type() == Types.NULL || lit.value() == null) {
       return lit(null);
     }
+    final Object rawValue = lit.value() instanceof TemporalValue tv ? tv.value() : lit.value();
     final DataType sparkType = toSparkDataType(lit.getShape());
-    return lit(lit.value()).cast(sparkType);
+    return lit(rawValue).cast(sparkType);
   }
 
   @Override

@@ -24,9 +24,12 @@ import com.example.fhirpath.operation.OverloadResolutionException;
 import com.example.fhirpath.operation.OverloadResolver;
 import com.example.fhirpath.operation.signature.SignatureDefinition;
 import com.example.fhirpath.typing.ComplexType;
+import com.example.fhirpath.typing.DateTimeValue;
+import com.example.fhirpath.typing.DateValue;
 import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
+import com.example.fhirpath.typing.TimeValue;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
@@ -427,11 +430,17 @@ public class Analyzer {
 
   private Type inferType(final Object value) {
     if (value == null) return Types.NULL;
-    if (value instanceof Integer) return Types.INTEGER;
-    if (value instanceof BigDecimal) return Types.DECIMAL;
-    if (value instanceof Boolean) return Types.BOOLEAN;
-    if (value instanceof String) return Types.STRING;
-    throw new InvalidExpressionException(
-        "Unsupported literal value type: " + value.getClass().getSimpleName(), null);
+    return switch (value) {
+      case Integer ignored -> Types.INTEGER;
+      case BigDecimal ignored -> Types.DECIMAL;
+      case Boolean ignored -> Types.BOOLEAN;
+      case String ignored -> Types.STRING;
+      case DateValue ignored -> Types.DATE;
+      case DateTimeValue ignored -> Types.DATE_TIME;
+      case TimeValue ignored -> Types.TIME;
+      default ->
+          throw new InvalidExpressionException(
+              "Unsupported literal value type: " + value.getClass().getSimpleName(), null);
+    };
   }
 }

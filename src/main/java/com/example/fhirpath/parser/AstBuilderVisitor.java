@@ -7,6 +7,9 @@ import com.example.fhirpath.ast.AstLiteral;
 import com.example.fhirpath.ast.AstNode;
 import com.example.fhirpath.ast.AstTraversal;
 import com.example.fhirpath.ast.AstVariable;
+import com.example.fhirpath.typing.DateTimeValue;
+import com.example.fhirpath.typing.DateValue;
+import com.example.fhirpath.typing.TimeValue;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -247,20 +250,23 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
     throw new UnsupportedOperationException("Type expressions (is, as) are not yet supported");
   }
 
-  // Unsupported literal types
+  // Temporal literal handling
   @Override
   public AstNode visitDateLiteral(final FhirPathParser.DateLiteralContext ctx) {
-    throw new UnsupportedOperationException("Date literals are not yet supported");
+    final String text = ctx.DATE().getText();
+    return new AstLiteral(new DateValue(text.substring("@".length())));
   }
 
   @Override
   public AstNode visitDateTimeLiteral(final FhirPathParser.DateTimeLiteralContext ctx) {
-    throw new UnsupportedOperationException("DateTime literals are not yet supported");
+    final String text = ctx.DATETIME().getText();
+    return new AstLiteral(new DateTimeValue(text.substring("@".length())));
   }
 
   @Override
   public AstNode visitTimeLiteral(final FhirPathParser.TimeLiteralContext ctx) {
-    throw new UnsupportedOperationException("Time literals are not yet supported");
+    final String text = ctx.TIME().getText();
+    return new AstLiteral(new TimeValue(text.substring("@T".length())));
   }
 
   @Override

@@ -113,6 +113,20 @@ public final class Signatures {
   }
 
   /**
+   * Equality operation: (*T, *T) → ?BOOLEAN.
+   *
+   * <p>Uses {@code many()} params to accept both singular and collection operands. Equality
+   * compares entire collections when either operand is plural.
+   *
+   * <p>Example: equals(*INTEGER, *INTEGER) → ?BOOLEAN
+   */
+  @Nonnull
+  public static SignatureDefinition equalityOp(@Nonnull final Type type) {
+    return new SignatureDefinition(
+        List.of(many(type), many(type)), ResultTypeSpec.single(Types.BOOLEAN));
+  }
+
+  /**
    * Element extractor from collection: *T → ?T Example: *T.first() → ?T
    *
    * <p>Phase 1 workaround: Uses dynamic result type resolution (ResultTypeSpec.effectiveInputType)

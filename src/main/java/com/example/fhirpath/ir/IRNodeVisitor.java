@@ -44,10 +44,6 @@ public interface IRNodeVisitor<T> {
   @Nonnull
   T visitCombine(@Nonnull Combine node);
 
-  /** Visit an equality comparison operation ({@code =} or {@code !=}). */
-  @Nonnull
-  T visitEquality(@Nonnull Equality node);
-
   /**
    * Visit a lambda expression (closure). Lambdas are not directly evaluated - they are inlined at
    * their call site.

@@ -117,6 +117,18 @@ public final class OperationRegistry {
         // Collection<T>.where(Lambda(T, Boolean)) → Collection<T>
         register("where", Signatures.collectionFilter(ANY)),
 
+        // COMBINE OPERATOR (FHIRPath Spec 6.6)
+        // Three tiers for combine overload resolution:
+        // 1. forTypes(EQUATABLE): matched for compatible concrete types with coercion
+        // 2. union(NULL): matched when either operand is empty (NULL type)
+        // 3. union(ANY): fallback for complex types; code generator validates compatibility
+
+        register(
+            "combine",
+            forTypes(EQUATABLE).define(Signatures::union),
+            Signatures.union(NULL),
+            Signatures.union(ANY)),
+
         // CONDITIONAL OPERATIONS (FHIRPath Spec 6.7)
 
         // iif() evaluates collection-level conditional with lambda parameters

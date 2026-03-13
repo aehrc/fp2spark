@@ -17,9 +17,6 @@ import java.util.List;
  *   <li>Complete resolution for simple cases ({@link #resolveBinaryOperator})
  * </ul>
  *
- * <p>Infrastructure operations (getValue, equals, union) are handled separately by {@link
- * InfrastructureOperationHandler} and do not use this resolution path.
- *
  * <p><b>Design Note:</b> Function call resolution requires interleaved argument analysis (lambdas
  * need signature information before analysis), so this facade provides both high-level ({@link
  * #resolveBinaryOperator}) and low-level ({@link #getSignatures}, {@link #resolveCall}) methods to

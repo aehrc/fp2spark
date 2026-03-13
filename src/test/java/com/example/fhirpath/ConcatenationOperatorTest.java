@@ -65,6 +65,17 @@ public class ConcatenationOperatorTest extends FhirPathTestBase {
   }
 
   @TestFactory
+  Stream<DynamicTest> testIncompatibleTypes() {
+    return builder()
+        .group("Incompatible types")
+        .testError(
+            IllegalArgumentException.class, "1 ; 'xxx'", "Integer ; String is type-incompatible")
+        .testError(
+            IllegalArgumentException.class, "true ; 1", "Boolean ; Integer is type-incompatible")
+        .build();
+  }
+
+  @TestFactory
   Stream<DynamicTest> testNestedConcatenationFlattens() {
     return builder()
         .group("Nested concatenation (flattens)")

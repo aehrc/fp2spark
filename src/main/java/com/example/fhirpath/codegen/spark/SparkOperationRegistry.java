@@ -3,6 +3,7 @@ package com.example.fhirpath.codegen.spark;
 import com.example.fhirpath.codegen.spark.ops.ArithmeticOps;
 import com.example.fhirpath.codegen.spark.ops.BooleanOps;
 import com.example.fhirpath.codegen.spark.ops.CollectionOps;
+import com.example.fhirpath.codegen.spark.ops.CombineOps;
 import com.example.fhirpath.codegen.spark.ops.ComparisonOps;
 import com.example.fhirpath.codegen.spark.ops.EqualityOps;
 import com.example.fhirpath.codegen.spark.ops.FilteringOps;
@@ -57,6 +58,7 @@ public final class SparkOperationRegistry {
     ArithmeticOps.register(registry);
     ComparisonOps.register(registry);
     EqualityOps.register(registry);
+    CombineOps.register(registry);
     CollectionOps.register(registry);
     FilteringOps.register(registry);
     return registry;

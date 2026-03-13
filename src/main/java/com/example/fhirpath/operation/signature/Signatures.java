@@ -244,7 +244,7 @@ public final class Signatures {
   @Nonnull
   public static SignatureDefinition union(@Nonnull final Type elementType) {
     return new SignatureDefinition(
-        List.of(many(elementType), many(elementType)), ResultTypeSpec.many(elementType));
+        List.of(many(elementType), many(elementType)), ResultTypeSpec.inputType(Cardinality.MANY));
   }
 
   /**

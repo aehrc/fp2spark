@@ -24,9 +24,12 @@ import com.example.fhirpath.operation.OverloadResolutionException;
 import com.example.fhirpath.operation.OverloadResolver;
 import com.example.fhirpath.operation.signature.SignatureDefinition;
 import com.example.fhirpath.typing.ComplexType;
+import com.example.fhirpath.typing.DateTimeValue;
+import com.example.fhirpath.typing.DateValue;
 import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
+import com.example.fhirpath.typing.TimeValue;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
@@ -431,6 +434,9 @@ public class Analyzer {
     if (value instanceof BigDecimal) return Types.DECIMAL;
     if (value instanceof Boolean) return Types.BOOLEAN;
     if (value instanceof String) return Types.STRING;
+    if (value instanceof DateValue) return Types.DATE;
+    if (value instanceof DateTimeValue) return Types.DATE_TIME;
+    if (value instanceof TimeValue) return Types.TIME;
     throw new InvalidExpressionException(
         "Unsupported literal value type: " + value.getClass().getSimpleName(), null);
   }

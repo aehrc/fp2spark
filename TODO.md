@@ -1,16 +1,17 @@
+# TODO
 
-To do list:
+## Functional Gaps
 
-- Fix NULL and null evaluation for functions and operators.
-- Further refactor Analyzer and FunctionRegistry to reduce code duplication. 
-  Most likely hide the details of function call resolution from the Analyzer 
-  and unify function and operator resolution.
-- Try to implment Equals and Union as standard operations.
-- Make the distinction between ANY and Colllection[ANY] more clear in the code.
-- Type system re-desing/refactoring
-  - Make a note in the requirements that we want static type checking with static arity checking.
-  - Consider the options for design for arity tracking in the type system. 
-  These may be different in the formal specification vs how they look in the code (for streamlined definition).
-  - Consider extending type system with type variables and parametric polymorphism vs allowing 
-  custom Java function type resolvers classes for some exotic signatures 
-  (that cannot be expressed with non-generic types).
+### Full UCUM support for Quantity
+
+**Current limitation:** Quantity equality and comparison use strict code comparison — calendar duration codes and UCUM codes are compared as-is without any mapping. This means expressions like `1 second = 1 's'` return empty instead of `true`, which contradicts the FHIRPath spec (section "Quantity Equality").
+
+**Spec requirement (lines 641-649):** The spec defines two levels of calendar-to-UCUM relationship:
+- **Equality (`=`):** `second`/`seconds` = `'s'`, `millisecond`/`milliseconds` = `'ms'`
+- **Equivalence (`~`) only:** `year`/`years` ~ `'a'`, `month`/`months` ~ `'mo'`, `week`/`weeks` ~ `'wk'`, `day`/`days` ~ `'d'`, `hour`/`hours` ~ `'h'`, `minute`/`minutes` ~ `'min'`
+
+**What needs to be done:**
+- Map calendar codes to their UCUM-equal equivalents during equality comparison (`second` → `s`, `millisecond` → `ms`)
+- Ensure equivalence-only mappings (`year` ~ `'a'`, etc.) are NOT resolved by `=` but reserved for future `~` operator
+- Fix test expectation: `1 second = 1 's'` should assert `true`, not empty
+- Consider whether to normalize codes at parse time (in `QuantityValue`) or at comparison time (in `QuantityOps`)

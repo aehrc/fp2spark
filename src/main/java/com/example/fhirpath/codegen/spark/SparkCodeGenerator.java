@@ -146,11 +146,8 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
       return lit(null);
     }
     if (lit.value() instanceof QuantityValue qv) {
-      return functions.struct(
-          lit(qv.value()).cast(SparkTypeMapper.DECIMAL_TYPE).as("value"),
-          lit(qv.unit()).as("unit"),
-          lit(qv.system()).as("system"),
-          lit(qv.code()).as("code"));
+      return quantityStruct(
+          lit(qv.value()).cast(SparkTypeMapper.DECIMAL_TYPE), qv.unit(), qv.system(), qv.code());
     }
     final Object rawValue = lit.value() instanceof TemporalValue tv ? tv.value() : lit.value();
     final DataType sparkType = toSparkDataType(lit.getShape());
@@ -179,11 +176,11 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     final Column childColumn = cast.child().accept(this);
     if (cast.targetType() == Types.QUANTITY) {
       // INTEGER/DECIMAL → QUANTITY: wrap in struct with default unit '1'
-      return functions.struct(
-          childColumn.cast(SparkTypeMapper.DECIMAL_TYPE).as("value"),
-          lit("1").as("unit"),
-          lit(QuantityValue.UCUM_SYSTEM).as("system"),
-          lit("1").as("code"));
+      return quantityStruct(
+          childColumn.cast(SparkTypeMapper.DECIMAL_TYPE),
+          QuantityValue.DEFAULT_UNIT,
+          QuantityValue.UCUM_SYSTEM,
+          QuantityValue.DEFAULT_UNIT);
     }
     final DataType sparkType = toSparkDataType(cast.getShape());
     return childColumn.cast(sparkType);
@@ -212,5 +209,16 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
           "$this cannot be evaluated outside of a lambda context");
     }
     return thisColumn;
+  }
+
+  /** Builds a Quantity struct column with named fields matching {@code QUANTITY_TYPE} schema. */
+  @Nonnull
+  private static Column quantityStruct(
+      @Nonnull final Column value,
+      @Nonnull final String unit,
+      @Nonnull final String system,
+      @Nonnull final String code) {
+    return functions.struct(
+        value.as("value"), lit(unit).as("unit"), lit(system).as("system"), lit(code).as("code"));
   }
 }

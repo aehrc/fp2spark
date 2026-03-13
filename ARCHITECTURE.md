@@ -128,6 +128,7 @@ Type information is resolved during analysis and stored in IR nodes:
 
 **Implicit Adaptations** (for overload resolution):
 - Numeric widening: `INTEGER → DECIMAL` (cost 1)
+- Numeric to Quantity: `INTEGER → QUANTITY`, `DECIMAL → QUANTITY` (cost 1)
 - Temporal: `DATE → DATE_TIME` (cost 1)
 - FHIR value extraction: `Fhir[T] → T` (cost 1)
 
@@ -138,7 +139,8 @@ Type information is resolved during analysis and stored in IR nodes:
 - ✅ Simple signatures with concrete types
 - ✅ Cardinality enforcement per FHIRPath spec
 - ✅ Arithmetic, comparison, string, collection operations
-- ✅ All 193 tests passing
+- ✅ Quantity type with literal parsing, same-unit equality/comparison
+- ✅ Temporal types (Date, DateTime, Time) with literals and equality/comparison
 
 **Phase 2 - Future** (Polymorphic signatures):
 - Type variables for polymorphism (`?T`, `*T`)

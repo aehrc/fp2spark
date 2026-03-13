@@ -55,7 +55,7 @@ public final class EqualityOps {
     }
 
     // Quantity type: struct-aware equality with same-unit check
-    if (QuantityOps.isQuantityType(leftType)) {
+    if (leftType == Types.QUANTITY) {
       final Column eq = QuantityOps.quantityEquals(ctx.arg(0), ctx.arg(1));
       return negate ? functions.not(eq) : eq;
     }

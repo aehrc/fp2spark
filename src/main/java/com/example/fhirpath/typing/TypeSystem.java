@@ -14,6 +14,8 @@ public final class TypeSystem {
    *
    * <ul>
    *   <li>INTEGER → DECIMAL
+   *   <li>INTEGER → QUANTITY
+   *   <li>DECIMAL → QUANTITY
    *   <li>DATE → DATE_TIME
    *   <li>NULL → any type
    * </ul>

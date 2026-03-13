@@ -73,4 +73,13 @@ public class QuantityLiteralsTest extends FhirPathTestBase {
         .testTrue("0.5 day = 0.5 day", "Decimal calendar duration")
         .build();
   }
+
+  @TestFactory
+  Stream<DynamicTest> testEdgeCases() {
+    return builder()
+        .group("Edge cases")
+        .testTrue("0 'mg' = 0 'mg'", "Zero value quantity")
+        .testTrue("0 day = 0 day", "Zero value calendar duration")
+        .build();
+  }
 }

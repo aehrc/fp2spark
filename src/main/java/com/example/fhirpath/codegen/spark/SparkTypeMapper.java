@@ -40,6 +40,7 @@ public final class SparkTypeMapper {
         case DECIMAL -> DECIMAL_TYPE;
         case BOOLEAN -> DataTypes.BooleanType;
         case STRING -> DataTypes.StringType;
+        case DATE, DATE_TIME, TIME -> DataTypes.StringType;
         case NULL -> DataTypes.NullType;
         default -> throw new IllegalArgumentException("Unknown primitive type " + t);
       };

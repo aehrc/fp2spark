@@ -117,6 +117,7 @@ class SparkSchemaConverter {
         case DECIMAL -> DataTypes.DoubleType;
         case BOOLEAN -> DataTypes.BooleanType;
         case STRING -> DataTypes.StringType;
+        case DATE, DATE_TIME, TIME -> DataTypes.StringType;
         case NULL -> DataTypes.NullType;
         case ANY -> DataTypes.StringType; // Default to String for ANY
       };

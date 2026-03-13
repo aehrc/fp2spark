@@ -52,10 +52,7 @@ final class TemporalOps {
    */
   @Nonnull
   static Column temporalEquals(@Nonnull final Column left, @Nonnull final Column right) {
-    final Column normLeft = normalize(left);
-    final Column normRight = normalize(right);
-    final Column samePrecision = length(normLeft).equalTo(length(normRight));
-    return when(samePrecision, normLeft.equalTo(normRight));
+    return temporalCompare(left, right, Column::equalTo);
   }
 
   /**

@@ -61,37 +61,35 @@ final class TemporalNormalize {
   private static final int NANO_DIGITS = 9;
 
   /**
+   * Build a base {@link DateTimeFormatterBuilder} for ISO date-times with optional seconds and
+   * optional fractional seconds up to 9 digits. Shared by {@link #FLEXIBLE_DATETIME} and {@link
+   * #OFFSET_DATETIME}.
+   */
+  private static DateTimeFormatterBuilder flexibleDateTimeBuilder() {
+    return new DateTimeFormatterBuilder()
+        .appendPattern("yyyy-MM-dd'T'HH:mm")
+        .optionalStart()
+        .appendLiteral(':')
+        .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
+        .optionalStart()
+        .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+        .optionalEnd()
+        .optionalEnd();
+  }
+
+  /**
    * Flexible formatter that can parse ISO date-times with optional seconds and optional fractional
    * seconds up to 9 digits.
    */
   private static final DateTimeFormatter FLEXIBLE_DATETIME =
-      new DateTimeFormatterBuilder()
-          .appendPattern("yyyy-MM-dd'T'HH:mm")
-          .optionalStart()
-          .appendLiteral(':')
-          .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
-          .optionalStart()
-          .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-          .optionalEnd()
-          .optionalEnd()
-          .toFormatter();
+      flexibleDateTimeBuilder().toFormatter();
 
   /**
    * Flexible OffsetDateTime formatter that handles Z, +hh:mm, and -hh:mm offsets, with optional
    * seconds and fractional seconds.
    */
   private static final DateTimeFormatter OFFSET_DATETIME =
-      new DateTimeFormatterBuilder()
-          .appendPattern("yyyy-MM-dd'T'HH:mm")
-          .optionalStart()
-          .appendLiteral(':')
-          .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
-          .optionalStart()
-          .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-          .optionalEnd()
-          .optionalEnd()
-          .appendOffset("+HH:MM", "Z")
-          .toFormatter();
+      flexibleDateTimeBuilder().appendOffset("+HH:MM", "Z").toFormatter();
 
   /** Formatter for DateTime output at minutes precision. */
   private static final DateTimeFormatter DATETIME_MINUTES =
@@ -116,7 +114,7 @@ final class TemporalNormalize {
     // Check for DateTime with explicit offset (Z, +hh:mm, -hh:mm)
     final Matcher offsetMatcher = DATETIME_WITH_OFFSET.matcher(value);
     if (offsetMatcher.matches()) {
-      return normalizeWithOffset(value);
+      return normalizeWithOffset(value, offsetMatcher.group(1));
     }
 
     // Check for DateTime with time but no offset — apply system default timezone
@@ -134,12 +132,13 @@ final class TemporalNormalize {
    * Normalize a DateTime with an explicit timezone offset to UTC.
    *
    * @param value DateTime string with offset (e.g., {@code 2017-11-05T01:30:00.0-04:00})
+   * @param withoutOffset the date-time portion without the offset suffix (regex group 1)
    * @return UTC-normalized string without offset
    */
-  private static String normalizeWithOffset(final String value) {
+  private static String normalizeWithOffset(final String value, final String withoutOffset) {
     final OffsetDateTime odt = OffsetDateTime.parse(value, OFFSET_DATETIME);
     final OffsetDateTime utc = odt.withOffsetSameInstant(ZoneOffset.UTC);
-    return formatUtcDateTime(utc.toLocalDateTime(), hasSeconds(stripOffset(value)));
+    return formatUtcDateTime(utc.toLocalDateTime(), hasSeconds(withoutOffset));
   }
 
   /**
@@ -177,14 +176,8 @@ final class TemporalNormalize {
    * HH:mm:ss for Time values).
    */
   private static boolean hasSeconds(final String value) {
-    final long colonCount = value.chars().filter(c -> c == ':').count();
-    return colonCount >= 2;
-  }
-
-  /** Strip timezone offset from a DateTime string, returning just the date-time portion. */
-  private static String stripOffset(final String value) {
-    final Matcher m = DATETIME_WITH_OFFSET.matcher(value);
-    return m.matches() ? m.group(1) : value;
+    final int first = value.indexOf(':');
+    return first >= 0 && value.indexOf(':', first + 1) >= 0;
   }
 
   /**

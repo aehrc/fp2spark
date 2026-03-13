@@ -20,7 +20,7 @@ import org.apache.spark.sql.functions;
  *
  * <ul>
  *   <li>NULL type (empty collection): combine with empty-array coalescing
- *   <li>Incompatible types (ANY,ANY fallback, types differ): throws error (LUB undefined)
+ *   <li>Incompatible types (ANY,ANY fallback, types differ): throws error (no common type)
  *   <li>Compatible types: ordered concatenation via {@code concat}
  * </ul>
  */
@@ -37,12 +37,14 @@ public final class CombineOps {
     registry.register("combine", (args, nodes, type, gen) -> generateCombine(args, nodes));
   }
 
-  private static Column generateCombine(final List<Column> args, final List<IRNode> nodes) {
+  @Nonnull
+  private static Column generateCombine(
+      @Nonnull final List<Column> args, @Nonnull final List<IRNode> nodes) {
 
     final Type leftType = nodes.get(0).getType();
     final Type rightType = nodes.get(1).getType();
 
-    // Incompatible types (ANY,ANY fallback): throw error — LUB is undefined
+    // Incompatible types (ANY,ANY fallback): throw error — no common element type
     // After analyzer coercion, compatible types always have equal types.
     // NULL is compatible with anything (handled below).
     if (leftType != Types.NULL && rightType != Types.NULL && !leftType.equals(rightType)) {

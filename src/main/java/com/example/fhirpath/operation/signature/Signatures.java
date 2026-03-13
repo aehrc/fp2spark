@@ -236,7 +236,10 @@ public final class Signatures {
   }
 
   /**
-   * Union operation: (*T, *T) → *T Example: *INTEGER | *INTEGER → *INTEGER
+   * Union operation: (*T, *T) → *T with dynamic result type.
+   *
+   * <p>Used by both union ({@code |}) and combine ({@code ;}) operators. The result type is
+   * resolved dynamically from the first argument's type, preserving MANY cardinality.
    *
    * <p>Phase 1 limitation: both sides must have same type. Phase 2 will add type variable support
    * for mixed types.

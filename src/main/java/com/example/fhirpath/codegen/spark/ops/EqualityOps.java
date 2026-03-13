@@ -5,6 +5,7 @@ import static org.apache.spark.sql.functions.when;
 import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
+import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
@@ -52,6 +53,12 @@ public final class EqualityOps {
     // After analyzer coercion, compatible types always have equal types
     if (!leftType.equals(rightType)) {
       return functions.lit(negate);
+    }
+
+    // Temporal types: precision-aware equality via TemporalOps
+    if (leftType instanceof PrimitiveType pt && TemporalOps.isTemporalType(pt)) {
+      final Column eq = TemporalOps.temporalEquals(ctx.arg(0), ctx.arg(1));
+      return negate ? functions.not(eq) : eq;
     }
 
     final CollectionValue left = ctx.collectionArg(0);

@@ -2,6 +2,7 @@ package com.example.fhirpath.codegen.spark.ops;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.typing.PrimitiveType;
+import org.apache.spark.sql.Column;
 
 /**
  * Comparison operator registrations.
@@ -23,6 +24,8 @@ public final class ComparisonOps {
         ctx ->
             switch ((PrimitiveType) ctx.argType(0)) {
               case INTEGER, DECIMAL, STRING -> ctx.arg(0).gt(ctx.arg(1));
+              case DATE, DATE_TIME, TIME ->
+                  TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::gt);
               default ->
                   throw new IllegalArgumentException(
                       "Unsupported input type for gt: " + ctx.argType(0));
@@ -33,6 +36,8 @@ public final class ComparisonOps {
         ctx ->
             switch ((PrimitiveType) ctx.argType(0)) {
               case INTEGER, DECIMAL, STRING -> ctx.arg(0).lt(ctx.arg(1));
+              case DATE, DATE_TIME, TIME ->
+                  TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::lt);
               default ->
                   throw new IllegalArgumentException(
                       "Unsupported input type for lt: " + ctx.argType(0));
@@ -43,6 +48,8 @@ public final class ComparisonOps {
         ctx ->
             switch ((PrimitiveType) ctx.argType(0)) {
               case INTEGER, DECIMAL, STRING -> ctx.arg(0).geq(ctx.arg(1));
+              case DATE, DATE_TIME, TIME ->
+                  TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::geq);
               default ->
                   throw new IllegalArgumentException(
                       "Unsupported input type for geq: " + ctx.argType(0));
@@ -53,6 +60,8 @@ public final class ComparisonOps {
         ctx ->
             switch ((PrimitiveType) ctx.argType(0)) {
               case INTEGER, DECIMAL, STRING -> ctx.arg(0).leq(ctx.arg(1));
+              case DATE, DATE_TIME, TIME ->
+                  TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::leq);
               default ->
                   throw new IllegalArgumentException(
                       "Unsupported input type for leq: " + ctx.argType(0));

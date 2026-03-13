@@ -17,6 +17,7 @@ public enum PrimitiveType implements Type {
   DATE("date"),
   DATE_TIME("dateTime"),
   TIME("time"),
+  QUANTITY("quantity"),
   NULL("null"),
   ANY("unknown");
 

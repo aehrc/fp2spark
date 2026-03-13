@@ -54,6 +54,12 @@ public final class EqualityOps {
       return functions.lit(negate);
     }
 
+    // Quantity type: struct-aware equality with same-unit check
+    if (QuantityOps.isQuantityType(leftType)) {
+      final Column eq = QuantityOps.quantityEquals(ctx.arg(0), ctx.arg(1));
+      return negate ? functions.not(eq) : eq;
+    }
+
     final CollectionValue left = ctx.collectionArg(0);
     final CollectionValue right = ctx.collectionArg(1);
 

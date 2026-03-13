@@ -1,5 +1,6 @@
 package com.example.fhirpath.test;
 
+import com.example.fhirpath.codegen.spark.SparkTypeMapper;
 import com.example.fhirpath.typing.*;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
@@ -118,6 +119,7 @@ class SparkSchemaConverter {
         case BOOLEAN -> DataTypes.BooleanType;
         case STRING -> DataTypes.StringType;
         case DATE, DATE_TIME, TIME -> DataTypes.StringType;
+        case QUANTITY -> SparkTypeMapper.QUANTITY_TYPE;
         case NULL -> DataTypes.NullType;
         case ANY -> DataTypes.StringType; // Default to String for ANY
       };

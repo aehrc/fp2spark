@@ -6,11 +6,22 @@ import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.DecimalType;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 
 /** Maps FHIRPath shapes to Spark DataTypes. */
 public final class SparkTypeMapper {
 
   public static final DecimalType DECIMAL_TYPE = DataTypes.createDecimalType(38, 6);
+
+  public static final StructType QUANTITY_TYPE =
+      DataTypes.createStructType(
+          new StructField[] {
+            DataTypes.createStructField("value", DECIMAL_TYPE, true),
+            DataTypes.createStructField("unit", DataTypes.StringType, true),
+            DataTypes.createStructField("system", DataTypes.StringType, true),
+            DataTypes.createStructField("code", DataTypes.StringType, true),
+          });
 
   private SparkTypeMapper() {}
 
@@ -41,6 +52,7 @@ public final class SparkTypeMapper {
         case BOOLEAN -> DataTypes.BooleanType;
         case STRING -> DataTypes.StringType;
         case DATE, DATE_TIME, TIME -> DataTypes.StringType;
+        case QUANTITY -> QUANTITY_TYPE;
         case NULL -> DataTypes.NullType;
         default -> throw new IllegalArgumentException("Unknown primitive type " + t);
       };

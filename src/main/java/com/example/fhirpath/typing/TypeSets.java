@@ -3,6 +3,7 @@ package com.example.fhirpath.typing;
 import static com.example.fhirpath.typing.Types.BOOLEAN;
 import static com.example.fhirpath.typing.Types.DECIMAL;
 import static com.example.fhirpath.typing.Types.INTEGER;
+import static com.example.fhirpath.typing.Types.QUANTITY;
 import static com.example.fhirpath.typing.Types.STRING;
 
 import java.util.List;
@@ -34,14 +35,14 @@ public final class TypeSets {
    *
    * <p>Temporal types (Date, DateTime, Time) will be added when temporal comparison is implemented.
    */
-  public static final List<Type> COMPARABLE = List.of(INTEGER, DECIMAL, STRING);
+  public static final List<Type> COMPARABLE = List.of(INTEGER, DECIMAL, STRING, QUANTITY);
 
   /**
    * Equatable types that support equality operations. Used for: equals, notEquals
    *
    * <p>Temporal types (Date, DateTime, Time) will be added when temporal equality is implemented.
    */
-  public static final List<Type> EQUATABLE = List.of(INTEGER, DECIMAL, STRING, BOOLEAN);
+  public static final List<Type> EQUATABLE = List.of(INTEGER, DECIMAL, STRING, BOOLEAN, QUANTITY);
 
   /** String-like types. Used for string operations like add. */
   public static final List<Type> STRING_LIKE = List.of(STRING);

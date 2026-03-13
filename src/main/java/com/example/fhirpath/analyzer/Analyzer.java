@@ -27,6 +27,7 @@ import com.example.fhirpath.typing.ComplexType;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
 import com.example.fhirpath.typing.LambdaType;
+import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.TimeValue;
@@ -438,6 +439,7 @@ public class Analyzer {
       case DateValue ignored -> Types.DATE;
       case DateTimeValue ignored -> Types.DATE_TIME;
       case TimeValue ignored -> Types.TIME;
+      case QuantityValue ignored -> Types.QUANTITY;
       default ->
           throw new InvalidExpressionException(
               "Unsupported literal value type: " + value.getClass().getSimpleName(), null);

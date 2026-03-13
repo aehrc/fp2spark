@@ -24,6 +24,8 @@ public final class TypeSystem {
 
     if (from == PrimitiveType.INTEGER && to == PrimitiveType.DECIMAL) return true;
     if (from == PrimitiveType.DATE && to == PrimitiveType.DATE_TIME) return true;
+    if (from == PrimitiveType.INTEGER && to == PrimitiveType.QUANTITY) return true;
+    if (from == PrimitiveType.DECIMAL && to == PrimitiveType.QUANTITY) return true;
 
     return false;
   }

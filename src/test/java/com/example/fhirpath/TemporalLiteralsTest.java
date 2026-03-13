@@ -38,7 +38,9 @@ public class TemporalLiteralsTest extends FhirPathTestBase {
         .testEquals("2014-01-25T14:30:14.559", "@2014-01-25T14:30:14.559", "Full DateTime")
         .testEquals(
             "2014-01-25T14:30:14.559Z", "@2014-01-25T14:30:14.559Z", "DateTime with UTC timezone")
+        .testEquals("2014-01-25T14:30", "@2014-01-25T14:30", "Hour-minute precision DateTime")
         .testEquals("2014T", "@2014T", "Year precision DateTime")
+        .testEquals("2014-01T", "@2014-01T", "Year-month precision DateTime")
         .testEquals("2014-01-25T", "@2014-01-25T", "Date precision DateTime")
         .build();
   }

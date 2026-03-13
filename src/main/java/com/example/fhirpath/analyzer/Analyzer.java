@@ -430,14 +430,17 @@ public class Analyzer {
 
   private Type inferType(final Object value) {
     if (value == null) return Types.NULL;
-    if (value instanceof Integer) return Types.INTEGER;
-    if (value instanceof BigDecimal) return Types.DECIMAL;
-    if (value instanceof Boolean) return Types.BOOLEAN;
-    if (value instanceof String) return Types.STRING;
-    if (value instanceof DateValue) return Types.DATE;
-    if (value instanceof DateTimeValue) return Types.DATE_TIME;
-    if (value instanceof TimeValue) return Types.TIME;
-    throw new InvalidExpressionException(
-        "Unsupported literal value type: " + value.getClass().getSimpleName(), null);
+    return switch (value) {
+      case Integer ignored -> Types.INTEGER;
+      case BigDecimal ignored -> Types.DECIMAL;
+      case Boolean ignored -> Types.BOOLEAN;
+      case String ignored -> Types.STRING;
+      case DateValue ignored -> Types.DATE;
+      case DateTimeValue ignored -> Types.DATE_TIME;
+      case TimeValue ignored -> Types.TIME;
+      default ->
+          throw new InvalidExpressionException(
+              "Unsupported literal value type: " + value.getClass().getSimpleName(), null);
+    };
   }
 }

@@ -13,9 +13,7 @@ import com.example.fhirpath.ir.Operation;
 import com.example.fhirpath.ir.Resource;
 import com.example.fhirpath.ir.ThisReference;
 import com.example.fhirpath.ir.Traversal;
-import com.example.fhirpath.typing.DateTimeValue;
-import com.example.fhirpath.typing.DateValue;
-import com.example.fhirpath.typing.TimeValue;
+import com.example.fhirpath.typing.TemporalValue;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -146,10 +144,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     if (lit.type() == Types.NULL || lit.value() == null) {
       return lit(null);
     }
-    Object rawValue = lit.value();
-    if (rawValue instanceof DateValue dv) rawValue = dv.value();
-    else if (rawValue instanceof DateTimeValue dtv) rawValue = dtv.value();
-    else if (rawValue instanceof TimeValue tv) rawValue = tv.value();
+    final Object rawValue = lit.value() instanceof TemporalValue tv ? tv.value() : lit.value();
     final DataType sparkType = toSparkDataType(lit.getShape());
     return lit(rawValue).cast(sparkType);
   }

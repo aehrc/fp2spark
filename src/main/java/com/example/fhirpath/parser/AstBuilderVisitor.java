@@ -250,23 +250,23 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
     throw new UnsupportedOperationException("Type expressions (is, as) are not yet supported");
   }
 
-  // Unsupported literal types
+  // Temporal literal handling
   @Override
   public AstNode visitDateLiteral(final FhirPathParser.DateLiteralContext ctx) {
     final String text = ctx.DATE().getText();
-    return new AstLiteral(new DateValue(text.substring(1))); // Strip '@' prefix
+    return new AstLiteral(new DateValue(text.substring("@".length())));
   }
 
   @Override
   public AstNode visitDateTimeLiteral(final FhirPathParser.DateTimeLiteralContext ctx) {
     final String text = ctx.DATETIME().getText();
-    return new AstLiteral(new DateTimeValue(text.substring(1))); // Strip '@' prefix
+    return new AstLiteral(new DateTimeValue(text.substring("@".length())));
   }
 
   @Override
   public AstNode visitTimeLiteral(final FhirPathParser.TimeLiteralContext ctx) {
     final String text = ctx.TIME().getText();
-    return new AstLiteral(new TimeValue(text.substring(2))); // Strip '@T' prefix
+    return new AstLiteral(new TimeValue(text.substring("@T".length())));
   }
 
   @Override

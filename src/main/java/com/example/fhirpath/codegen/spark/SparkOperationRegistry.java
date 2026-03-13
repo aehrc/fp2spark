@@ -27,12 +27,12 @@ public final class SparkOperationRegistry {
 
   /** Register a simple binary operation (two Column args, ignores type/generator). */
   public void binary(@Nonnull final String name, @Nonnull final BinaryOperator<Column> fn) {
-    operations.put(name, (args, argNodes, resultType, gen) -> fn.apply(args.get(0), args.get(1)));
+    operations.put(name, ctx -> fn.apply(ctx.arg(0), ctx.arg(1)));
   }
 
   /** Register a simple unary operation (one Column arg, ignores type/generator). */
   public void unary(@Nonnull final String name, @Nonnull final UnaryOperator<Column> fn) {
-    operations.put(name, (args, argNodes, resultType, gen) -> fn.apply(args.get(0)));
+    operations.put(name, ctx -> fn.apply(ctx.arg(0)));
   }
 
   /** Register an operation with full control over arguments, types, and generator. */

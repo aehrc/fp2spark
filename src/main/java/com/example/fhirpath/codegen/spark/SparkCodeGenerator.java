@@ -85,7 +85,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
       throw new UnsupportedOperationException(
           "Unknown operation: " + op.name() + " with result type: " + op.getType());
     }
-    return def.generate(argColumns, op.args(), op.getType(), this);
+    return def.generate(new SparkOpContext(argColumns, op.args(), op.getType(), this));
   }
 
   // ========== Filtering and Conditional (package-private for ops classes) ==========

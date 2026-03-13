@@ -20,42 +20,42 @@ public final class ComparisonOps {
   public static void register(final SparkOperationRegistry registry) {
     registry.register(
         "gt",
-        (args, nodes, type, gen) ->
-            switch ((PrimitiveType) nodes.get(0).getType()) {
-              case INTEGER, DECIMAL, STRING -> args.get(0).gt(args.get(1));
+        ctx ->
+            switch ((PrimitiveType) ctx.argType(0)) {
+              case INTEGER, DECIMAL, STRING -> ctx.arg(0).gt(ctx.arg(1));
               default ->
                   throw new IllegalArgumentException(
-                      "Unsupported input type for gt: " + nodes.get(0).getType());
+                      "Unsupported input type for gt: " + ctx.argType(0));
             });
 
     registry.register(
         "lt",
-        (args, nodes, type, gen) ->
-            switch ((PrimitiveType) nodes.get(0).getType()) {
-              case INTEGER, DECIMAL, STRING -> args.get(0).lt(args.get(1));
+        ctx ->
+            switch ((PrimitiveType) ctx.argType(0)) {
+              case INTEGER, DECIMAL, STRING -> ctx.arg(0).lt(ctx.arg(1));
               default ->
                   throw new IllegalArgumentException(
-                      "Unsupported input type for lt: " + nodes.get(0).getType());
+                      "Unsupported input type for lt: " + ctx.argType(0));
             });
 
     registry.register(
         "geq",
-        (args, nodes, type, gen) ->
-            switch ((PrimitiveType) nodes.get(0).getType()) {
-              case INTEGER, DECIMAL, STRING -> args.get(0).geq(args.get(1));
+        ctx ->
+            switch ((PrimitiveType) ctx.argType(0)) {
+              case INTEGER, DECIMAL, STRING -> ctx.arg(0).geq(ctx.arg(1));
               default ->
                   throw new IllegalArgumentException(
-                      "Unsupported input type for geq: " + nodes.get(0).getType());
+                      "Unsupported input type for geq: " + ctx.argType(0));
             });
 
     registry.register(
         "leq",
-        (args, nodes, type, gen) ->
-            switch ((PrimitiveType) nodes.get(0).getType()) {
-              case INTEGER, DECIMAL, STRING -> args.get(0).leq(args.get(1));
+        ctx ->
+            switch ((PrimitiveType) ctx.argType(0)) {
+              case INTEGER, DECIMAL, STRING -> ctx.arg(0).leq(ctx.arg(1));
               default ->
                   throw new IllegalArgumentException(
-                      "Unsupported input type for leq: " + nodes.get(0).getType());
+                      "Unsupported input type for leq: " + ctx.argType(0));
             });
   }
 }

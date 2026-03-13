@@ -9,7 +9,7 @@ import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
 /**
- * Helper record for handling FHIRPath expressions that can be either singular values or arrays.
+ * Wraps a Spark Column with cardinality metadata for FHIRPath collection handling.
  *
  * <p>In FHIRPath, collections can have different cardinalities (single vs many elements). This
  * record provides utilities to apply different operations based on whether a column represents a
@@ -18,7 +18,7 @@ import org.apache.spark.sql.functions;
  * @param column The Spark SQL column containing the value
  * @param isSingular Whether the column represents a singular value (true) or an array (false)
  */
-public record EvalHelper(Column column, boolean isSingular) {
+public record CollectionValue(Column column, boolean isSingular) {
   /**
    * Apply different functions based on whether the column is singular or an array.
    *

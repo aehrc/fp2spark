@@ -2,12 +2,13 @@ package com.example.fhirpath.codegen.spark.ops;
 
 import static org.apache.spark.sql.functions.when;
 
+import com.example.fhirpath.codegen.spark.CollectionValue;
+import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
-import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
-import java.util.List;
+import java.util.function.Function;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
@@ -32,16 +33,15 @@ public final class EqualityOps {
    * @param registry the registry to register operations into
    */
   public static void register(@Nonnull final SparkOperationRegistry registry) {
-    registry.register("equals", (args, nodes, type, gen) -> generateEquality(args, nodes, false));
+    registry.register("equals", ctx -> generateEquality(ctx, false));
 
-    registry.register("notEquals", (args, nodes, type, gen) -> generateEquality(args, nodes, true));
+    registry.register("notEquals", ctx -> generateEquality(ctx, true));
   }
 
-  private static Column generateEquality(
-      final List<Column> args, final List<IRNode> nodes, final boolean negate) {
+  private static Column generateEquality(final SparkOpContext ctx, final boolean negate) {
 
-    final Type leftType = nodes.get(0).getType();
-    final Type rightType = nodes.get(1).getType();
+    final Type leftType = ctx.argType(0);
+    final Type rightType = ctx.argType(1);
 
     // Empty collection: equality with {} always returns {} (null)
     if (leftType == Types.NULL || rightType == Types.NULL) {
@@ -54,10 +54,8 @@ public final class EqualityOps {
       return functions.lit(negate);
     }
 
-    final Column left = args.get(0);
-    final Column right = args.get(1);
-    final boolean leftSingular = nodes.get(0).isSingular();
-    final boolean rightSingular = nodes.get(1).isSingular();
+    final CollectionValue left = ctx.collectionArg(0);
+    final CollectionValue right = ctx.collectionArg(1);
 
     // Normalize cardinality:
     // - Both singular: compare directly (scalar = scalar), null propagates naturally
@@ -65,12 +63,13 @@ public final class EqualityOps {
     //   When wrapping singular to array, preserve null semantics:
     //   null → null (not array(null)) so that empty collection equality returns empty
     final Column result;
-    if (leftSingular && rightSingular) {
-      result = left.equalTo(right);
+    if (left.isSingular() && right.isSingular()) {
+      result = left.column().equalTo(right.column());
     } else {
-      final Column leftArray = leftSingular ? when(left.isNotNull(), functions.array(left)) : left;
+      final Column leftArray =
+          left.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
       final Column rightArray =
-          rightSingular ? when(right.isNotNull(), functions.array(right)) : right;
+          right.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
       result = leftArray.equalTo(rightArray);
     }
 

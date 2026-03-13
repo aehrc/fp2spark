@@ -53,31 +53,33 @@ public final class ArithmeticOps {
   public static void register(final SparkOperationRegistry registry) {
     registry.register(
         "add",
-        (args, nodes, type, gen) ->
-            switch ((PrimitiveType) type) {
-              case INTEGER, DECIMAL -> args.get(0).plus(args.get(1));
-              case STRING -> concat(args.get(0), args.get(1));
+        ctx ->
+            switch ((PrimitiveType) ctx.resultType()) {
+              case INTEGER, DECIMAL -> ctx.arg(0).plus(ctx.arg(1));
+              case STRING -> concat(ctx.arg(0), ctx.arg(1));
               default ->
-                  throw new IllegalArgumentException("Unsupported result type for add: " + type);
+                  throw new IllegalArgumentException(
+                      "Unsupported result type for add: " + ctx.resultType());
             });
 
     registry.register(
         "sub",
-        (args, nodes, type, gen) ->
-            switch ((PrimitiveType) type) {
-              case INTEGER, DECIMAL -> args.get(0).minus(args.get(1));
+        ctx ->
+            switch ((PrimitiveType) ctx.resultType()) {
+              case INTEGER, DECIMAL -> ctx.arg(0).minus(ctx.arg(1));
               default ->
-                  throw new IllegalArgumentException("Unsupported result type for sub: " + type);
+                  throw new IllegalArgumentException(
+                      "Unsupported result type for sub: " + ctx.resultType());
             });
 
     registry.register(
         "multiply",
-        (args, nodes, type, gen) ->
-            switch ((PrimitiveType) type) {
-              case INTEGER, DECIMAL -> args.get(0).multiply(args.get(1));
+        ctx ->
+            switch ((PrimitiveType) ctx.resultType()) {
+              case INTEGER, DECIMAL -> ctx.arg(0).multiply(ctx.arg(1));
               default ->
                   throw new IllegalArgumentException(
-                      "Unsupported result type for multiply: " + type);
+                      "Unsupported result type for multiply: " + ctx.resultType());
             });
 
     // Division always returns DECIMAL per FHIRPath spec (divisionOp signature enforces this).
@@ -85,42 +87,39 @@ public final class ArithmeticOps {
     // Division by zero returns empty (null).
     registry.register(
         "divide",
-        (args, nodes, type, gen) ->
+        ctx ->
             guardDivisionByZero(
-                args.get(1),
-                args.get(0).cast(DECIMAL_TYPE).divide(args.get(1).cast(DECIMAL_TYPE))));
+                ctx.arg(1), ctx.arg(0).cast(DECIMAL_TYPE).divide(ctx.arg(1).cast(DECIMAL_TYPE))));
 
     // Modulo: division by zero returns empty (null).
-    registry.register(
-        "mod",
-        (args, nodes, type, gen) -> guardDivisionByZero(args.get(1), args.get(0).mod(args.get(1))));
+    registry.register("mod", ctx -> guardDivisionByZero(ctx.arg(1), ctx.arg(0).mod(ctx.arg(1))));
 
     // Integer division (truncated toward zero): division by zero returns empty (null).
     // Uses integer cast which truncates toward zero per JVM/Spark semantics,
     // matching the FHIRPath spec ("the division that ignores any remainder").
     registry.register(
         "div",
-        (args, nodes, type, gen) ->
-            switch ((PrimitiveType) type) {
+        ctx ->
+            switch ((PrimitiveType) ctx.resultType()) {
               case INTEGER ->
                   guardDivisionByZero(
-                      args.get(1),
+                      ctx.arg(1),
                       truncateTowardZero(
-                              args.get(0).cast(DECIMAL_TYPE).divide(args.get(1).cast(DECIMAL_TYPE)))
+                              ctx.arg(0).cast(DECIMAL_TYPE).divide(ctx.arg(1).cast(DECIMAL_TYPE)))
                           .cast(DataTypes.IntegerType));
               case DECIMAL ->
                   guardDivisionByZero(
-                      args.get(1),
-                      truncateTowardZero(args.get(0).divide(args.get(1))).cast(DECIMAL_TYPE));
+                      ctx.arg(1),
+                      truncateTowardZero(ctx.arg(0).divide(ctx.arg(1))).cast(DECIMAL_TYPE));
               default ->
-                  throw new IllegalArgumentException("Unsupported result type for div: " + type);
+                  throw new IllegalArgumentException(
+                      "Unsupported result type for div: " + ctx.resultType());
             });
 
     // String concatenation (&): treats null/empty as empty string.
     registry.register(
         "stringConcat",
-        (args, nodes, type, gen) ->
-            concat(coalesce(args.get(0), lit("")), coalesce(args.get(1), lit(""))));
+        ctx -> concat(coalesce(ctx.arg(0), lit("")), coalesce(ctx.arg(1), lit(""))));
 
     // Unary plus: identity operation.
     registry.unary("unaryPlus", col -> col);

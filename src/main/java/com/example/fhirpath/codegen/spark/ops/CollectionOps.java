@@ -4,12 +4,14 @@ import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
+import java.util.function.Function;
 import org.apache.spark.sql.functions;
 
 /**
  * Collection function registrations (count, exists, empty, first, indexer).
  *
- * <p>Uses full registration to access isSingular() from argument IR nodes.
+ * <p>Uses {@code collectionArg()} from the operation context to handle singular vs array
+ * cardinality.
  */
 public final class CollectionOps {
 
@@ -22,48 +24,28 @@ public final class CollectionOps {
    */
   public static void register(final SparkOperationRegistry registry) {
     registry.register(
-        "count",
-        (args, nodes, type, gen) -> {
-          final var col = args.get(0);
-          if (nodes.get(0).isSingular()) {
-            return when(col.isNotNull(), lit(1)).otherwise(lit(0));
-          } else {
-            return when(col.isNotNull(), functions.size(col)).otherwise(lit(0));
-          }
-        });
+        "count", ctx -> ctx.collectionArg(0).applyNonNull(functions::size, c -> lit(1), lit(0)));
 
     registry.register(
-        "exists",
-        (args, nodes, type, gen) -> when(args.get(0).isNotNull(), lit(true)).otherwise(lit(false)));
+        "exists", ctx -> when(ctx.arg(0).isNotNull(), lit(true)).otherwise(lit(false)));
 
-    registry.register(
-        "empty",
-        (args, nodes, type, gen) -> when(args.get(0).isNull(), lit(true)).otherwise(lit(false)));
+    registry.register("empty", ctx -> when(ctx.arg(0).isNull(), lit(true)).otherwise(lit(false)));
 
     registry.register(
         "first",
-        (args, nodes, type, gen) -> {
-          final var col = args.get(0);
-          if (nodes.get(0).isSingular()) {
-            return col;
-          } else {
-            return functions.get(col, lit(0));
-          }
-        });
+        ctx -> ctx.collectionArg(0).apply(c -> functions.get(c, lit(0)), Function.identity()));
 
     registry.register(
         "indexer",
-        (args, nodes, type, gen) -> {
-          final var col = args.get(0);
-          final var index = args.get(1);
-          if (nodes.get(0).isSingular()) {
-            // Singular value: only index 0 returns the value
-            return when(index.equalTo(lit(0)), col).otherwise(lit(null));
-          } else {
-            // Collection: use Spark's get() (0-based, returns null for out-of-bounds)
-            // Guard against negative indices: Spark's get() indexes from end for negatives
-            return when(index.lt(lit(0)), lit(null)).otherwise(functions.get(col, index));
-          }
+        ctx -> {
+          final var index = ctx.arg(1);
+          return ctx.collectionArg(0)
+              .apply(
+                  // Collection: use Spark's get() (0-based, returns null for out-of-bounds)
+                  // Guard against negative indices: Spark's get() indexes from end for negatives
+                  col -> when(index.lt(lit(0)), lit(null)).otherwise(functions.get(col, index)),
+                  // Singular value: only index 0 returns the value
+                  col -> when(index.equalTo(lit(0)), col).otherwise(lit(null)));
         });
   }
 }

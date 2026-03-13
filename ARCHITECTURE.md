@@ -310,7 +310,8 @@ com.example.fhirpath/
         ├── SparkOperationDef.java     - Functional interface for operations
         ├── SparkOperationRegistry.java - Operation name → function map
         ├── SparkTypeMapper.java       - FHIRPath → Spark type mapping
-        ├── EvalHelper.java            - Evaluation utilities
+        ├── CollectionValue.java        - Column + cardinality wrapper
+        ├── SparkOpContext.java         - Operation context with helpers
         └── ops/                       - Grouped operation registrations
             ├── BooleanOps.java
             ├── ArithmeticOps.java

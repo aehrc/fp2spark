@@ -2,6 +2,7 @@ package com.example.fhirpath.operation;
 
 import static com.example.fhirpath.operation.signature.TypeGroups.forTypes;
 import static com.example.fhirpath.typing.TypeSets.COMPARABLE;
+import static com.example.fhirpath.typing.TypeSets.EQUATABLE;
 import static com.example.fhirpath.typing.TypeSets.NUMERIC;
 import static com.example.fhirpath.typing.TypeSets.STRING_LIKE;
 import static com.example.fhirpath.typing.Types.ANY;
@@ -49,6 +50,17 @@ public final class OperationRegistry {
         register("stringConcat", Signatures.binaryOp(STRING)),
         register("unaryPlus", forTypes(NUMERIC).define(Signatures::unaryOp)),
         register("unaryMinus", forTypes(NUMERIC).define(Signatures::unaryOp)),
+
+        // EQUALITY OPERATORS (FHIRPath Spec 6.4)
+
+        register(
+            "equals",
+            forTypes(EQUATABLE).define(Signatures::equalityOp),
+            Signatures.equalityOp(ANY)),
+        register(
+            "notEquals",
+            forTypes(EQUATABLE).define(Signatures::equalityOp),
+            Signatures.equalityOp(ANY)),
 
         // COMPARISON OPERATORS (FHIRPath Spec 6.3)
 

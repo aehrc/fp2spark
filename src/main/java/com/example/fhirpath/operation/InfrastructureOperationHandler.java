@@ -3,8 +3,6 @@ package com.example.fhirpath.operation;
 import com.example.fhirpath.analyzer.UnsupportedFeatureException;
 import com.example.fhirpath.ast.AstFunctionCall;
 import com.example.fhirpath.ir.Combine;
-import com.example.fhirpath.ir.Equality;
-import com.example.fhirpath.ir.EqualityOperator;
 import com.example.fhirpath.ir.IRNode;
 import jakarta.annotation.Nonnull;
 import java.util.List;
@@ -26,7 +24,6 @@ import java.util.stream.Stream;
  * <p>Supported operations:
  *
  * <ul>
- *   <li>{@code equals()} / {@code notEquals()} - Equality comparison
  *   <li>{@code combine} / {@code ;} - Ordered collection concatenation
  * </ul>
  */
@@ -44,7 +41,7 @@ public final class InfrastructureOperationHandler {
    */
   public static boolean isInfrastructureOperation(@Nonnull final String functionName) {
     return switch (functionName) {
-      case "equals", "notEquals", "combine", ";" -> true;
+      case "combine", ";" -> true;
       default -> false;
     };
   }
@@ -86,8 +83,6 @@ public final class InfrastructureOperationHandler {
       @Nonnull final IRNode left,
       @Nonnull final IRNode right) {
     return switch (operationName) {
-      case "equals" -> new Equality(EqualityOperator.EQUALS, left, right);
-      case "notEquals" -> new Equality(EqualityOperator.NOT_EQUALS, left, right);
       case "combine", ";" -> new Combine(left, right);
       default -> throw new UnsupportedFeatureException("Function '" + operationName + "'", null);
     };

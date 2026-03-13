@@ -1,5 +1,6 @@
 package com.example.fhirpath.typing;
 
+import static com.example.fhirpath.typing.Types.BOOLEAN;
 import static com.example.fhirpath.typing.Types.DECIMAL;
 import static com.example.fhirpath.typing.Types.INTEGER;
 import static com.example.fhirpath.typing.Types.STRING;
@@ -37,6 +38,13 @@ public final class TypeSets {
    * <p>Phase 1: Only System types (INTEGER, DECIMAL, STRING).
    */
   public static final List<Type> COMPARABLE = List.of(INTEGER, DECIMAL, STRING);
+
+  /**
+   * Equatable types that support equality operations. Used for: equals, notEquals
+   *
+   * <p>Phase 1: Only System types (INTEGER, DECIMAL, STRING, BOOLEAN).
+   */
+  public static final List<Type> EQUATABLE = List.of(INTEGER, DECIMAL, STRING, BOOLEAN);
 
   /** String-like types. Used for string operations like add. */
   public static final List<Type> STRING_LIKE = List.of(STRING);

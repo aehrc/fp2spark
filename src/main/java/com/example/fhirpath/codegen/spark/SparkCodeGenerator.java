@@ -9,8 +9,6 @@ import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.ir.Cast;
 import com.example.fhirpath.ir.Combine;
-import com.example.fhirpath.ir.Equality;
-import com.example.fhirpath.ir.EqualityOperator;
 import com.example.fhirpath.ir.IRNodeVisitor;
 import com.example.fhirpath.ir.Lambda;
 import com.example.fhirpath.ir.Literal;
@@ -18,7 +16,6 @@ import com.example.fhirpath.ir.Operation;
 import com.example.fhirpath.ir.Resource;
 import com.example.fhirpath.ir.ThisReference;
 import com.example.fhirpath.ir.Traversal;
-import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -208,55 +205,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     // concat handles NULL properly: concat(NULL, arr) = arr
     // Use concat for ordered concatenation (';' operator semantics)
     return concat(coalesce(leftArray, functions.array()), coalesce(rightArray, functions.array()));
-  }
-
-  @Override
-  @Nonnull
-  public Column visitEquality(@Nonnull final Equality equality) {
-    final Type leftType = equality.left().getType();
-    final Type rightType = equality.right().getType();
-    final boolean isNotEquals = equality.operator() == EqualityOperator.NOT_EQUALS;
-
-    // Handle null types (empty collection semantics).
-    // Both = and != return empty ({}) when either operand is empty.
-    // This is correct for != because Spark's NOT(NULL) = NULL.
-    if (leftType == Types.NULL || rightType == Types.NULL) {
-      return lit(null);
-    }
-
-    // Check if types are compatible (exact match or numeric coercion)
-    final boolean typesCompatible =
-        leftType == rightType || (isNumericType(leftType) && isNumericType(rightType));
-
-    if (!typesCompatible) {
-      // Incompatible types: = returns false, != returns true
-      return lit(isNotEquals);
-    }
-
-    // Generate columns for both sides
-    final Column left = equality.left().accept(this);
-    final Column right = equality.right().accept(this);
-    final boolean leftSingular = equality.left().isSingular();
-    final boolean rightSingular = equality.right().isSingular();
-
-    // Normalize cardinality following Pathling's approach:
-    // - Both singular: compare directly (scalar = scalar)
-    // - Mixed or both plural: normalize to arrays (array = array)
-    final Column result;
-    if (leftSingular && rightSingular) {
-      result = left.equalTo(right);
-    } else {
-      final Column leftArray = leftSingular ? functions.array(left) : left;
-      final Column rightArray = rightSingular ? functions.array(right) : right;
-      result = leftArray.equalTo(rightArray);
-    }
-
-    return isNotEquals ? functions.not(result) : result;
-  }
-
-  /** Check if a type is numeric (INTEGER or DECIMAL). */
-  private boolean isNumericType(@Nonnull final Type type) {
-    return type == Types.INTEGER || type == Types.DECIMAL;
   }
 
   @Override

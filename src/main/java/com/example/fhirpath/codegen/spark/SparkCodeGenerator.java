@@ -1,14 +1,11 @@
 package com.example.fhirpath.codegen.spark;
 
 import static com.example.fhirpath.codegen.spark.SparkTypeMapper.toSparkDataType;
-import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.col;
-import static org.apache.spark.sql.functions.concat;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.ir.Cast;
-import com.example.fhirpath.ir.Combine;
 import com.example.fhirpath.ir.IRNodeVisitor;
 import com.example.fhirpath.ir.Lambda;
 import com.example.fhirpath.ir.Literal;
@@ -181,30 +178,6 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     return res.type() != com.example.fhirpath.typing.ResourceType.EMPTY
         ? col(res.type().getResourceName())
         : lit(null);
-  }
-
-  @Override
-  @Nonnull
-  public Column visitCombine(@Nonnull final Combine combine) {
-    final Column leftColumn = combine.left().accept(this);
-    final Column rightColumn = combine.right().accept(this);
-
-    // FHIRPath combine semantics: {} ; x = x, x ; {} = x
-    // Empty collections (NULL) should be treated as empty arrays
-
-    // Convert to arrays if singular, NULL stays NULL (will be coalesced to empty array)
-    final Column leftArray =
-        combine.left().isSingular()
-            ? when(leftColumn.isNotNull(), functions.array(leftColumn))
-            : leftColumn;
-    final Column rightArray =
-        combine.right().isSingular()
-            ? when(rightColumn.isNotNull(), functions.array(rightColumn))
-            : rightColumn;
-
-    // concat handles NULL properly: concat(NULL, arr) = arr
-    // Use concat for ordered concatenation (';' operator semantics)
-    return concat(coalesce(leftArray, functions.array()), coalesce(rightArray, functions.array()));
   }
 
   @Override

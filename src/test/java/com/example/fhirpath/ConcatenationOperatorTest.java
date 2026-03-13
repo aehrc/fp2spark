@@ -52,7 +52,7 @@ public class ConcatenationOperatorTest extends FhirPathTestBase {
         .group("Concatenation with empty collections")
         .testEquals(List.of(1), "1 ; {}", "Integer ; Empty")
         .testEquals(List.of(1), "{} ; 1", "Empty ; Integer")
-        // DISABLED: testEmpty("{} ; {}", "Empty ; Empty")
+        .testEmpty("{} ; {}", "Empty ; Empty")
         .build();
   }
 
@@ -61,6 +61,17 @@ public class ConcatenationOperatorTest extends FhirPathTestBase {
     return builder()
         .group("Preserves order and duplicates")
         .testEquals(List.of(true, false, true), "true ; false ; true", "Boolean with duplicate")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testIncompatibleTypes() {
+    return builder()
+        .group("Incompatible types")
+        .testError(
+            IllegalArgumentException.class, "1 ; 'xxx'", "Integer ; String is type-incompatible")
+        .testError(
+            IllegalArgumentException.class, "true ; 1", "Boolean ; Integer is type-incompatible")
         .build();
   }
 

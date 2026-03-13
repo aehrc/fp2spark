@@ -188,11 +188,7 @@ public interface SparkOperationDef {
 
 Operations are organized by domain in the `ops/` package:
 
-- **BooleanOps**: `and`, `or`, `xor`, `implies`, `not`
-- **ArithmeticOps**: `add`, `sub`, `multiply`, `divide`, `mod`, `div`, `stringConcat`, `unaryPlus`, `unaryMinus`
-- **ComparisonOps**: `gt`, `lt`, `geq`, `leq`
-- **CollectionOps**: `count`, `exists`, `empty`, `first`, `indexer`
-- **FilteringOps**: `where`, `iif`
+Each `*Ops` class registers related operations for a domain area (e.g., `BooleanOps` for `and`/`or`/`xor`/`implies`/`not`, `ArithmeticOps` for arithmetic operators, `CombineOps` for the combine operator). See the `ops/` package for the full set.
 
 ---
 

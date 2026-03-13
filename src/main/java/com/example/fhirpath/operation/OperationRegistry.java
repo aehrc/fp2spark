@@ -92,7 +92,7 @@ public final class OperationRegistry {
             "not", Signatures.unaryOp(BOOLEAN) // T -> T pattern
             ),
 
-        // COLLECTION FUNCTIONS (FHIRPath Spec 6.6)
+        // COLLECTION FUNCTIONS (FHIRPath Spec 6.6 — filtering/projection)
 
         // first() returns the first element from a collection
         // Collection<T> → T (extracts element type)
@@ -116,6 +116,18 @@ public final class OperationRegistry {
         // where() filters a collection based on lambda criteria
         // Collection<T>.where(Lambda(T, Boolean)) → Collection<T>
         register("where", Signatures.collectionFilter(ANY)),
+
+        // COMBINE OPERATOR (FHIRPath Spec 6.6 — combine operator)
+        // Three tiers for combine overload resolution:
+        // 1. forTypes(EQUATABLE): matched for compatible concrete types with coercion
+        // 2. union(NULL): matched when either operand is empty (NULL type)
+        // 3. union(ANY): fallback for complex types; code generator validates compatibility
+
+        register(
+            "combine",
+            forTypes(EQUATABLE).define(Signatures::union),
+            Signatures.union(NULL),
+            Signatures.union(ANY)),
 
         // CONDITIONAL OPERATIONS (FHIRPath Spec 6.7)
 

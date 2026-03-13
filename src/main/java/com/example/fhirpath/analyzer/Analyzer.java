@@ -18,7 +18,6 @@ import com.example.fhirpath.ir.Operation;
 import com.example.fhirpath.ir.Resource;
 import com.example.fhirpath.ir.ThisReference;
 import com.example.fhirpath.ir.Traversal;
-import com.example.fhirpath.operation.InfrastructureOperationHandler;
 import com.example.fhirpath.operation.OperationResolver;
 import com.example.fhirpath.operation.OperatorNormalizer;
 import com.example.fhirpath.operation.OverloadResolutionException;
@@ -250,11 +249,6 @@ public class Analyzer {
     // Resolve target (always needed, even for lambdas)
     final IRNode targetIr = analyze(resolvedCall.target());
 
-    // Check if this is an infrastructure operation (handled separately)
-    if (InfrastructureOperationHandler.isInfrastructureOperation(call.functionName())) {
-      return InfrastructureOperationHandler.handle(call, targetIr, this::analyze);
-    }
-
     // Get all signatures for this function
     final List<SignatureDefinition> signatures =
         OperationResolver.getSignatures(call.functionName());
@@ -424,11 +418,6 @@ public class Analyzer {
 
     // Normalize operator symbol to canonical function name (e.g., "=" → "equals", "+" → "add")
     final String operationName = OperatorNormalizer.normalize(operatorSymbol);
-
-    // Infrastructure operations bypass normal signature resolution
-    if (InfrastructureOperationHandler.isInfrastructureOperation(operationName)) {
-      return InfrastructureOperationHandler.handle(operationName, leftArg, rightArg);
-    }
 
     // Standard operations: delegate to OperationResolver
     final OverloadResolver.ResolvedCall resolvedCall =

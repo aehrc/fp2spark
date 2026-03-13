@@ -40,10 +40,6 @@ public interface IRNodeVisitor<T> {
   @Nonnull
   T visitResource(@Nonnull Resource node);
 
-  /** Visit a combine operation (ordered concatenation). */
-  @Nonnull
-  T visitCombine(@Nonnull Combine node);
-
   /**
    * Visit a lambda expression (closure). Lambdas are not directly evaluated - they are inlined at
    * their call site.

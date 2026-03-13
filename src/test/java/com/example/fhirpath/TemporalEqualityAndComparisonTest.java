@@ -139,9 +139,7 @@ class TemporalEqualityAndComparisonTest extends FhirPathTestBase {
         .testFalse(
             "@2017-11-05T01:30:00.0-04:00 = @2017-11-05T01:15:00.0-05:00",
             "Spec: 05:30 UTC != 06:15 UTC")
-        // -04:00 → UTC: 00:30+4=04:30; -05:00 → UTC: 00:30+5=05:30  — wait, let me recalculate
-        // @2017-11-05T01:30:00.0-04:00 → 05:30 UTC
-        // @2017-11-05T00:30:00.0-05:00 → 05:30 UTC → equal!
+        // Both convert to 05:30 UTC: -04:00 → 01:30+4=05:30; -05:00 → 00:30+5=05:30
         .testTrue(
             "@2017-11-05T01:30:00.0-04:00 = @2017-11-05T00:30:00.0-05:00",
             "Spec: same instant across timezones")
@@ -192,6 +190,24 @@ class TemporalEqualityAndComparisonTest extends FhirPathTestBase {
         .testTrue("@2014-01-25T14:30 < @2014-01-25T14:31", "Earlier minute less")
         .testTrue("@2014-01-25T14:30 >= @2014-01-25T14:30", "Same datetime >=")
         .testTrue("@2014-01-25T14:30 <= @2014-01-25T14:30", "Same datetime <=")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testDateTimeComparisonDifferentPrecision() {
+    return builder()
+        .group("DateTime comparison - different precision")
+        .testEmpty("@2014T > @2014-01T", "Year vs year-month")
+        .testEmpty("@2014-01-25T14:30 >= @2014-01-25T14:30:00", "Minutes vs seconds")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testDateTimeComparisonWithTimezoneOffsets() {
+    return builder()
+        .group("DateTime comparison with timezone offsets")
+        .testTrue("@2017-11-05T01:30:00.0-04:00 >= @2017-11-05T01:30:00.0-04:00", "Same instant >=")
+        .testTrue("@2017-11-05T01:30:00.0-04:00 <= @2017-11-05T01:30:00.0-04:00", "Same instant <=")
         .build();
   }
 

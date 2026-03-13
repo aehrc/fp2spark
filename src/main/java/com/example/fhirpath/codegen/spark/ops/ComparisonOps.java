@@ -2,6 +2,7 @@ package com.example.fhirpath.codegen.spark.ops;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.typing.PrimitiveType;
+import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
 
 /**
@@ -18,7 +19,7 @@ public final class ComparisonOps {
    *
    * @param registry the registry to register operations into
    */
-  public static void register(final SparkOperationRegistry registry) {
+  public static void register(@Nonnull final SparkOperationRegistry registry) {
     registry.register(
         "gt",
         ctx ->

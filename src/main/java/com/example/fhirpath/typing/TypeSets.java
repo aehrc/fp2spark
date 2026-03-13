@@ -40,6 +40,11 @@ public final class TypeSets {
   public static final List<Type> EQUATABLE =
       List.of(INTEGER, DECIMAL, STRING, BOOLEAN, DATE, DATE_TIME, TIME);
 
+  /**
+   * Temporal types: Date, DateTime, and Time. Used for: precision-aware equality and comparison.
+   */
+  public static final List<Type> TEMPORAL = List.of(DATE, DATE_TIME, TIME);
+
   /** String-like types. Used for string operations like add. */
   public static final List<Type> STRING_LIKE = List.of(STRING);
 }

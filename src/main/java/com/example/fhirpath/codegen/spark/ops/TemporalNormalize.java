@@ -1,5 +1,6 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import jakarta.annotation.Nullable;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -27,6 +28,15 @@ import java.util.regex.Pattern;
  *
  * <p>After normalization, precision maps to string length, so same-precision values can be compared
  * lexicographically (ISO 8601 is lexicographically ordered for same-precision UTC strings).
+ *
+ * <p><b>Output length → precision mapping:</b>
+ *
+ * <ul>
+ *   <li>Date: year=4, year-month=7, full=10
+ *   <li>DateTime partial: yearT=5, year-monthT=8, fullT=11
+ *   <li>DateTime with time: HH:mm=16, HH:mm:ss.nnnnnnnnn=29
+ *   <li>Time: HH:mm=5, HH:mm:ss.nnnnnnnnn=14
+ * </ul>
  */
 final class TemporalNormalize {
 
@@ -67,12 +77,38 @@ final class TemporalNormalize {
           .toFormatter();
 
   /**
+   * Flexible OffsetDateTime formatter that handles Z, +hh:mm, and -hh:mm offsets, with optional
+   * seconds and fractional seconds.
+   */
+  private static final DateTimeFormatter OFFSET_DATETIME =
+      new DateTimeFormatterBuilder()
+          .appendPattern("yyyy-MM-dd'T'HH:mm")
+          .optionalStart()
+          .appendLiteral(':')
+          .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
+          .optionalStart()
+          .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+          .optionalEnd()
+          .optionalEnd()
+          .appendOffset("+HH:MM", "Z")
+          .toFormatter();
+
+  /** Formatter for DateTime output at minutes precision. */
+  private static final DateTimeFormatter DATETIME_MINUTES =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+
+  /** Formatter for DateTime output at seconds precision. */
+  private static final DateTimeFormatter DATETIME_SECONDS =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+
+  /**
    * Normalize a temporal string for comparison.
    *
    * @param value ISO 8601 temporal string (Date, DateTime, or Time) without the {@code @} prefix
    * @return normalized string: UTC (no offset suffix), seconds padded to fixed width
    */
-  static String normalize(final String value) {
+  @Nullable
+  static String normalize(@Nullable final String value) {
     if (value == null) {
       return null;
     }
@@ -101,7 +137,7 @@ final class TemporalNormalize {
    * @return UTC-normalized string without offset
    */
   private static String normalizeWithOffset(final String value) {
-    final OffsetDateTime odt = OffsetDateTime.parse(value, buildOffsetFormatter());
+    final OffsetDateTime odt = OffsetDateTime.parse(value, OFFSET_DATETIME);
     final OffsetDateTime utc = odt.withOffsetSameInstant(ZoneOffset.UTC);
     return formatUtcDateTime(utc.toLocalDateTime(), hasSeconds(stripOffset(value)));
   }
@@ -129,10 +165,10 @@ final class TemporalNormalize {
    */
   private static String formatUtcDateTime(final LocalDateTime ldt, final boolean includeSeconds) {
     if (!includeSeconds) {
-      return DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm").format(ldt);
+      return DATETIME_MINUTES.format(ldt);
     }
     // Seconds precision: always pad to 9 fractional digits
-    final String base = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").format(ldt);
+    final String base = DATETIME_SECONDS.format(ldt);
     return base + "." + String.format("%09d", ldt.getNano());
   }
 
@@ -179,23 +215,5 @@ final class TemporalNormalize {
       return s.substring(0, length);
     }
     return s + "0".repeat(length - s.length());
-  }
-
-  /**
-   * Build a flexible OffsetDateTime formatter that handles Z, +hh:mm, and -hh:mm offsets, with
-   * optional seconds and fractional seconds.
-   */
-  private static DateTimeFormatter buildOffsetFormatter() {
-    return new DateTimeFormatterBuilder()
-        .appendPattern("yyyy-MM-dd'T'HH:mm")
-        .optionalStart()
-        .appendLiteral(':')
-        .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
-        .optionalStart()
-        .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-        .optionalEnd()
-        .optionalEnd()
-        .appendOffset("+HH:MM", "Z")
-        .toFormatter();
   }
 }

@@ -3,7 +3,9 @@ package com.example.fhirpath.codegen.spark.ops;
 import static org.apache.spark.sql.functions.length;
 import static org.apache.spark.sql.functions.when;
 
-import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.TypeSets;
+import jakarta.annotation.Nonnull;
 import java.util.function.BinaryOperator;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.api.java.UDF1;
@@ -35,7 +37,8 @@ final class TemporalOps {
    * @param col the column containing a temporal string
    * @return normalized column
    */
-  private static Column normalize(final Column col) {
+  @Nonnull
+  private static Column normalize(@Nonnull final Column col) {
     return NORMALIZE_TEMPORAL.apply(col);
   }
 
@@ -47,7 +50,8 @@ final class TemporalOps {
    * @param right the right temporal column
    * @return a Boolean column: true/false for same precision, null for different precision
    */
-  static Column temporalEquals(final Column left, final Column right) {
+  @Nonnull
+  static Column temporalEquals(@Nonnull final Column left, @Nonnull final Column right) {
     final Column normLeft = normalize(left);
     final Column normRight = normalize(right);
     final Column samePrecision = length(normLeft).equalTo(length(normRight));
@@ -64,8 +68,11 @@ final class TemporalOps {
    * @param comparator the comparison function (e.g., {@code Column::gt})
    * @return a Boolean column: true/false for same precision, null for different precision
    */
+  @Nonnull
   static Column temporalCompare(
-      final Column left, final Column right, final BinaryOperator<Column> comparator) {
+      @Nonnull final Column left,
+      @Nonnull final Column right,
+      @Nonnull final BinaryOperator<Column> comparator) {
     final Column normLeft = normalize(left);
     final Column normRight = normalize(right);
     final Column samePrecision = length(normLeft).equalTo(length(normRight));
@@ -78,9 +85,7 @@ final class TemporalOps {
    * @param type the type to check
    * @return true if the type is temporal
    */
-  static boolean isTemporalType(final PrimitiveType type) {
-    return type == PrimitiveType.DATE
-        || type == PrimitiveType.DATE_TIME
-        || type == PrimitiveType.TIME;
+  static boolean isTemporalType(@Nonnull final Type type) {
+    return TypeSets.TEMPORAL.contains(type);
   }
 }

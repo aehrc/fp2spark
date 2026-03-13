@@ -3,8 +3,8 @@ package com.example.fhirpath.codegen.spark.ops;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
-import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.Types;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
@@ -14,9 +14,9 @@ import org.apache.spark.sql.functions;
  * <p>Handles three cases:
  *
  * <ul>
+ *   <li>NULL type (empty collection): short-circuits to {@code lit(null)}
  *   <li>Incompatible types (ANY,ANY fallback): returns {@code lit(false)} / {@code lit(true)}
- *   <li>Both singular: direct scalar comparison via {@code equalTo}
- *   <li>Mixed or both plural: normalize to arrays then compare via {@code equalTo}
+ *   <li>Compatible types: scalar or array comparison via {@code equalTo}
  * </ul>
  */
 public final class EqualityOps {
@@ -42,8 +42,14 @@ public final class EqualityOps {
     final Type leftType = nodes.get(0).getType();
     final Type rightType = nodes.get(1).getType();
 
-    // Incompatible types: = returns false, != returns true
-    if (!typesCompatible(leftType, rightType)) {
+    // Empty collection: equality with {} always returns {} (null)
+    if (leftType.equals(Types.NULL) || rightType.equals(Types.NULL)) {
+      return functions.lit(null);
+    }
+
+    // Incompatible types (ANY,ANY fallback): = returns false, != returns true
+    // After analyzer coercion, compatible types always have equal types
+    if (!leftType.equals(rightType)) {
       return functions.lit(negate);
     }
 
@@ -68,23 +74,5 @@ public final class EqualityOps {
     }
 
     return negate ? functions.not(result) : result;
-  }
-
-  /**
-   * Checks if two types are compatible for equality comparison. Types are compatible if they are
-   * the same, or both are numeric (INTEGER/DECIMAL).
-   */
-  private static boolean typesCompatible(final Type leftType, final Type rightType) {
-    if (leftType == rightType) {
-      return true;
-    }
-    if (leftType instanceof PrimitiveType left && rightType instanceof PrimitiveType right) {
-      return isNumeric(left) && isNumeric(right);
-    }
-    return false;
-  }
-
-  private static boolean isNumeric(final PrimitiveType type) {
-    return type == PrimitiveType.INTEGER || type == PrimitiveType.DECIMAL;
   }
 }

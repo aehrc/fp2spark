@@ -14,9 +14,6 @@ import java.util.List;
  * types). They serve as the authoritative definition of type categories in the FHIRPath type
  * system.
  *
- * <p>Phase 1: Only System types (INTEGER, DECIMAL, BOOLEAN, STRING) are supported. FHIR types
- * (Date, DateTime, Time, Quantity) are deferred to Phase 2.
- *
  * <p>These categories are used by the operation signature system and may be used for type
  * validation, error messages, and static analysis.
  */
@@ -35,14 +32,14 @@ public final class TypeSets {
   /**
    * Comparable types that support ordering operations. Used for: gt, lt, geq, leq
    *
-   * <p>Phase 1: Only System types (INTEGER, DECIMAL, STRING).
+   * <p>Temporal types (Date, DateTime, Time) will be added when temporal comparison is implemented.
    */
   public static final List<Type> COMPARABLE = List.of(INTEGER, DECIMAL, STRING);
 
   /**
    * Equatable types that support equality operations. Used for: equals, notEquals
    *
-   * <p>Phase 1: Only System types (INTEGER, DECIMAL, STRING, BOOLEAN).
+   * <p>Temporal types (Date, DateTime, Time) will be added when temporal equality is implemented.
    */
   public static final List<Type> EQUATABLE = List.of(INTEGER, DECIMAL, STRING, BOOLEAN);
 

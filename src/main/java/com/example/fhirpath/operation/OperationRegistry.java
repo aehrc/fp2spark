@@ -8,6 +8,7 @@ import static com.example.fhirpath.typing.TypeSets.STRING_LIKE;
 import static com.example.fhirpath.typing.Types.ANY;
 import static com.example.fhirpath.typing.Types.BOOLEAN;
 import static com.example.fhirpath.typing.Types.INTEGER;
+import static com.example.fhirpath.typing.Types.NULL;
 import static com.example.fhirpath.typing.Types.STRING;
 
 import com.example.fhirpath.operation.signature.SignatureDefinition;
@@ -56,10 +57,12 @@ public final class OperationRegistry {
         register(
             "equals",
             forTypes(EQUATABLE).define(Signatures::equalityOp),
-            Signatures.equalityOp(ANY)),
+            Signatures.equalityOp(NULL), // explicit empty-collection match
+            Signatures.equalityOp(ANY)), // fallback for incompatible types
         register(
             "notEquals",
             forTypes(EQUATABLE).define(Signatures::equalityOp),
+            Signatures.equalityOp(NULL),
             Signatures.equalityOp(ANY)),
 
         // COMPARISON OPERATORS (FHIRPath Spec 6.3)

@@ -3,8 +3,11 @@ package com.example.fhirpath.codegen.spark.ops;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
+import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
+import jakarta.annotation.Nonnull;
+import java.util.List;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
@@ -28,22 +31,20 @@ public final class EqualityOps {
    *
    * @param registry the registry to register operations into
    */
-  public static void register(final SparkOperationRegistry registry) {
+  public static void register(@Nonnull final SparkOperationRegistry registry) {
     registry.register("equals", (args, nodes, type, gen) -> generateEquality(args, nodes, false));
 
     registry.register("notEquals", (args, nodes, type, gen) -> generateEquality(args, nodes, true));
   }
 
   private static Column generateEquality(
-      final java.util.List<Column> args,
-      final java.util.List<com.example.fhirpath.ir.IRNode> nodes,
-      final boolean negate) {
+      final List<Column> args, final List<IRNode> nodes, final boolean negate) {
 
     final Type leftType = nodes.get(0).getType();
     final Type rightType = nodes.get(1).getType();
 
     // Empty collection: equality with {} always returns {} (null)
-    if (leftType.equals(Types.NULL) || rightType.equals(Types.NULL)) {
+    if (leftType == Types.NULL || rightType == Types.NULL) {
       return functions.lit(null);
     }
 

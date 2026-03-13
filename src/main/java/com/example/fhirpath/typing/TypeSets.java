@@ -1,9 +1,12 @@
 package com.example.fhirpath.typing;
 
 import static com.example.fhirpath.typing.Types.BOOLEAN;
+import static com.example.fhirpath.typing.Types.DATE;
+import static com.example.fhirpath.typing.Types.DATE_TIME;
 import static com.example.fhirpath.typing.Types.DECIMAL;
 import static com.example.fhirpath.typing.Types.INTEGER;
 import static com.example.fhirpath.typing.Types.STRING;
+import static com.example.fhirpath.typing.Types.TIME;
 
 import java.util.List;
 
@@ -29,19 +32,18 @@ public final class TypeSets {
    */
   public static final List<Type> NUMERIC = List.of(INTEGER, DECIMAL);
 
-  /**
-   * Comparable types that support ordering operations. Used for: gt, lt, geq, leq
-   *
-   * <p>Temporal types (Date, DateTime, Time) will be added when temporal comparison is implemented.
-   */
-  public static final List<Type> COMPARABLE = List.of(INTEGER, DECIMAL, STRING);
+  /** Comparable types that support ordering operations. Used for: gt, lt, geq, leq */
+  public static final List<Type> COMPARABLE =
+      List.of(INTEGER, DECIMAL, STRING, DATE, DATE_TIME, TIME);
+
+  /** Equatable types that support equality operations. Used for: equals, notEquals */
+  public static final List<Type> EQUATABLE =
+      List.of(INTEGER, DECIMAL, STRING, BOOLEAN, DATE, DATE_TIME, TIME);
 
   /**
-   * Equatable types that support equality operations. Used for: equals, notEquals
-   *
-   * <p>Temporal types (Date, DateTime, Time) will be added when temporal equality is implemented.
+   * Temporal types: Date, DateTime, and Time. Used for: precision-aware equality and comparison.
    */
-  public static final List<Type> EQUATABLE = List.of(INTEGER, DECIMAL, STRING, BOOLEAN);
+  public static final List<Type> TEMPORAL = List.of(DATE, DATE_TIME, TIME);
 
   /** String-like types. Used for string operations like add. */
   public static final List<Type> STRING_LIKE = List.of(STRING);

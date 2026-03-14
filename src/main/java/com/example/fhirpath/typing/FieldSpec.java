@@ -44,4 +44,9 @@ public class FieldSpec {
   public boolean isSingular() {
     return shape.isSingle();
   }
+
+  @Override
+  public String toString() {
+    return name + ":" + shape;
+  }
 }

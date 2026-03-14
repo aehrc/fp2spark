@@ -23,9 +23,9 @@ import com.example.fhirpath.operation.OperatorNormalizer;
 import com.example.fhirpath.operation.OverloadResolutionException;
 import com.example.fhirpath.operation.OverloadResolver;
 import com.example.fhirpath.operation.signature.SignatureDefinition;
-import com.example.fhirpath.typing.ComplexType;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
+import com.example.fhirpath.typing.InlineResourceType;
 import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.ResourceType;
@@ -37,7 +37,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -61,8 +60,7 @@ public class Analyzer {
 
   /** Creates an analyzer with no context or resource type. */
   public Analyzer() {
-    // by default, no context
-    this(AstVariable.resourceVariable(), ResourceType.EMPTY, null);
+    this(AstVariable.resourceVariable(), InlineResourceType.EMPTY, null);
   }
 
   /**
@@ -71,7 +69,7 @@ public class Analyzer {
    * @param contextNode the context node for %context resolution
    */
   public Analyzer(@Nonnull final AstNode contextNode) {
-    this(contextNode, ResourceType.EMPTY, null);
+    this(contextNode, InlineResourceType.EMPTY, null);
   }
 
   /**
@@ -93,7 +91,7 @@ public class Analyzer {
     this(contextNode, resourceSpec, null);
   }
 
-  /** Private constructor for lambda analysis with $this binding. */
+  /** Private constructor for full configuration including lambda $this binding. */
   private Analyzer(
       @Nonnull final AstNode contextNode,
       @Nonnull final ResourceType resourceSpec,
@@ -399,13 +397,10 @@ public class Analyzer {
     // Resolve implicit target if needed
     final AstTraversal resolvedTraversal = resolveWithImplicitTarget(traversal);
     final IRNode targetIr = analyze(resolvedTraversal.target());
-    return Optional.of(targetIr.getType())
-        .filter(ComplexType.class::isInstance)
-        .map(ComplexType.class::cast)
-        .flatMap(ct -> ct.getField(resolvedTraversal.path()))
-        // for ComplexTypes with required field create a Traversal
+    return targetIr
+        .getType()
+        .resolveField(resolvedTraversal.path())
         .map(fieldSpec -> (IRNode) new Traversal(targetIr, fieldSpec))
-        // otherwise an empty collection
         .orElseGet(() -> new Literal(null, Types.NULL));
   }
 

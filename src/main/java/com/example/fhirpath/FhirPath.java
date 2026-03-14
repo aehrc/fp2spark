@@ -131,7 +131,7 @@ public final class FhirPath {
   }
 
   /**
-   * Create an analyzer with the appropriate configuration based on context and resource spec.
+   * Create an analyzer with the appropriate configuration.
    *
    * @param contextAst Optional context AST (may be null)
    * @param resourceSpec Optional resource specification (may be null)

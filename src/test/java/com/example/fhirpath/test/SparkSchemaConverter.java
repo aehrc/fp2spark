@@ -1,7 +1,12 @@
 package com.example.fhirpath.test;
 
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
-import com.example.fhirpath.typing.*;
+import com.example.fhirpath.typing.FhirPrimitiveType;
+import com.example.fhirpath.typing.FieldSpec;
+import com.example.fhirpath.typing.InlineComplexType;
+import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.Shape;
+import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,29 +57,10 @@ class SparkSchemaConverter {
    * @return The corresponding Spark StructType
    */
   @Nonnull
-  StructType toStructType(@Nonnull final ResourceType resourceType) {
+  StructType toStructType(@Nonnull final InlineComplexType inlineType) {
     final List<StructField> fields = new ArrayList<>();
 
-    for (final FieldSpec fieldSpec : resourceType.getFields()) {
-      final String fieldName = fieldSpec.getName();
-      final DataType sparkType = toDataType(fieldSpec.getShape());
-      fields.add(DataTypes.createStructField(fieldName, sparkType, true));
-    }
-
-    return DataTypes.createStructType(fields);
-  }
-
-  /**
-   * Convert a ComplexType to a Spark StructType.
-   *
-   * @param complexType The ComplexType to convert
-   * @return The corresponding Spark StructType
-   */
-  @Nonnull
-  StructType toStructType(@Nonnull final ComplexType complexType) {
-    final List<StructField> fields = new ArrayList<>();
-
-    for (final FieldSpec fieldSpec : complexType.getFields()) {
+    for (final FieldSpec fieldSpec : inlineType.getFields()) {
       final String fieldName = fieldSpec.getName();
       final DataType sparkType = toDataType(fieldSpec.getShape());
       fields.add(DataTypes.createStructField(fieldName, sparkType, true));
@@ -112,6 +98,10 @@ class SparkSchemaConverter {
    */
   @Nonnull
   DataType toBaseType(@Nonnull final Type type) {
+    if (type instanceof FhirPrimitiveType fpt) {
+      return toBaseType(fpt.getSystemType());
+    }
+
     if (type instanceof PrimitiveType primitiveType) {
       return switch (primitiveType) {
         case INTEGER -> DataTypes.IntegerType;
@@ -125,8 +115,8 @@ class SparkSchemaConverter {
       };
     }
 
-    if (type instanceof ComplexType complexType) {
-      return toStructType(complexType);
+    if (type instanceof InlineComplexType inlineComplexType) {
+      return toStructType(inlineComplexType);
     }
 
     throw new IllegalArgumentException("Unsupported type: " + type.getClass().getName());

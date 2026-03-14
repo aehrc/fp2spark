@@ -64,7 +64,10 @@ class ResourceDatasetConverter {
       final ResourceType resourceType = resource.inferResourceType();
 
       // Step 2: Convert ResourceType to Spark schema (struct of fields)
-      final StructType fieldsSchema = SCHEMA_CONVERTER.toStructType(resourceType);
+      // ResourceType for datasets is always an InlineComplexType subtype
+      final StructType fieldsSchema =
+          SCHEMA_CONVERTER.toStructType(
+              (com.example.fhirpath.typing.InlineComplexType) resourceType);
 
       // Step 3: Create outer schema with resource type name as column
       final StructType outerSchema =

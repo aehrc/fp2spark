@@ -1,77 +1,29 @@
 package com.example.fhirpath.typing;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-/** Represents a complex FHIRPath type with named fields (e.g., a FHIR resource or data type). */
-public class ComplexType implements Type {
-  private final Map<String, FieldSpec> fields;
-
-  /**
-   * Constructs a complex type with the given field specifications.
-   *
-   * @param fieldSpecs the list of field specifications
-   */
-  public ComplexType(final List<FieldSpec> fieldSpecs) {
-    this.fields =
-        fieldSpecs.stream().collect(Collectors.toMap(FieldSpec::getName, Function.identity()));
-  }
-
-  /**
-   * Convenience constructor accepting varargs field specifications.
-   *
-   * @param fieldSpecs the field specifications
-   */
-  public ComplexType(final FieldSpec... fieldSpecs) {
-    this(List.of(fieldSpecs));
-  }
+/**
+ * Represents a complex FHIRPath type with named fields (e.g., a FHIR resource or data type).
+ *
+ * <p>This is a sealed interface with two implementation strategies:
+ *
+ * <ul>
+ *   <li>{@link FhirComplexType} — resolves fields lazily from HAPI FHIR runtime definitions
+ *   <li>{@link InlineComplexType} — stores fields explicitly in a map (for tests and inline
+ *       definitions)
+ * </ul>
+ *
+ * <p>Resource types extend this interface via {@link ResourceType} marker interface with
+ * corresponding implementations {@link FhirResourceType} and {@link InlineResourceType}.
+ */
+public sealed interface ComplexType extends Type
+    permits FhirComplexType, InlineComplexType, ResourceType {
 
   @Override
-  public String getName() {
-    return "ComplexType";
-  }
-
-  @Override
-  public boolean isPrimitive() {
+  default boolean isPrimitive() {
     return false;
   }
 
   @Override
-  public boolean isComplex() {
+  default boolean isComplex() {
     return true;
-  }
-
-  /** Returns the set of field names defined on this complex type. */
-  public Set<String> getFieldNames() {
-    return fields.keySet();
-  }
-
-  /**
-   * Returns the field specification for the given field name, if present.
-   *
-   * @param fieldName the field name to look up
-   * @return an Optional containing the field spec, or empty if not found
-   */
-  public Optional<FieldSpec> getField(final String fieldName) {
-    return Optional.ofNullable(fields.get(fieldName));
-  }
-
-  /**
-   * Returns whether this complex type has a field with the given name.
-   *
-   * @param fieldName the field name to check
-   * @return true if the field exists
-   */
-  public boolean hasField(final String fieldName) {
-    return fields.containsKey(fieldName);
-  }
-
-  /** Returns all field specifications defined on this complex type. */
-  public List<FieldSpec> getFields() {
-    return List.copyOf(fields.values());
   }
 }

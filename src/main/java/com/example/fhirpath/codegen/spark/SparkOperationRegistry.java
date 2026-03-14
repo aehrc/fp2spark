@@ -6,6 +6,7 @@ import com.example.fhirpath.codegen.spark.ops.CollectionOps;
 import com.example.fhirpath.codegen.spark.ops.CombineOps;
 import com.example.fhirpath.codegen.spark.ops.ComparisonOps;
 import com.example.fhirpath.codegen.spark.ops.EqualityOps;
+import com.example.fhirpath.codegen.spark.ops.FhirOps;
 import com.example.fhirpath.codegen.spark.ops.FilteringOps;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -61,6 +62,7 @@ public final class SparkOperationRegistry {
     CombineOps.register(registry);
     CollectionOps.register(registry);
     FilteringOps.register(registry);
+    FhirOps.register(registry);
     return registry;
   }
 }

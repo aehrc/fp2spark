@@ -13,6 +13,8 @@ import com.example.fhirpath.ir.Operation;
 import com.example.fhirpath.ir.Resource;
 import com.example.fhirpath.ir.ThisReference;
 import com.example.fhirpath.ir.Traversal;
+import com.example.fhirpath.typing.FhirPrimitiveType;
+import com.example.fhirpath.typing.InlineResourceType;
 import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.TemporalValue;
 import com.example.fhirpath.typing.Types;
@@ -174,6 +176,10 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   @Nonnull
   public Column visitCast(@Nonnull final Cast cast) {
     final Column childColumn = cast.child().accept(this);
+    // FhirPrimitiveType → System type cast is identity (same Spark storage format)
+    if (cast.child().getType() instanceof FhirPrimitiveType) {
+      return childColumn;
+    }
     if (cast.targetType() == Types.QUANTITY) {
       // INTEGER/DECIMAL → QUANTITY: wrap in struct with default unit '1'
       return quantityStruct(
@@ -189,9 +195,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   @Override
   @Nonnull
   public Column visitResource(@Nonnull final Resource res) {
-    return res.type() != com.example.fhirpath.typing.ResourceType.EMPTY
-        ? col(res.type().getResourceName())
-        : lit(null);
+    return res.type() != InlineResourceType.EMPTY ? col(res.type().getResourceName()) : lit(null);
   }
 
   @Override

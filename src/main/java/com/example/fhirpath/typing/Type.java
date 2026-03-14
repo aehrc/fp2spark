@@ -1,5 +1,7 @@
 package com.example.fhirpath.typing;
 
+import java.util.Optional;
+
 /**
  * Represents a FHIRPath element type.
  *
@@ -17,4 +19,17 @@ public interface Type {
 
   /** Returns whether this type is a complex type. */
   boolean isComplex();
+
+  /**
+   * Resolves a field specification for the given field name.
+   *
+   * <p>Complex types override this to provide field resolution. Primitive types, {@link
+   * FhirPrimitiveType}, and {@link LambdaType} return empty by default.
+   *
+   * @param fieldName the name of the field to resolve
+   * @return the field specification, or empty if the field cannot be resolved
+   */
+  default Optional<FieldSpec> resolveField(final String fieldName) {
+    return Optional.empty();
+  }
 }

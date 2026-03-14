@@ -1,5 +1,6 @@
 package com.example.fhirpath.codegen.spark;
 
+import com.example.fhirpath.typing.FhirPrimitiveType;
 import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.Type;
@@ -45,6 +46,9 @@ public final class SparkTypeMapper {
   }
 
   private static DataType toSparkElementType(final Type t) {
+    if (t instanceof FhirPrimitiveType fpt) {
+      return toSparkElementType(fpt.getSystemType());
+    }
     if (t instanceof PrimitiveType pt) {
       return switch (pt) {
         case INTEGER -> DataTypes.IntegerType;

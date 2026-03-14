@@ -54,6 +54,20 @@
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
         </dependency>
+        <!-- HAPI FHIR: used at compile time by FhirComplexType/FhirResourceType for
+             runtime type resolution from HAPI definition trees. Kept at compile scope
+             because these types are part of the core type system, not just tests. -->
+        <dependency>
+            <groupId>ca.uhn.hapi.fhir</groupId>
+            <artifactId>hapi-fhir-structures-r4</artifactId>
+            <version>8.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>au.csiro.pathling</groupId>
+            <artifactId>encoders</artifactId>
+            <version>9.4.0</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

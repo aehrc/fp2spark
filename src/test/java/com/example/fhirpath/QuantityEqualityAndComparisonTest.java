@@ -44,6 +44,8 @@ public class QuantityEqualityAndComparisonTest extends FhirPathTestBase {
         .testEmpty("10 'mg' = 10 'kg'", "Different UCUM units")
         .testEmpty("1 year = 1 'a'", "Calendar vs UCUM")
         .testEmpty("1 second = 1 's'", "Calendar second vs UCUM 's'")
+        .testEmpty(
+            "1 'year' = 1 year", "UCUM 'year' vs calendar year (same code, different system)")
         .build();
   }
 

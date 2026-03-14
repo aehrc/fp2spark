@@ -86,19 +86,17 @@ public class TemporalTypeFoundationTest {
     assertEquals(DataTypes.StringType, SparkTypeMapper.toSparkDataType(Shape.single(Types.TIME)));
   }
 
-  // Temporal types will be added to COMPARABLE and EQUATABLE in Step 3
-  // when the code generator supports temporal comparison/equality.
   @Test
-  void temporalTypesNotYetInComparable() {
-    assertFalse(TypeSets.COMPARABLE.contains(Types.DATE));
-    assertFalse(TypeSets.COMPARABLE.contains(Types.DATE_TIME));
-    assertFalse(TypeSets.COMPARABLE.contains(Types.TIME));
+  void temporalTypesInComparable() {
+    assertTrue(TypeSets.COMPARABLE.contains(Types.DATE));
+    assertTrue(TypeSets.COMPARABLE.contains(Types.DATE_TIME));
+    assertTrue(TypeSets.COMPARABLE.contains(Types.TIME));
   }
 
   @Test
-  void temporalTypesNotYetInEquatable() {
-    assertFalse(TypeSets.EQUATABLE.contains(Types.DATE));
-    assertFalse(TypeSets.EQUATABLE.contains(Types.DATE_TIME));
-    assertFalse(TypeSets.EQUATABLE.contains(Types.TIME));
+  void temporalTypesInEquatable() {
+    assertTrue(TypeSets.EQUATABLE.contains(Types.DATE));
+    assertTrue(TypeSets.EQUATABLE.contains(Types.DATE_TIME));
+    assertTrue(TypeSets.EQUATABLE.contains(Types.TIME));
   }
 }

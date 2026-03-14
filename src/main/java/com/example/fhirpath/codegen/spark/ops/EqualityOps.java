@@ -60,6 +60,12 @@ public final class EqualityOps {
       return negate ? functions.not(eq) : eq;
     }
 
+    // Temporal types: precision-aware equality via TemporalOps
+    if (TemporalOps.isTemporalType(leftType)) {
+      final Column eq = TemporalOps.temporalEquals(ctx.arg(0), ctx.arg(1));
+      return negate ? functions.not(eq) : eq;
+    }
+
     final CollectionValue left = ctx.collectionArg(0);
     final CollectionValue right = ctx.collectionArg(1);
 

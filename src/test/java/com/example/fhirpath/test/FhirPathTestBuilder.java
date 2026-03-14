@@ -9,6 +9,7 @@ import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
+import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.junit.jupiter.api.DynamicTest;
 
 /**
@@ -51,7 +52,7 @@ public class FhirPathTestBuilder {
   private final FhirPathTestExecutor executor;
   private final List<TestCase> testCases = new ArrayList<>();
   private String currentGroup = null;
-  private ResourceTestData currentResource = null;
+  private TestSubject currentSubject = null;
 
   /**
    * Create a new test builder with the provided executor.
@@ -122,7 +123,8 @@ public class FhirPathTestBuilder {
       @Nonnull final java.util.function.Consumer<ResourceDataBuilder> builderConsumer) {
     final ResourceDataBuilder dataBuilder = new ResourceDataBuilder();
     builderConsumer.accept(dataBuilder);
-    this.currentResource = ResourceTestData.of(resourceTypeName, dataBuilder.build());
+    this.currentSubject =
+        new MapTestSubject(ResourceTestData.of(resourceTypeName, dataBuilder.build()));
     return this;
   }
 
@@ -139,7 +141,23 @@ public class FhirPathTestBuilder {
       @Nonnull final java.util.function.Consumer<ResourceDataBuilder> builderConsumer) {
     final ResourceDataBuilder dataBuilder = new ResourceDataBuilder();
     builderConsumer.accept(dataBuilder);
-    this.currentResource = ResourceTestData.of(resourceType, dataBuilder.build());
+    this.currentSubject =
+        new MapTestSubject(ResourceTestData.of(resourceType, dataBuilder.build()));
+    return this;
+  }
+
+  /**
+   * Set the current test subject to a HAPI FHIR resource.
+   *
+   * <p>The resource will be serialized to FHIR JSON and loaded into Spark. Type resolution uses
+   * {@link com.example.fhirpath.typing.FhirResourceType} backed by the HAPI definition.
+   *
+   * @param resource The HAPI FHIR resource object (e.g., Patient, Observation)
+   * @return This builder for method chaining
+   */
+  @Nonnull
+  public FhirPathTestBuilder withSubject(@Nonnull final IBaseResource resource) {
+    this.currentSubject = new HapiTestSubject(resource);
     return this;
   }
 
@@ -204,7 +222,7 @@ public class FhirPathTestBuilder {
 
     testCases.add(
         new TestCase(
-            testDescription, expression, context, currentResource, new EqualsAssertion(expected)));
+            testDescription, expression, context, currentSubject, new EqualsAssertion(expected)));
     return this;
   }
 
@@ -362,7 +380,7 @@ public class FhirPathTestBuilder {
             description);
 
     testCases.add(
-        new TestCase(testDescription, expression, context, currentResource, new EmptyAssertion()));
+        new TestCase(testDescription, expression, context, currentSubject, new EmptyAssertion()));
     return this;
   }
 
@@ -435,7 +453,7 @@ public class FhirPathTestBuilder {
             testDescription,
             expression,
             context,
-            currentResource,
+            currentSubject,
             new ErrorAssertion(expectedExceptionType)));
     return this;
   }

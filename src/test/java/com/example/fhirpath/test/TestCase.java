@@ -10,12 +10,13 @@ import jakarta.annotation.Nullable;
  * @param description Human-readable description of what this test verifies
  * @param expression The FHIRPath expression to evaluate
  * @param context Optional FHIRPath expression to use as %context (null if not used)
- * @param resource Optional resource test data (null for literal/context-only tests)
+ * @param subject Optional test subject providing resource data and type (null for
+ *     literal/context-only tests)
  * @param assertion The assertion that verifies the result
  */
 record TestCase(
     @Nonnull String description,
     @Nonnull String expression,
     @Nullable Context context,
-    @Nullable ResourceTestData resource,
+    @Nullable TestSubject subject,
     @Nonnull Assertion assertion) {}

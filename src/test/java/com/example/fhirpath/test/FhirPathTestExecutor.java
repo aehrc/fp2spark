@@ -33,7 +33,7 @@ class FhirPathTestExecutor {
     try {
       // Determine if we need resource type info
       final ResourceType resourceType =
-          testCase.resource() != null ? testCase.resource().inferResourceType() : null;
+          testCase.subject() != null ? testCase.subject().getResourceType() : null;
 
       // Use FhirPath API to compile expression
       final Column column;
@@ -50,12 +50,10 @@ class FhirPathTestExecutor {
 
       // Execute with Spark
       final Dataset<Row> inputDataset =
-          testCase.resource() != null
-              ? ResourceDatasetConverter.toDataset(spark, testCase.resource())
-              : spark.range(1).toDF();
+          testCase.subject() != null ? testCase.subject().toDataset(spark) : spark.range(1).toDF();
 
       final String resultAlias =
-          testCase.resource() != null ? testCase.resource().getResourceTypeName() : "result";
+          testCase.subject() != null ? testCase.subject().getResourceTypeName() : "result";
 
       final Dataset<Row> result = inputDataset.select(column.alias(resultAlias));
 

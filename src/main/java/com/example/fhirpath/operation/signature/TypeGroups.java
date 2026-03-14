@@ -3,6 +3,7 @@ package com.example.fhirpath.operation.signature;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -33,7 +34,9 @@ public final class TypeGroups {
   @Nonnull
   public static ForTypesBuilder forTypes(@Nonnull final Collection<Type>... typeSets) {
     final Set<Type> combined =
-        Stream.of(typeSets).flatMap(Collection::stream).collect(Collectors.toSet());
+        Stream.of(typeSets)
+            .flatMap(Collection::stream)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
     return new ForTypesBuilder(combined);
   }
 

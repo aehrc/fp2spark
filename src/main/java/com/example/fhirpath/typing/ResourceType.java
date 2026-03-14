@@ -8,8 +8,6 @@ public class ResourceType extends ComplexType {
   /** Sentinel value representing an empty/unspecified resource type. */
   public static final ResourceType EMPTY = new ResourceType("<empty>", List.of());
 
-  private final String name;
-
   /**
    * Constructs a resource type with the given name and field specifications.
    *
@@ -17,8 +15,7 @@ public class ResourceType extends ComplexType {
    * @param fieldSpecs the list of field specifications
    */
   public ResourceType(final String name, final List<FieldSpec> fieldSpecs) {
-    super(fieldSpecs);
-    this.name = name;
+    super(name, fieldSpecs);
   }
 
   /**
@@ -31,13 +28,8 @@ public class ResourceType extends ComplexType {
     this(name, List.of(fieldSpecs));
   }
 
-  @Override
-  public String getName() {
-    return name;
-  }
-
   /** Returns the resource name (same as {@link #getName()}). */
   public String getResourceName() {
-    return name;
+    return getName();
   }
 }

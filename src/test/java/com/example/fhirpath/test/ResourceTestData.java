@@ -38,17 +38,22 @@ public class ResourceTestData {
 
   private final String resourceTypeName;
   private final Map<String, Object> data;
+  private final ResourceType explicitResourceType;
 
   /**
    * Create resource test data.
    *
    * @param resourceTypeName The name of the resource type (e.g., "Patient")
    * @param data The test data as a Map structure
+   * @param explicitResourceType Optional explicit ResourceType (null for inferred)
    */
   private ResourceTestData(
-      @Nonnull final String resourceTypeName, @Nonnull final Map<String, Object> data) {
+      @Nonnull final String resourceTypeName,
+      @Nonnull final Map<String, Object> data,
+      @jakarta.annotation.Nullable final ResourceType explicitResourceType) {
     this.resourceTypeName = resourceTypeName;
     this.data = data;
+    this.explicitResourceType = explicitResourceType;
   }
 
   /**
@@ -61,7 +66,20 @@ public class ResourceTestData {
   @Nonnull
   public static ResourceTestData of(
       @Nonnull final String resourceTypeName, @Nonnull final Map<String, Object> data) {
-    return new ResourceTestData(resourceTypeName, data);
+    return new ResourceTestData(resourceTypeName, data, null);
+  }
+
+  /**
+   * Create resource test data with an explicit ResourceType.
+   *
+   * @param resourceType The explicit resource type definition
+   * @param data The test data as a Map structure
+   * @return ResourceTestData instance
+   */
+  @Nonnull
+  public static ResourceTestData of(
+      @Nonnull final ResourceType resourceType, @Nonnull final Map<String, Object> data) {
+    return new ResourceTestData(resourceType.getResourceName(), data, resourceType);
   }
 
   /**
@@ -92,8 +110,16 @@ public class ResourceTestData {
    *
    * @return The inferred ResourceType
    */
+  /**
+   * Returns the ResourceType — either the explicit one if provided, or inferred from data.
+   *
+   * @return The ResourceType
+   */
   @Nonnull
   public ResourceType inferResourceType() {
+    if (explicitResourceType != null) {
+      return explicitResourceType;
+    }
     return ResourceTypeInference.infer(resourceTypeName, data);
   }
 }

@@ -129,6 +129,11 @@ public final class OperationRegistry {
             Signatures.union(NULL),
             Signatures.union(ANY)),
 
+        // FHIR-SPECIFIC FUNCTIONS
+
+        register("getValue", Signatures.unaryFunc(ANY, ANY)),
+        register("hasValue", Signatures.unaryFunc(ANY, BOOLEAN)),
+
         // CONDITIONAL OPERATIONS (FHIRPath Spec 6.7)
 
         // iif() evaluates collection-level conditional with lambda parameters

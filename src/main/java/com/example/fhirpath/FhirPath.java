@@ -6,7 +6,9 @@ import com.example.fhirpath.codegen.spark.SparkCodeGenerator;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.parser.ParserFacade;
+import com.example.fhirpath.typing.ComplexTypeResolver;
 import com.example.fhirpath.typing.ResourceType;
+import com.example.fhirpath.typing.TypeResolver;
 import jakarta.annotation.Nonnull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.Column;
@@ -44,7 +46,7 @@ public final class FhirPath {
    */
   @Nonnull
   public static Column toColumn(@Nonnull final String expr) {
-    return compile(expr, null, null);
+    return compile(expr, null, null, null);
   }
 
   /**
@@ -58,7 +60,7 @@ public final class FhirPath {
    */
   @Nonnull
   public static Column toColumn(@Nonnull final String expr, @Nonnull final String context) {
-    return compile(expr, context, null);
+    return compile(expr, context, null, null);
   }
 
   /**
@@ -72,7 +74,7 @@ public final class FhirPath {
   @Nonnull
   public static Column toColumn(
       @Nonnull final String expr, @Nonnull final ResourceType resourceSpec) {
-    return compile(expr, null, resourceSpec);
+    return compile(expr, null, null, resourceSpec);
   }
 
   /**
@@ -88,7 +90,41 @@ public final class FhirPath {
       @Nonnull final String expr,
       @Nonnull final String context,
       @Nonnull final ResourceType resourceSpec) {
-    return compile(expr, context, resourceSpec);
+    return compile(expr, context, null, resourceSpec);
+  }
+
+  /**
+   * Compile a FHIRPath expression with a type resolver and resource specification.
+   *
+   * @param expr The FHIRPath expression to compile
+   * @param resolver The type resolver for field lookups
+   * @param resourceSpec The resource specification defining the structure
+   * @return A Spark SQL Column representing the compiled expression
+   */
+  @Nonnull
+  public static Column toColumn(
+      @Nonnull final String expr,
+      @Nonnull final TypeResolver resolver,
+      @Nonnull final ResourceType resourceSpec) {
+    return compile(expr, null, resolver, resourceSpec);
+  }
+
+  /**
+   * Compile a FHIRPath expression with context, type resolver, and resource specification.
+   *
+   * @param expr The FHIRPath expression to compile
+   * @param context The FHIRPath expression to use as %context
+   * @param resolver The type resolver for field lookups
+   * @param resourceSpec The resource specification defining the structure
+   * @return A Spark SQL Column representing the compiled expression
+   */
+  @Nonnull
+  public static Column toColumn(
+      @Nonnull final String expr,
+      @Nonnull final String context,
+      @Nonnull final TypeResolver resolver,
+      @Nonnull final ResourceType resourceSpec) {
+    return compile(expr, context, resolver, resourceSpec);
   }
 
   /**
@@ -96,11 +132,15 @@ public final class FhirPath {
    *
    * @param expr The FHIRPath expression to compile
    * @param context Optional context expression (may be null)
+   * @param resolver Optional type resolver (may be null, defaults to ComplexTypeResolver)
    * @param resourceSpec Optional resource specification (may be null)
    * @return A Spark SQL Column representing the compiled expression
    */
   private static Column compile(
-      @Nonnull final String expr, final String context, final ResourceType resourceSpec) {
+      @Nonnull final String expr,
+      final String context,
+      final TypeResolver resolver,
+      final ResourceType resourceSpec) {
     log.debug("Compiling FHIRPath expression: {}", expr);
     if (context != null) {
       log.debug("  with context: {}", context);
@@ -117,7 +157,8 @@ public final class FhirPath {
     final AstNode contextAst = context != null ? ParserFacade.parse(context) : null;
 
     // Create analyzer with appropriate parameters
-    final Analyzer analyzer = createAnalyzer(contextAst, resourceSpec);
+    final TypeResolver effectiveResolver = resolver != null ? resolver : new ComplexTypeResolver();
+    final Analyzer analyzer = createAnalyzer(contextAst, effectiveResolver, resourceSpec);
 
     // Analyze AST to produce IR
     final IRNode ir = analyzer.analyze(ast);
@@ -131,20 +172,23 @@ public final class FhirPath {
   }
 
   /**
-   * Create an analyzer with the appropriate configuration based on context and resource spec.
+   * Create an analyzer with the appropriate configuration.
    *
    * @param contextAst Optional context AST (may be null)
+   * @param resolver The type resolver for field lookups
    * @param resourceSpec Optional resource specification (may be null)
    * @return Configured analyzer instance
    */
   private static Analyzer createAnalyzer(
-      final AstNode contextAst, final ResourceType resourceSpec) {
+      final AstNode contextAst,
+      @Nonnull final TypeResolver resolver,
+      final ResourceType resourceSpec) {
     if (contextAst != null && resourceSpec != null) {
-      return new Analyzer(contextAst, resourceSpec);
+      return new Analyzer(contextAst, resolver, resourceSpec);
     } else if (contextAst != null) {
       return new Analyzer(contextAst);
     } else if (resourceSpec != null) {
-      return new Analyzer(resourceSpec);
+      return new Analyzer(resolver, resourceSpec);
     } else {
       return new Analyzer();
     }

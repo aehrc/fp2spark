@@ -24,6 +24,11 @@ public final class TypeSystem {
     if (from == to) return true;
     if (from == PrimitiveType.NULL) return true;
 
+    // FhirPrimitiveType delegates to its underlying System type
+    if (from instanceof FhirPrimitiveType fpt) {
+      return canCast(fpt.getSystemType(), to);
+    }
+
     if (from == PrimitiveType.INTEGER && to == PrimitiveType.DECIMAL) return true;
     if (from == PrimitiveType.DATE && to == PrimitiveType.DATE_TIME) return true;
     if (from == PrimitiveType.INTEGER && to == PrimitiveType.QUANTITY) return true;

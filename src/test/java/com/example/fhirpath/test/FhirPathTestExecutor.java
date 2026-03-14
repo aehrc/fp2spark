@@ -2,6 +2,7 @@ package com.example.fhirpath.test;
 
 import com.example.fhirpath.FhirPath;
 import com.example.fhirpath.typing.ResourceType;
+import com.example.fhirpath.typing.TypeResolver;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
@@ -54,22 +55,25 @@ class FhirPathTestExecutor {
       // Determine if we need resource type info
       final ResourceType resourceType =
           testCase.resource() != null ? testCase.resource().inferResourceType() : null;
+      final TypeResolver resolver = testCase.typeResolver();
 
       // Use FhirPath API to compile expression
-      // Choose appropriate overload based on context and resource presence
+      // Choose appropriate overload based on context, resolver, and resource presence
       final Column column;
-      if (resourceType != null && testCase.context() != null) {
-        // Both resource and context
+      if (resolver != null && resourceType != null && testCase.context() != null) {
+        column =
+            FhirPath.toColumn(
+                testCase.expression(), testCase.context().expression(), resolver, resourceType);
+      } else if (resolver != null && resourceType != null) {
+        column = FhirPath.toColumn(testCase.expression(), resolver, resourceType);
+      } else if (resourceType != null && testCase.context() != null) {
         column =
             FhirPath.toColumn(testCase.expression(), testCase.context().expression(), resourceType);
       } else if (resourceType != null) {
-        // Resource only
         column = FhirPath.toColumn(testCase.expression(), resourceType);
       } else if (testCase.context() != null) {
-        // Context only
         column = FhirPath.toColumn(testCase.expression(), testCase.context().expression());
       } else {
-        // Neither - literal expression
         column = FhirPath.toColumn(testCase.expression());
       }
 

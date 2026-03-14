@@ -3,6 +3,8 @@ package com.example.fhirpath.test;
 import com.example.fhirpath.test.assertion.EmptyAssertion;
 import com.example.fhirpath.test.assertion.EqualsAssertion;
 import com.example.fhirpath.test.assertion.ErrorAssertion;
+import com.example.fhirpath.typing.ResourceType;
+import com.example.fhirpath.typing.TypeResolver;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
@@ -51,6 +53,7 @@ public class FhirPathTestBuilder {
   private final List<TestCase> testCases = new ArrayList<>();
   private String currentGroup = null;
   private ResourceTestData currentResource = null;
+  private TypeResolver typeResolver = null;
 
   /**
    * Create a new test builder with the provided executor.
@@ -126,6 +129,35 @@ public class FhirPathTestBuilder {
   }
 
   /**
+   * Set the current resource test data with an explicit ResourceType.
+   *
+   * @param resourceType The explicit resource type definition
+   * @param builderConsumer Consumer that builds the resource data
+   * @return This builder for method chaining
+   */
+  @Nonnull
+  public FhirPathTestBuilder withSubject(
+      @Nonnull final ResourceType resourceType,
+      @Nonnull final java.util.function.Consumer<ResourceDataBuilder> builderConsumer) {
+    final ResourceDataBuilder dataBuilder = new ResourceDataBuilder();
+    builderConsumer.accept(dataBuilder);
+    this.currentResource = ResourceTestData.of(resourceType, dataBuilder.build());
+    return this;
+  }
+
+  /**
+   * Set the type resolver for subsequent test cases.
+   *
+   * @param resolver The type resolver to use
+   * @return This builder for method chaining
+   */
+  @Nonnull
+  public FhirPathTestBuilder withTypeResolver(@Nonnull final TypeResolver resolver) {
+    this.typeResolver = resolver;
+    return this;
+  }
+
+  /**
    * Test that an expression equals an expected value (no context, expression used as description).
    *
    * @param expected The expected result value
@@ -186,7 +218,12 @@ public class FhirPathTestBuilder {
 
     testCases.add(
         new TestCase(
-            testDescription, expression, context, currentResource, new EqualsAssertion(expected)));
+            testDescription,
+            expression,
+            context,
+            currentResource,
+            typeResolver,
+            new EqualsAssertion(expected)));
     return this;
   }
 
@@ -344,7 +381,13 @@ public class FhirPathTestBuilder {
             description);
 
     testCases.add(
-        new TestCase(testDescription, expression, context, currentResource, new EmptyAssertion()));
+        new TestCase(
+            testDescription,
+            expression,
+            context,
+            currentResource,
+            typeResolver,
+            new EmptyAssertion()));
     return this;
   }
 
@@ -418,6 +461,7 @@ public class FhirPathTestBuilder {
             expression,
             context,
             currentResource,
+            typeResolver,
             new ErrorAssertion(expectedExceptionType)));
     return this;
   }

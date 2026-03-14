@@ -112,6 +112,10 @@ class SparkSchemaConverter {
    */
   @Nonnull
   DataType toBaseType(@Nonnull final Type type) {
+    if (type instanceof FhirPrimitiveType fpt) {
+      return toBaseType(fpt.getSystemType());
+    }
+
     if (type instanceof PrimitiveType primitiveType) {
       return switch (primitiveType) {
         case INTEGER -> DataTypes.IntegerType;

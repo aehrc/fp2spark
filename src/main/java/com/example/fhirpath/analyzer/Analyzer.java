@@ -23,7 +23,7 @@ import com.example.fhirpath.operation.OperatorNormalizer;
 import com.example.fhirpath.operation.OverloadResolutionException;
 import com.example.fhirpath.operation.OverloadResolver;
 import com.example.fhirpath.operation.signature.SignatureDefinition;
-import com.example.fhirpath.typing.ComplexType;
+import com.example.fhirpath.typing.ComplexTypeResolver;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
 import com.example.fhirpath.typing.LambdaType;
@@ -32,12 +32,12 @@ import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.TimeValue;
 import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.TypeResolver;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -55,14 +55,14 @@ import java.util.stream.Stream;
 public class Analyzer {
   @Nonnull private final AstNode contextNode;
   @Nonnull private final ResourceType resourceSpec;
+  @Nonnull private final TypeResolver typeResolver;
 
   @Nullable
   private final Shape thisShape; // For lambda analysis - tracks both type and cardinality of $this
 
   /** Creates an analyzer with no context or resource type. */
   public Analyzer() {
-    // by default, no context
-    this(AstVariable.resourceVariable(), ResourceType.EMPTY, null);
+    this(AstVariable.resourceVariable(), ResourceType.EMPTY, new ComplexTypeResolver(), null);
   }
 
   /**
@@ -71,7 +71,7 @@ public class Analyzer {
    * @param contextNode the context node for %context resolution
    */
   public Analyzer(@Nonnull final AstNode contextNode) {
-    this(contextNode, ResourceType.EMPTY, null);
+    this(contextNode, ResourceType.EMPTY, new ComplexTypeResolver(), null);
   }
 
   /**
@@ -80,7 +80,7 @@ public class Analyzer {
    * @param resourceSpec the resource type specification
    */
   public Analyzer(@Nonnull final ResourceType resourceSpec) {
-    this(AstVariable.resourceVariable(), resourceSpec, null);
+    this(AstVariable.resourceVariable(), resourceSpec, new ComplexTypeResolver(), null);
   }
 
   /**
@@ -90,16 +90,43 @@ public class Analyzer {
    * @param resourceSpec the resource type specification
    */
   public Analyzer(@Nonnull final AstNode contextNode, @Nonnull final ResourceType resourceSpec) {
-    this(contextNode, resourceSpec, null);
+    this(contextNode, resourceSpec, new ComplexTypeResolver(), null);
   }
 
-  /** Private constructor for lambda analysis with $this binding. */
+  /**
+   * Creates an analyzer with a type resolver and resource type.
+   *
+   * @param typeResolver the type resolver for field lookups
+   * @param resourceSpec the resource type specification
+   */
+  public Analyzer(
+      @Nonnull final TypeResolver typeResolver, @Nonnull final ResourceType resourceSpec) {
+    this(AstVariable.resourceVariable(), resourceSpec, typeResolver, null);
+  }
+
+  /**
+   * Creates an analyzer with context, type resolver, and resource type.
+   *
+   * @param contextNode the context node for %context resolution
+   * @param typeResolver the type resolver for field lookups
+   * @param resourceSpec the resource type specification
+   */
+  public Analyzer(
+      @Nonnull final AstNode contextNode,
+      @Nonnull final TypeResolver typeResolver,
+      @Nonnull final ResourceType resourceSpec) {
+    this(contextNode, resourceSpec, typeResolver, null);
+  }
+
+  /** Private constructor for full configuration including lambda $this binding. */
   private Analyzer(
       @Nonnull final AstNode contextNode,
       @Nonnull final ResourceType resourceSpec,
+      @Nonnull final TypeResolver typeResolver,
       @Nullable final Shape thisShape) {
     this.contextNode = contextNode;
     this.resourceSpec = resourceSpec;
+    this.typeResolver = typeResolver;
     this.thisShape = thisShape;
   }
 
@@ -109,7 +136,7 @@ public class Analyzer {
    * @param shape the shape (type + cardinality) of $this
    */
   private Analyzer withThisShape(@Nonnull final Shape shape) {
-    return new Analyzer(this.contextNode, this.resourceSpec, shape);
+    return new Analyzer(this.contextNode, this.resourceSpec, this.typeResolver, shape);
   }
 
   /**
@@ -208,7 +235,7 @@ public class Analyzer {
 
   private IRNode resolveVariable(final AstVariable variable) {
     return switch (variable.name()) {
-      case CONTEXT_VARIABLE -> new Analyzer(resourceSpec).analyze(contextNode);
+      case CONTEXT_VARIABLE -> new Analyzer(typeResolver, resourceSpec).analyze(contextNode);
       case RESOURCE_VARIABLE -> new Resource(resourceSpec);
       default ->
           throw new InvalidExpressionException(
@@ -399,13 +426,9 @@ public class Analyzer {
     // Resolve implicit target if needed
     final AstTraversal resolvedTraversal = resolveWithImplicitTarget(traversal);
     final IRNode targetIr = analyze(resolvedTraversal.target());
-    return Optional.of(targetIr.getType())
-        .filter(ComplexType.class::isInstance)
-        .map(ComplexType.class::cast)
-        .flatMap(ct -> ct.getField(resolvedTraversal.path()))
-        // for ComplexTypes with required field create a Traversal
+    return typeResolver
+        .resolveField(targetIr.getType(), resolvedTraversal.path())
         .map(fieldSpec -> (IRNode) new Traversal(targetIr, fieldSpec))
-        // otherwise an empty collection
         .orElseGet(() -> new Literal(null, Types.NULL));
   }
 

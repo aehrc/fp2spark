@@ -9,16 +9,28 @@ import java.util.stream.Collectors;
 
 /** Represents a complex FHIRPath type with named fields (e.g., a FHIR resource or data type). */
 public class ComplexType implements Type {
+  private final String name;
   private final Map<String, FieldSpec> fields;
 
   /**
-   * Constructs a complex type with the given field specifications.
+   * Constructs a named complex type with the given field specifications.
+   *
+   * @param name the type name (e.g., "HumanName", "Coding")
+   * @param fieldSpecs the list of field specifications
+   */
+  public ComplexType(final String name, final List<FieldSpec> fieldSpecs) {
+    this.name = name;
+    this.fields =
+        fieldSpecs.stream().collect(Collectors.toMap(FieldSpec::getName, Function.identity()));
+  }
+
+  /**
+   * Constructs a complex type with the given field specifications and a default name.
    *
    * @param fieldSpecs the list of field specifications
    */
   public ComplexType(final List<FieldSpec> fieldSpecs) {
-    this.fields =
-        fieldSpecs.stream().collect(Collectors.toMap(FieldSpec::getName, Function.identity()));
+    this("ComplexType", fieldSpecs);
   }
 
   /**
@@ -30,9 +42,19 @@ public class ComplexType implements Type {
     this(List.of(fieldSpecs));
   }
 
+  /**
+   * Constructs a named complex type with no fields. Used as a marker type for lazy resolution via
+   * {@link TypeResolver}.
+   *
+   * @param name the type name (e.g., "HumanName")
+   */
+  public ComplexType(final String name) {
+    this(name, List.of());
+  }
+
   @Override
   public String getName() {
-    return "ComplexType";
+    return name;
   }
 
   @Override

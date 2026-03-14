@@ -1,7 +1,12 @@
 package com.example.fhirpath.test;
 
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
-import com.example.fhirpath.typing.*;
+import com.example.fhirpath.typing.FhirPrimitiveType;
+import com.example.fhirpath.typing.FieldSpec;
+import com.example.fhirpath.typing.InlineComplexType;
+import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.Shape;
+import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;

@@ -103,14 +103,6 @@ public class ResourceTestData {
   }
 
   /**
-   * Infer and return the ResourceType from the data structure.
-   *
-   * <p>This method uses {@link ResourceTypeInference} to analyze the Map data and derive field
-   * specifications (name, type, cardinality) to construct a complete ResourceType definition.
-   *
-   * @return The inferred ResourceType
-   */
-  /**
    * Returns the ResourceType — either the explicit one if provided, or inferred from data.
    *
    * @return The ResourceType

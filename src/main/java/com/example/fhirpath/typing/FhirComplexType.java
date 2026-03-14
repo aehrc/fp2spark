@@ -7,6 +7,8 @@ import ca.uhn.fhir.context.RuntimeChildChoiceDefinition;
 import ca.uhn.fhir.context.RuntimePrimitiveDatatypeDefinition;
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A complex type backed by a HAPI FHIR runtime composite definition.
@@ -19,6 +21,8 @@ import java.util.Optional;
  * types work naturally — HAPI includes them as composite children.
  */
 public non-sealed class FhirComplexType implements ComplexType {
+
+  private static final Logger LOG = LoggerFactory.getLogger(FhirComplexType.class);
 
   private final BaseRuntimeElementCompositeDefinition<?> definition;
 
@@ -43,6 +47,9 @@ public non-sealed class FhirComplexType implements ComplexType {
     try {
       childDef = definition.getChildByName(fieldName);
     } catch (final IllegalArgumentException e) {
+      // HAPI signals unknown children via both exceptions and null returns depending on the
+      // definition subtype; treat both as "field not found".
+      LOG.debug("Field '{}' not found on type '{}': {}", fieldName, getName(), e.getMessage());
       return Optional.empty();
     }
     if (childDef == null) {
@@ -80,6 +87,7 @@ public non-sealed class FhirComplexType implements ComplexType {
     if (validNames.isEmpty()) {
       return null;
     }
+    // Non-choice children have exactly one valid name; take it.
     final String childName = validNames.iterator().next();
     return childDef.getChildByName(childName);
   }

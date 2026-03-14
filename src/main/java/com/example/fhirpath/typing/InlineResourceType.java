@@ -1,5 +1,6 @@
 package com.example.fhirpath.typing;
 
+import jakarta.annotation.Nonnull;
 import java.util.List;
 
 /**
@@ -19,7 +20,7 @@ public final class InlineResourceType extends InlineComplexType implements Resou
    * @param name the resource type name (e.g., "Patient")
    * @param fieldSpecs the list of field specifications
    */
-  public InlineResourceType(final String name, final List<FieldSpec> fieldSpecs) {
+  public InlineResourceType(@Nonnull final String name, @Nonnull final List<FieldSpec> fieldSpecs) {
     super(name, fieldSpecs);
   }
 
@@ -29,7 +30,7 @@ public final class InlineResourceType extends InlineComplexType implements Resou
    * @param name the resource type name
    * @param fieldSpecs the field specifications
    */
-  public InlineResourceType(final String name, final FieldSpec... fieldSpecs) {
+  public InlineResourceType(@Nonnull final String name, @Nonnull final FieldSpec... fieldSpecs) {
     this(name, List.of(fieldSpecs));
   }
 }

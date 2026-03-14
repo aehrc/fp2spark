@@ -95,6 +95,10 @@ public final class FhirPrimitiveType implements Type {
     return "FHIR." + fhirName;
   }
 
+  /**
+   * Returns {@code false} because this is a FHIR-layer type, not a FHIRPath System primitive. The
+   * underlying System type (accessible via {@link #getSystemType()}) is the actual primitive.
+   */
   @Override
   public boolean isPrimitive() {
     return false;

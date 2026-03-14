@@ -217,7 +217,7 @@ public class FhirPathTestBuilder {
       @Nonnull String expression,
       @Nullable Context context,
       @Nullable String description) {
-    String testDescription =
+    final String testDescription =
         buildTestDescription(expression, context, formatExpected(expected), description);
 
     testCases.add(
@@ -372,7 +372,7 @@ public class FhirPathTestBuilder {
   @Nonnull
   public FhirPathTestBuilder testEmpty(
       @Nonnull String expression, @Nullable Context context, @Nullable String description) {
-    String testDescription =
+    final String testDescription =
         buildTestDescription(
             expression,
             context,
@@ -444,7 +444,7 @@ public class FhirPathTestBuilder {
       @Nonnull String expression,
       @Nullable Context context,
       @Nullable String description) {
-    String testDescription =
+    final String testDescription =
         buildTestDescription(
             expression, context, formatExpectedException(expectedExceptionType), description);
 
@@ -501,7 +501,7 @@ public class FhirPathTestBuilder {
       @Nullable Context context,
       @Nonnull String expectedDisplay,
       @Nullable String userDescription) {
-    StringBuilder desc = new StringBuilder();
+    final StringBuilder desc = new StringBuilder();
 
     // Core: expression [with context] => expected
     desc.append(expression);

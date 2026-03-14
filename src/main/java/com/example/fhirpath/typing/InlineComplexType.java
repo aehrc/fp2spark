@@ -1,5 +1,6 @@
 package com.example.fhirpath.typing;
 
+import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -24,7 +25,7 @@ public non-sealed class InlineComplexType implements ComplexType {
    * @param name the type name (e.g., "HumanName", "Coding")
    * @param fieldSpecs the list of field specifications
    */
-  public InlineComplexType(final String name, final List<FieldSpec> fieldSpecs) {
+  public InlineComplexType(@Nonnull final String name, @Nonnull final List<FieldSpec> fieldSpecs) {
     this.name = name;
     this.fields =
         fieldSpecs.stream().collect(Collectors.toMap(FieldSpec::getName, Function.identity()));
@@ -35,7 +36,7 @@ public non-sealed class InlineComplexType implements ComplexType {
    *
    * @param fieldSpecs the list of field specifications
    */
-  public InlineComplexType(final List<FieldSpec> fieldSpecs) {
+  public InlineComplexType(@Nonnull final List<FieldSpec> fieldSpecs) {
     this("ComplexType", fieldSpecs);
   }
 
@@ -44,7 +45,7 @@ public non-sealed class InlineComplexType implements ComplexType {
    *
    * @param fieldSpecs the field specifications
    */
-  public InlineComplexType(final FieldSpec... fieldSpecs) {
+  public InlineComplexType(@Nonnull final FieldSpec... fieldSpecs) {
     this(List.of(fieldSpecs));
   }
 
@@ -53,7 +54,7 @@ public non-sealed class InlineComplexType implements ComplexType {
    *
    * @param name the type name (e.g., "HumanName")
    */
-  public InlineComplexType(final String name) {
+  public InlineComplexType(@Nonnull final String name) {
     this(name, List.of());
   }
 
@@ -63,16 +64,19 @@ public non-sealed class InlineComplexType implements ComplexType {
   }
 
   @Override
-  public Optional<FieldSpec> resolveField(final String fieldName) {
+  @Nonnull
+  public Optional<FieldSpec> resolveField(@Nonnull final String fieldName) {
     return Optional.ofNullable(fields.get(fieldName));
   }
 
   /** Returns the set of field names defined on this complex type. */
+  @Nonnull
   public Set<String> getFieldNames() {
     return fields.keySet();
   }
 
   /** Returns all field specifications defined on this complex type. */
+  @Nonnull
   public List<FieldSpec> getFields() {
     return List.copyOf(fields.values());
   }

@@ -1,6 +1,14 @@
 package com.example.fhirpath.test;
 
-import com.example.fhirpath.typing.*;
+import com.example.fhirpath.typing.Cardinality;
+import com.example.fhirpath.typing.ComplexType;
+import com.example.fhirpath.typing.FieldSpec;
+import com.example.fhirpath.typing.InlineComplexType;
+import com.example.fhirpath.typing.InlineResourceType;
+import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.ResourceType;
+import com.example.fhirpath.typing.Shape;
+import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;

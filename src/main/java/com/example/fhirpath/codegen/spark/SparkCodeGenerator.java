@@ -14,6 +14,7 @@ import com.example.fhirpath.ir.Resource;
 import com.example.fhirpath.ir.ThisReference;
 import com.example.fhirpath.ir.Traversal;
 import com.example.fhirpath.typing.FhirPrimitiveType;
+import com.example.fhirpath.typing.InlineResourceType;
 import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.TemporalValue;
 import com.example.fhirpath.typing.Types;
@@ -194,9 +195,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   @Override
   @Nonnull
   public Column visitResource(@Nonnull final Resource res) {
-    return res.type() != com.example.fhirpath.typing.InlineResourceType.EMPTY
-        ? col(res.type().getResourceName())
-        : lit(null);
+    return res.type() != InlineResourceType.EMPTY ? col(res.type().getResourceName()) : lit(null);
   }
 
   @Override

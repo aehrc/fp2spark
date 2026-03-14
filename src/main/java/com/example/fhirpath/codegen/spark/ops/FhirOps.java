@@ -1,8 +1,5 @@
 package com.example.fhirpath.codegen.spark.ops;
 
-import static org.apache.spark.sql.functions.lit;
-import static org.apache.spark.sql.functions.when;
-
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 
 /**
@@ -24,6 +21,6 @@ public final class FhirOps {
     registry.unary("getValue", col -> col);
 
     // hasValue() — returns true if the element has a value (non-null check)
-    registry.unary("hasValue", col -> when(col.isNotNull(), lit(true)).otherwise(lit(false)));
+    registry.unary("hasValue", col -> col.isNotNull());
   }
 }

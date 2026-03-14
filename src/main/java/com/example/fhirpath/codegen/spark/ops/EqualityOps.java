@@ -54,6 +54,12 @@ public final class EqualityOps {
       return functions.lit(negate);
     }
 
+    // Quantity type: struct-aware equality with same-unit check
+    if (leftType == Types.QUANTITY) {
+      final Column eq = QuantityOps.quantityEquals(ctx.arg(0), ctx.arg(1));
+      return negate ? functions.not(eq) : eq;
+    }
+
     // Temporal types: precision-aware equality via TemporalOps
     if (TemporalOps.isTemporalType(leftType)) {
       final Column eq = TemporalOps.temporalEquals(ctx.arg(0), ctx.arg(1));

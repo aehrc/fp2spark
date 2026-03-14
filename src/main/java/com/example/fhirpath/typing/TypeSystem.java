@@ -14,6 +14,8 @@ public final class TypeSystem {
    *
    * <ul>
    *   <li>INTEGER → DECIMAL
+   *   <li>INTEGER → QUANTITY
+   *   <li>DECIMAL → QUANTITY
    *   <li>DATE → DATE_TIME
    *   <li>NULL → any type
    * </ul>
@@ -24,6 +26,8 @@ public final class TypeSystem {
 
     if (from == PrimitiveType.INTEGER && to == PrimitiveType.DECIMAL) return true;
     if (from == PrimitiveType.DATE && to == PrimitiveType.DATE_TIME) return true;
+    if (from == PrimitiveType.INTEGER && to == PrimitiveType.QUANTITY) return true;
+    if (from == PrimitiveType.DECIMAL && to == PrimitiveType.QUANTITY) return true;
 
     return false;
   }

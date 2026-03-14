@@ -9,6 +9,7 @@ import com.example.fhirpath.ast.AstTraversal;
 import com.example.fhirpath.ast.AstVariable;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
+import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.TimeValue;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -271,7 +272,24 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
   @Override
   public AstNode visitQuantityLiteral(final FhirPathParser.QuantityLiteralContext ctx) {
-    throw new UnsupportedOperationException("Quantity literals are not yet supported");
+    final FhirPathParser.QuantityContext qCtx = ctx.quantity();
+    final BigDecimal value = new BigDecimal(qCtx.NUMBER().getText());
+    final FhirPathParser.UnitContext unitCtx = qCtx.unit();
+
+    final QuantityValue quantityValue;
+    if (unitCtx == null) {
+      quantityValue = QuantityValue.ofDefault(value);
+    } else if (unitCtx.dateTimePrecision() != null) {
+      quantityValue = QuantityValue.ofCalendar(value, unitCtx.dateTimePrecision().getText());
+    } else if (unitCtx.pluralDateTimePrecision() != null) {
+      quantityValue = QuantityValue.ofCalendar(value, unitCtx.pluralDateTimePrecision().getText());
+    } else {
+      // UCUM unit in single quotes — strip the surrounding quotes
+      final String rawUnit = unitCtx.STRING().getText();
+      final String ucumCode = rawUnit.substring(1, rawUnit.length() - 1);
+      quantityValue = QuantityValue.ofUcum(value, ucumCode);
+    }
+    return new AstLiteral(quantityValue);
   }
 
   @Override

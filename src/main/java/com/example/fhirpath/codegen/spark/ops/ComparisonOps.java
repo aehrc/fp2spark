@@ -25,6 +25,7 @@ public final class ComparisonOps {
         ctx ->
             switch ((PrimitiveType) ctx.argType(0)) {
               case INTEGER, DECIMAL, STRING -> ctx.arg(0).gt(ctx.arg(1));
+              case QUANTITY -> QuantityOps.quantityCompare(ctx.arg(0), ctx.arg(1), Column::gt);
               case DATE, DATE_TIME, TIME ->
                   TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::gt);
               default ->
@@ -37,6 +38,7 @@ public final class ComparisonOps {
         ctx ->
             switch ((PrimitiveType) ctx.argType(0)) {
               case INTEGER, DECIMAL, STRING -> ctx.arg(0).lt(ctx.arg(1));
+              case QUANTITY -> QuantityOps.quantityCompare(ctx.arg(0), ctx.arg(1), Column::lt);
               case DATE, DATE_TIME, TIME ->
                   TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::lt);
               default ->
@@ -49,6 +51,7 @@ public final class ComparisonOps {
         ctx ->
             switch ((PrimitiveType) ctx.argType(0)) {
               case INTEGER, DECIMAL, STRING -> ctx.arg(0).geq(ctx.arg(1));
+              case QUANTITY -> QuantityOps.quantityCompare(ctx.arg(0), ctx.arg(1), Column::geq);
               case DATE, DATE_TIME, TIME ->
                   TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::geq);
               default ->
@@ -61,6 +64,7 @@ public final class ComparisonOps {
         ctx ->
             switch ((PrimitiveType) ctx.argType(0)) {
               case INTEGER, DECIMAL, STRING -> ctx.arg(0).leq(ctx.arg(1));
+              case QUANTITY -> QuantityOps.quantityCompare(ctx.arg(0), ctx.arg(1), Column::leq);
               case DATE, DATE_TIME, TIME ->
                   TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::leq);
               default ->

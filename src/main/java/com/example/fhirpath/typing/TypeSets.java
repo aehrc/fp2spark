@@ -5,6 +5,7 @@ import static com.example.fhirpath.typing.Types.DATE;
 import static com.example.fhirpath.typing.Types.DATE_TIME;
 import static com.example.fhirpath.typing.Types.DECIMAL;
 import static com.example.fhirpath.typing.Types.INTEGER;
+import static com.example.fhirpath.typing.Types.QUANTITY;
 import static com.example.fhirpath.typing.Types.STRING;
 import static com.example.fhirpath.typing.Types.TIME;
 
@@ -34,11 +35,11 @@ public final class TypeSets {
 
   /** Comparable types that support ordering operations. Used for: gt, lt, geq, leq */
   public static final List<Type> COMPARABLE =
-      List.of(INTEGER, DECIMAL, STRING, DATE, DATE_TIME, TIME);
+      List.of(INTEGER, DECIMAL, STRING, QUANTITY, DATE, DATE_TIME, TIME);
 
   /** Equatable types that support equality operations. Used for: equals, notEquals */
   public static final List<Type> EQUATABLE =
-      List.of(INTEGER, DECIMAL, STRING, BOOLEAN, DATE, DATE_TIME, TIME);
+      List.of(INTEGER, DECIMAL, STRING, BOOLEAN, QUANTITY, DATE, DATE_TIME, TIME);
 
   /**
    * Temporal types: Date, DateTime, and Time. Used for: precision-aware equality and comparison.

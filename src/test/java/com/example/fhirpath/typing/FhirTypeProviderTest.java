@@ -23,7 +23,7 @@ import org.junit.jupiter.api.TestInstance;
  *   <li>Cardinality detection (SINGLE vs MANY)
  *   <li>Nested complex type resolution (HumanName.family, HumanName.given)
  *   <li>Recursive types don't cause infinite loops
- *   <li>Choice types return empty (deferred to #42)
+ *   <li>Choice types return ChoiceType with variant resolution
  * </ul>
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -136,10 +136,33 @@ class FhirTypeProviderTest {
   }
 
   @Test
-  void resolveChoiceTypeReturnsEmpty() {
-    // Patient.deceased[x] is a choice type — should return empty (deferred to #42)
+  void resolveChoiceTypeReturnsChoiceType() {
+    // Patient.deceased[x] is a choice type — should return ChoiceType
     final Optional<FieldSpec> field = patient.resolveField("deceased");
-    assertFalse(field.isPresent(), "Choice types should return empty (deferred to #42)");
+    assertTrue(field.isPresent(), "Choice types should be resolvable");
+    assertInstanceOf(ChoiceType.class, field.get().getType());
+    assertTrue(field.get().isSingular(), "Patient.deceased should be SINGLE");
+  }
+
+  @Test
+  void choiceTypeVariantResolution() {
+    // Resolve deceased as ChoiceType, then resolve variants
+    final ChoiceType choiceType =
+        assertInstanceOf(ChoiceType.class, patient.resolveField("deceased").get().getType());
+
+    // deceasedBoolean should resolve
+    final Optional<FieldSpec> boolVariant = choiceType.resolveVariant("boolean");
+    assertTrue(boolVariant.isPresent(), "deceased.boolean variant should resolve");
+    assertEquals("deceasedBoolean", boolVariant.get().getName());
+
+    // deceasedDateTime should resolve
+    final Optional<FieldSpec> dtVariant = choiceType.resolveVariant("dateTime");
+    assertTrue(dtVariant.isPresent(), "deceased.dateTime variant should resolve");
+    assertEquals("deceasedDateTime", dtVariant.get().getName());
+
+    // Invalid variant should not resolve
+    final Optional<FieldSpec> invalidVariant = choiceType.resolveVariant("Quantity");
+    assertFalse(invalidVariant.isPresent(), "deceased.Quantity should not resolve");
   }
 
   @Test

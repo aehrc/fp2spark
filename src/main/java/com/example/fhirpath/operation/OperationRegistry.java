@@ -134,6 +134,10 @@ public final class OperationRegistry {
         register("getValue", Signatures.unaryFunc(ANY, ANY)),
         register("hasValue", Signatures.unaryFunc(ANY, BOOLEAN)),
 
+        // TYPE TESTING (FHIRPath Spec 6.1)
+
+        register("is", Signatures.typeTest(ANY)),
+
         // CONDITIONAL OPERATIONS (FHIRPath Spec 6.7)
 
         // iif() evaluates collection-level conditional with lambda parameters

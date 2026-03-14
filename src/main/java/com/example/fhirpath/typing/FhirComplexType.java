@@ -42,23 +42,18 @@ public non-sealed class FhirComplexType implements ComplexType {
 
   @Override
   public Optional<FieldSpec> resolveField(final String fieldName) {
-    // Look up the child by name
-    final BaseRuntimeChildDefinition childDef;
-    try {
-      childDef = definition.getChildByName(fieldName);
-    } catch (final IllegalArgumentException e) {
-      // HAPI signals unknown children via both exceptions and null returns depending on the
-      // definition subtype; treat both as "field not found".
-      LOG.debug("Field '{}' not found on type '{}': {}", fieldName, getName(), e.getMessage());
-      return Optional.empty();
-    }
+    // Look up the child by name (try exact name first, then choice type name with [x] suffix)
+    final BaseRuntimeChildDefinition childDef = lookupChild(fieldName);
     if (childDef == null) {
       return Optional.empty();
     }
 
-    // Skip choice types (deferred to issue #42)
-    if (childDef instanceof RuntimeChildChoiceDefinition) {
-      return Optional.empty();
+    // Choice types (e.g., value[x]) — return ChoiceType for narrowing via ofType/is/as
+    if (childDef instanceof RuntimeChildChoiceDefinition choiceDef) {
+      final Cardinality cardinality =
+          childDef.getMax() != 1 ? Cardinality.MANY : Cardinality.SINGLE;
+      return Optional.of(
+          new FieldSpec(fieldName, Shape.of(new ChoiceType(choiceDef, fieldName), cardinality)));
     }
 
     // Determine cardinality
@@ -73,6 +68,31 @@ public non-sealed class FhirComplexType implements ComplexType {
     final Type fieldType = toFhirPathType(elementDef);
     final Shape shape = Shape.of(fieldType, cardinality);
     return Optional.of(new FieldSpec(fieldName, shape));
+  }
+
+  /**
+   * Looks up a child definition by name, with fallback for choice types.
+   *
+   * <p>HAPI's {@code getChildByName()} does not resolve the base name of choice types (e.g.,
+   * "value" returns null for Observation.value[x]). Following Pathling's approach, we fall back to
+   * appending "[x]" to find unqualified choice fields.
+   *
+   * @param fieldName the field name to look up
+   * @return the child definition, or null if not found
+   */
+  @jakarta.annotation.Nullable
+  private BaseRuntimeChildDefinition lookupChild(@Nonnull final String fieldName) {
+    try {
+      final BaseRuntimeChildDefinition childDef = definition.getChildByName(fieldName);
+      if (childDef != null) {
+        return childDef;
+      }
+      // Fallback: try choice type name with [x] suffix
+      return definition.getChildByName(fieldName + "[x]");
+    } catch (final IllegalArgumentException e) {
+      LOG.debug("Field '{}' not found on type '{}': {}", fieldName, getName(), e.getMessage());
+      return null;
+    }
   }
 
   /**
@@ -99,7 +119,7 @@ public non-sealed class FhirComplexType implements ComplexType {
    * @return the corresponding FHIRPath type
    */
   @Nonnull
-  private static Type toFhirPathType(@Nonnull final BaseRuntimeElementDefinition<?> elementDef) {
+  static Type toFhirPathType(@Nonnull final BaseRuntimeElementDefinition<?> elementDef) {
     if (elementDef instanceof RuntimePrimitiveDatatypeDefinition primDef) {
       final String fhirTypeName = primDef.getName();
       if (FhirPrimitiveType.isKnown(fhirTypeName)) {

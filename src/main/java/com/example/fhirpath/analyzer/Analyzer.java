@@ -23,8 +23,11 @@ import com.example.fhirpath.operation.OperatorNormalizer;
 import com.example.fhirpath.operation.OverloadResolutionException;
 import com.example.fhirpath.operation.OverloadResolver;
 import com.example.fhirpath.operation.signature.SignatureDefinition;
+import com.example.fhirpath.typing.ChoiceType;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
+import com.example.fhirpath.typing.FhirPrimitiveType;
+import com.example.fhirpath.typing.FieldSpec;
 import com.example.fhirpath.typing.InlineResourceType;
 import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.QuantityValue;
@@ -37,6 +40,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
@@ -251,6 +255,12 @@ public class Analyzer {
     // Resolve target (always needed, even for lambdas)
     final IRNode targetIr = analyze(resolvedCall.target());
 
+    // Check for type operations (ofType, is, as) — these take type specifiers, not expressions
+    final Optional<IRNode> typeOp = resolveTypeOperation(resolvedCall, targetIr);
+    if (typeOp.isPresent()) {
+      return typeOp.get();
+    }
+
     // Get all signatures for this function
     final List<SignatureDefinition> signatures =
         OperationResolver.getSignatures(call.functionName());
@@ -422,6 +432,148 @@ public class Analyzer {
     final OverloadResolver.ResolvedCall resolvedCall =
         OperationResolver.resolveBinaryOperator(operatorSymbol, leftArg, rightArg);
     return new Operation(operationName, resolvedCall.args(), resolvedCall.signature());
+  }
+
+  /**
+   * Resolves type operations (ofType, is, as) that take type specifiers instead of expressions.
+   *
+   * <p>These are intercepted before normal signature resolution because their arguments are type
+   * names, not evaluated expressions.
+   *
+   * @param call the function call AST node
+   * @param targetIr the analyzed target expression
+   * @return the resolved IR node, or empty if this is not a type operation
+   */
+  @Nonnull
+  private Optional<IRNode> resolveTypeOperation(
+      @Nonnull final AstFunctionCall call, @Nonnull final IRNode targetIr) {
+    final String name = call.functionName();
+    if (!"ofType".equals(name) && !"is".equals(name) && !"as".equals(name)) {
+      return Optional.empty();
+    }
+
+    // Extract type specifier string from argument
+    final String typeSpec = extractTypeSpecifier(call);
+    final Type targetType = targetIr.getType();
+
+    if (targetType instanceof ChoiceType choiceType) {
+      return Optional.of(resolveChoiceTypeOperation(name, choiceType, targetIr, typeSpec));
+    }
+
+    // Non-choice type: static type checking
+    return Optional.of(resolveNonChoiceTypeOperation(name, targetIr, typeSpec));
+  }
+
+  /**
+   * Extracts the type specifier string from a type operation argument.
+   *
+   * <p>Handles both desugared is/as (AstLiteral("Quantity")) and ofType(Quantity) parsed as
+   * AstTraversal.
+   */
+  @Nonnull
+  private String extractTypeSpecifier(@Nonnull final AstFunctionCall call) {
+    if (call.arguments().isEmpty()) {
+      throw new InvalidExpressionException(
+          "Type operation '" + call.functionName() + "' requires a type argument", null);
+    }
+    final AstNode arg = call.arguments().get(0);
+    if (arg instanceof AstLiteral lit && lit.value() instanceof String s) {
+      return stripNamespace(s);
+    }
+    if (arg instanceof AstTraversal trav) {
+      return stripNamespace(trav.path());
+    }
+    throw new InvalidExpressionException(
+        "Type operation '"
+            + call.functionName()
+            + "' requires a type specifier, got: "
+            + arg.getClass().getSimpleName(),
+        null);
+  }
+
+  /** Strips FHIR namespace prefix (e.g., "FHIR.Quantity" → "Quantity"). */
+  @Nonnull
+  private static String stripNamespace(@Nonnull final String typeSpec) {
+    if (typeSpec.startsWith("FHIR.")) {
+      return typeSpec.substring("FHIR.".length());
+    }
+    return typeSpec;
+  }
+
+  /**
+   * Resolves a type operation on a choice type by narrowing to a specific variant.
+   *
+   * <p>Pathling's FHIR encoders flatten choice types: variant columns (e.g., {@code valueQuantity},
+   * {@code valueString}) are siblings at the parent level, not nested under a {@code value} struct.
+   * The variant traversal therefore skips the choice-type traversal and attaches directly to the
+   * parent node.
+   */
+  @Nonnull
+  private IRNode resolveChoiceTypeOperation(
+      @Nonnull final String operation,
+      @Nonnull final ChoiceType choiceType,
+      @Nonnull final IRNode targetIr,
+      @Nonnull final String typeSpec) {
+    final Optional<FieldSpec> variant = choiceType.resolveVariant(typeSpec);
+    if (variant.isEmpty()) {
+      // Unknown variant — return empty for ofType/as, false for is
+      if ("is".equals(operation)) {
+        return new Literal(false, Types.BOOLEAN);
+      }
+      return new Literal(null, Types.NULL);
+    }
+
+    // Skip the choice traversal node and attach variant to its parent.
+    // e.g., value.ofType(Quantity) → Traversal(resource, "valueQuantity")
+    //        not Traversal(Traversal(resource, "value"), "valueQuantity")
+    final IRNode parentNode =
+        (targetIr instanceof Traversal choiceTraversal) ? choiceTraversal.target() : targetIr;
+    final Traversal variantTraversal = new Traversal(parentNode, variant.get());
+
+    return switch (operation) {
+      case "ofType", "as" -> variantTraversal;
+      case "is" -> {
+        // is → check if the variant column is non-null
+        final com.example.fhirpath.operation.signature.ResolvedSignature isSig =
+            new com.example.fhirpath.operation.signature.ResolvedSignature(
+                List.of(variantTraversal.getType()), Shape.single(Types.BOOLEAN));
+        yield new Operation("is", List.of(variantTraversal), isSig);
+      }
+      default -> throw new IllegalStateException("Unexpected type operation: " + operation);
+    };
+  }
+
+  /** Resolves a type operation on a non-choice type (static type check). */
+  @Nonnull
+  private IRNode resolveNonChoiceTypeOperation(
+      @Nonnull final String operation,
+      @Nonnull final IRNode targetIr,
+      @Nonnull final String typeSpec) {
+    final boolean matches = typeMatches(targetIr.getType(), typeSpec);
+
+    return switch (operation) {
+      case "is" -> new Literal(matches, Types.BOOLEAN);
+      case "as" -> matches ? targetIr : new Literal(null, Types.NULL);
+      case "ofType" -> matches ? targetIr : new Literal(null, Types.NULL);
+      default -> throw new IllegalStateException("Unexpected type operation: " + operation);
+    };
+  }
+
+  /**
+   * Checks whether a type matches a type specifier string.
+   *
+   * <p>Matches against both the FHIR type name (for FhirPrimitiveType) and common type names.
+   */
+  private static boolean typeMatches(@Nonnull final Type type, @Nonnull final String typeSpec) {
+    // Check FHIR primitive type by its FHIR name (e.g., "boolean", "string", "date")
+    if (type instanceof FhirPrimitiveType fpt) {
+      // Match against FHIR name (strip "FHIR." prefix from getName())
+      final String fhirName = fpt.getName().replace("FHIR.", "");
+      return fhirName.equals(typeSpec);
+    }
+
+    // Check complex types by name
+    return type.getName().equals(typeSpec);
   }
 
   private Type inferType(final Object value) {

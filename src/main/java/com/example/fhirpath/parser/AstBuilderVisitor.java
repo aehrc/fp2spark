@@ -248,7 +248,10 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
   @Override
   public AstNode visitTypeExpression(final FhirPathParser.TypeExpressionContext ctx) {
-    throw new UnsupportedOperationException("Type expressions (is, as) are not yet supported");
+    final AstNode left = visit(ctx.expression());
+    final String operator = ctx.getChild(1).getText(); // "is" or "as"
+    final String typeSpec = ctx.typeSpecifier().getText(); // e.g., "Quantity", "FHIR.string"
+    return new AstFunctionCall(operator, left, List.of(new AstLiteral(typeSpec)));
   }
 
   // Temporal literal handling

@@ -76,4 +76,9 @@ public non-sealed class InlineComplexType implements ComplexType {
   public List<FieldSpec> getFields() {
     return List.copyOf(fields.values());
   }
+
+  @Override
+  public String toString() {
+    return name;
+  }
 }

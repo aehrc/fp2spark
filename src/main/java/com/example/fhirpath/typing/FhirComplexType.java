@@ -109,4 +109,9 @@ public non-sealed class FhirComplexType implements ComplexType {
     // Fallback for unexpected types
     return FhirPrimitiveType.of("string");
   }
+
+  @Override
+  public String toString() {
+    return getName();
+  }
 }

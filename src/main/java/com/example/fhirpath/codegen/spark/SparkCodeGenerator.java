@@ -194,7 +194,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   @Override
   @Nonnull
   public Column visitResource(@Nonnull final Resource res) {
-    return res.type() != com.example.fhirpath.typing.ResourceType.EMPTY
+    return res.type() != com.example.fhirpath.typing.InlineResourceType.EMPTY
         ? col(res.type().getResourceName())
         : lit(null);
   }

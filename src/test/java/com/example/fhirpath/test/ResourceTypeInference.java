@@ -76,7 +76,7 @@ class ResourceTypeInference {
       fieldSpecs.add(new FieldSpec(fieldName, shape));
     }
 
-    return new ResourceType(resourceTypeName, fieldSpecs);
+    return new InlineResourceType(resourceTypeName, fieldSpecs);
   }
 
   /**
@@ -191,7 +191,7 @@ class ResourceTypeInference {
       fieldSpecs.add(new FieldSpec(fieldName, shape));
     }
 
-    return new ComplexType(fieldSpecs);
+    return new InlineComplexType(fieldSpecs);
   }
 
   /**

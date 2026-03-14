@@ -1,13 +1,11 @@
 package com.example.fhirpath.ir.fhir;
 
-import ca.uhn.fhir.context.FhirContext;
 import com.example.fhirpath.test.FhirPathTestBase;
 import com.example.fhirpath.typing.FhirPrimitiveType;
 import com.example.fhirpath.typing.FieldSpec;
-import com.example.fhirpath.typing.HapiTypeResolver;
+import com.example.fhirpath.typing.InlineResourceType;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
-import com.example.fhirpath.typing.TypeResolver;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -26,10 +24,8 @@ import org.junit.jupiter.api.TestFactory;
  */
 class FhirPrimitiveTypeConversionTest extends FhirPathTestBase {
 
-  private static final TypeResolver HAPI_RESOLVER = new HapiTypeResolver(FhirContext.forR4Cached());
-
   private static ResourceType patientType() {
-    return new ResourceType(
+    return new InlineResourceType(
         "Patient",
         new FieldSpec("id", Shape.single(FhirPrimitiveType.of("id"))),
         new FieldSpec("active", Shape.single(FhirPrimitiveType.of("boolean"))),
@@ -40,7 +36,6 @@ class FhirPrimitiveTypeConversionTest extends FhirPathTestBase {
   @TestFactory
   Stream<DynamicTest> testFieldTraversal() {
     return builder()
-        .withTypeResolver(HAPI_RESOLVER)
         .withSubject(
             patientType(),
             sb ->
@@ -59,7 +54,6 @@ class FhirPrimitiveTypeConversionTest extends FhirPathTestBase {
   @TestFactory
   Stream<DynamicTest> testFhirDateComparisonWithLiteral() {
     return builder()
-        .withTypeResolver(HAPI_RESOLVER)
         .withSubject(patientType(), sb -> sb.string("birthDate", "2024-01-15"))
         .group("FHIR date comparison with System literal")
         .testTrue("birthDate = @2024-01-15", "Date equality with system literal")
@@ -71,7 +65,6 @@ class FhirPrimitiveTypeConversionTest extends FhirPathTestBase {
   @TestFactory
   Stream<DynamicTest> testGetValueAndHasValue() {
     return builder()
-        .withTypeResolver(HAPI_RESOLVER)
         .withSubject(patientType(), sb -> sb.string("id", "patient-1").bool("active", true))
         .group("getValue() and hasValue()")
         .testEquals("patient-1", "id.getValue()", "getValue() returns the value")
@@ -83,7 +76,6 @@ class FhirPrimitiveTypeConversionTest extends FhirPathTestBase {
   @TestFactory
   Stream<DynamicTest> testGetValueAndHasValueForNull() {
     return builder()
-        .withTypeResolver(HAPI_RESOLVER)
         .withSubject(patientType(), sb -> sb.string("id", "patient-1"))
         .group("hasValue() with null")
         .testFalse("gender.hasValue()", "hasValue() returns false for null field")

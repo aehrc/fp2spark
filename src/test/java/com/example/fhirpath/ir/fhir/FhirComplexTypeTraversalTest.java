@@ -1,14 +1,12 @@
 package com.example.fhirpath.ir.fhir;
 
-import ca.uhn.fhir.context.FhirContext;
 import com.example.fhirpath.test.FhirPathTestBase;
-import com.example.fhirpath.typing.ComplexType;
 import com.example.fhirpath.typing.FhirPrimitiveType;
 import com.example.fhirpath.typing.FieldSpec;
-import com.example.fhirpath.typing.HapiTypeResolver;
+import com.example.fhirpath.typing.InlineComplexType;
+import com.example.fhirpath.typing.InlineResourceType;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
-import com.example.fhirpath.typing.TypeResolver;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DynamicTest;
@@ -28,18 +26,16 @@ import org.junit.jupiter.api.TestFactory;
  */
 class FhirComplexTypeTraversalTest extends FhirPathTestBase {
 
-  private static final TypeResolver HAPI_RESOLVER = new HapiTypeResolver(FhirContext.forR4Cached());
-
   private static ResourceType patientWithNameType() {
-    final ComplexType humanNameType =
-        new ComplexType(
+    final InlineComplexType humanNameType =
+        new InlineComplexType(
             "HumanName",
             List.of(
                 new FieldSpec("family", Shape.single(FhirPrimitiveType.of("string"))),
                 new FieldSpec("given", Shape.many(FhirPrimitiveType.of("string"))),
                 new FieldSpec("use", Shape.single(FhirPrimitiveType.of("code")))));
 
-    return new ResourceType(
+    return new InlineResourceType(
         "Patient",
         new FieldSpec("id", Shape.single(FhirPrimitiveType.of("id"))),
         new FieldSpec("name", Shape.many(humanNameType)));
@@ -48,7 +44,6 @@ class FhirComplexTypeTraversalTest extends FhirPathTestBase {
   @TestFactory
   Stream<DynamicTest> testNameFamilyTraversal() {
     return builder()
-        .withTypeResolver(HAPI_RESOLVER)
         .withSubject(
             patientWithNameType(),
             sb ->
@@ -76,7 +71,6 @@ class FhirComplexTypeTraversalTest extends FhirPathTestBase {
   @TestFactory
   Stream<DynamicTest> testFilteredNameTraversal() {
     return builder()
-        .withTypeResolver(HAPI_RESOLVER)
         .withSubject(
             patientWithNameType(),
             sb ->
@@ -102,7 +96,6 @@ class FhirComplexTypeTraversalTest extends FhirPathTestBase {
   @TestFactory
   Stream<DynamicTest> testSingleNameTraversal() {
     return builder()
-        .withTypeResolver(HAPI_RESOLVER)
         .withSubject(
             patientWithNameType(),
             sb ->

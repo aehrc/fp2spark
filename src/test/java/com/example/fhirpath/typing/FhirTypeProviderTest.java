@@ -6,13 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.context.RuntimeResourceDefinition;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 /**
- * Tests for {@link HapiTypeResolver} — HAPI FHIR R4 field resolution.
+ * Tests for {@link FhirComplexType} and {@link FhirResourceType} — HAPI FHIR R4 field resolution.
  *
  * <p>Verifies:
  *
@@ -28,19 +29,21 @@ import org.junit.jupiter.api.TestInstance;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FhirTypeProviderTest {
 
-  private HapiTypeResolver resolver;
+  private FhirContext fhirContext;
+  private FhirResourceType patient;
 
   @BeforeAll
   void setup() {
-    resolver = new HapiTypeResolver(FhirContext.forR4Cached());
+    fhirContext = FhirContext.forR4Cached();
+    final RuntimeResourceDefinition resDef = fhirContext.getResourceDefinition("Patient");
+    patient = new FhirResourceType(resDef);
   }
 
   // --- Patient fields ---
 
   @Test
   void resolvePatientId() {
-    final ResourceType patient = new ResourceType("Patient");
-    final Optional<FieldSpec> field = resolver.resolveField(patient, "id");
+    final Optional<FieldSpec> field = patient.resolveField("id");
     assertTrue(field.isPresent(), "Patient.id should be resolvable");
     assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
     assertTrue(field.get().isSingular(), "Patient.id should be SINGLE");
@@ -48,8 +51,7 @@ class FhirTypeProviderTest {
 
   @Test
   void resolvePatientActive() {
-    final ResourceType patient = new ResourceType("Patient");
-    final Optional<FieldSpec> field = resolver.resolveField(patient, "active");
+    final Optional<FieldSpec> field = patient.resolveField("active");
     assertTrue(field.isPresent(), "Patient.active should be resolvable");
     final FhirPrimitiveType type = assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
     assertEquals(PrimitiveType.BOOLEAN, type.getSystemType());
@@ -58,8 +60,7 @@ class FhirTypeProviderTest {
 
   @Test
   void resolvePatientGender() {
-    final ResourceType patient = new ResourceType("Patient");
-    final Optional<FieldSpec> field = resolver.resolveField(patient, "gender");
+    final Optional<FieldSpec> field = patient.resolveField("gender");
     assertTrue(field.isPresent(), "Patient.gender should be resolvable");
     final FhirPrimitiveType type = assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
     assertEquals(PrimitiveType.STRING, type.getSystemType());
@@ -68,8 +69,7 @@ class FhirTypeProviderTest {
 
   @Test
   void resolvePatientBirthDate() {
-    final ResourceType patient = new ResourceType("Patient");
-    final Optional<FieldSpec> field = resolver.resolveField(patient, "birthDate");
+    final Optional<FieldSpec> field = patient.resolveField("birthDate");
     assertTrue(field.isPresent(), "Patient.birthDate should be resolvable");
     final FhirPrimitiveType type = assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
     assertEquals(PrimitiveType.DATE, type.getSystemType());
@@ -78,10 +78,9 @@ class FhirTypeProviderTest {
 
   @Test
   void resolvePatientName() {
-    final ResourceType patient = new ResourceType("Patient");
-    final Optional<FieldSpec> field = resolver.resolveField(patient, "name");
+    final Optional<FieldSpec> field = patient.resolveField("name");
     assertTrue(field.isPresent(), "Patient.name should be resolvable");
-    assertInstanceOf(ComplexType.class, field.get().getType());
+    assertInstanceOf(FhirComplexType.class, field.get().getType());
     assertFalse(field.get().isSingular(), "Patient.name should be MANY");
   }
 
@@ -89,8 +88,13 @@ class FhirTypeProviderTest {
 
   @Test
   void resolveHumanNameFamily() {
-    final ComplexType humanName = new ComplexType("HumanName");
-    final Optional<FieldSpec> field = resolver.resolveField(humanName, "family");
+    // Resolve HumanName via Patient.name, then resolve family on it
+    final Optional<FieldSpec> nameField = patient.resolveField("name");
+    assertTrue(nameField.isPresent());
+    final FhirComplexType humanName =
+        assertInstanceOf(FhirComplexType.class, nameField.get().getType());
+
+    final Optional<FieldSpec> field = humanName.resolveField("family");
     assertTrue(field.isPresent(), "HumanName.family should be resolvable");
     final FhirPrimitiveType type = assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
     assertEquals(PrimitiveType.STRING, type.getSystemType());
@@ -99,8 +103,12 @@ class FhirTypeProviderTest {
 
   @Test
   void resolveHumanNameGiven() {
-    final ComplexType humanName = new ComplexType("HumanName");
-    final Optional<FieldSpec> field = resolver.resolveField(humanName, "given");
+    final Optional<FieldSpec> nameField = patient.resolveField("name");
+    assertTrue(nameField.isPresent());
+    final FhirComplexType humanName =
+        assertInstanceOf(FhirComplexType.class, nameField.get().getType());
+
+    final Optional<FieldSpec> field = humanName.resolveField("given");
     assertTrue(field.isPresent(), "HumanName.given should be resolvable");
     final FhirPrimitiveType type = assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
     assertEquals(PrimitiveType.STRING, type.getSystemType());
@@ -111,38 +119,42 @@ class FhirTypeProviderTest {
 
   @Test
   void resolveNonExistentField() {
-    final ResourceType patient = new ResourceType("Patient");
-    final Optional<FieldSpec> field = resolver.resolveField(patient, "nonExistentField");
+    final Optional<FieldSpec> field = patient.resolveField("nonExistentField");
     assertFalse(field.isPresent(), "Non-existent field should return empty");
   }
 
   @Test
   void resolveFieldOnPrimitiveType() {
-    final Optional<FieldSpec> field =
-        resolver.resolveField(FhirPrimitiveType.of("string"), "value");
+    final Optional<FieldSpec> field = FhirPrimitiveType.of("string").resolveField("value");
     assertFalse(field.isPresent(), "Primitive types should have no child fields");
   }
 
   @Test
   void resolveFieldOnSystemPrimitiveType() {
-    final Optional<FieldSpec> field = resolver.resolveField(PrimitiveType.STRING, "value");
+    final Optional<FieldSpec> field = PrimitiveType.STRING.resolveField("value");
     assertFalse(field.isPresent(), "System primitive types should have no child fields");
   }
 
   @Test
   void resolveChoiceTypeReturnsEmpty() {
     // Patient.deceased[x] is a choice type — should return empty (deferred to #42)
-    final ResourceType patient = new ResourceType("Patient");
-    final Optional<FieldSpec> field = resolver.resolveField(patient, "deceased");
+    final Optional<FieldSpec> field = patient.resolveField("deceased");
     assertFalse(field.isPresent(), "Choice types should return empty (deferred to #42)");
   }
 
   @Test
   void recursiveTypesDoNotLoop() {
-    // Reference contains identifier, which could reference back
-    // Just verify we can resolve a few levels deep without infinite loop
-    final ComplexType reference = new ComplexType("Reference");
-    final Optional<FieldSpec> displayField = resolver.resolveField(reference, "display");
+    // Resolve Reference type via HAPI and verify we can traverse it
+    final RuntimeResourceDefinition patientDef = fhirContext.getResourceDefinition("Patient");
+    final FhirResourceType patientType = new FhirResourceType(patientDef);
+
+    // Patient.generalPractitioner is a Reference
+    final Optional<FieldSpec> gpField = patientType.resolveField("generalPractitioner");
+    assertTrue(gpField.isPresent(), "Patient.generalPractitioner should be resolvable");
+    final FhirComplexType reference =
+        assertInstanceOf(FhirComplexType.class, gpField.get().getType());
+
+    final Optional<FieldSpec> displayField = reference.resolveField("display");
     assertTrue(displayField.isPresent(), "Reference.display should be resolvable");
   }
 }

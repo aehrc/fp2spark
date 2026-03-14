@@ -137,6 +137,18 @@ class ChoiceTypesAndTypeOperatorsTest extends FhirPathTestBase {
         .build();
   }
 
+  // --- ofType() on non-choice types ---
+
+  @TestFactory
+  Stream<DynamicTest> testOfTypeOnNonChoiceType() {
+    return builder()
+        .withSubject(createPatient())
+        .group("ofType() on non-choice types")
+        .testEquals(true, "active.ofType(boolean)", "ofType with matching type returns value")
+        .testEmpty("active.ofType(string)", "ofType with non-matching type returns empty")
+        .build();
+  }
+
   // --- FHIR-qualified type names ---
 
   @TestFactory

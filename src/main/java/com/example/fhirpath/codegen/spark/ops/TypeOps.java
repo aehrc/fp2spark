@@ -22,7 +22,8 @@ public final class TypeOps {
    * @param registry the registry to register operations into
    */
   public static void register(final SparkOperationRegistry registry) {
-    // is: check if the variant column is non-null
+    // is: check if the variant column is non-null.
+    // Corresponds to the IR Operation("is", ...) created by Analyzer.resolveChoiceTypeOperation().
     registry.unary("is", col -> col.isNotNull());
   }
 }

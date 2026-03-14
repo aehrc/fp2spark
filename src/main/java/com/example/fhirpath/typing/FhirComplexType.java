@@ -6,6 +6,7 @@ import ca.uhn.fhir.context.BaseRuntimeElementDefinition;
 import ca.uhn.fhir.context.RuntimeChildChoiceDefinition;
 import ca.uhn.fhir.context.RuntimePrimitiveDatatypeDefinition;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,16 +49,14 @@ public non-sealed class FhirComplexType implements ComplexType {
       return Optional.empty();
     }
 
+    // Determine cardinality (shared by both choice and non-choice paths)
+    final Cardinality cardinality = childDef.getMax() != 1 ? Cardinality.MANY : Cardinality.SINGLE;
+
     // Choice types (e.g., value[x]) — return ChoiceType for narrowing via ofType/is/as
     if (childDef instanceof RuntimeChildChoiceDefinition choiceDef) {
-      final Cardinality cardinality =
-          childDef.getMax() != 1 ? Cardinality.MANY : Cardinality.SINGLE;
       return Optional.of(
           new FieldSpec(fieldName, Shape.of(new ChoiceType(choiceDef, fieldName), cardinality)));
     }
-
-    // Determine cardinality
-    final Cardinality cardinality = childDef.getMax() != 1 ? Cardinality.MANY : Cardinality.SINGLE;
 
     // Resolve the element type from the child definition
     final BaseRuntimeElementDefinition<?> elementDef = resolveElementDefinition(childDef);
@@ -80,7 +79,7 @@ public non-sealed class FhirComplexType implements ComplexType {
    * @param fieldName the field name to look up
    * @return the child definition, or null if not found
    */
-  @jakarta.annotation.Nullable
+  @Nullable
   private BaseRuntimeChildDefinition lookupChild(@Nonnull final String fieldName) {
     try {
       final BaseRuntimeChildDefinition childDef = definition.getChildByName(fieldName);

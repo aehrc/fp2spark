@@ -135,6 +135,9 @@ public final class OperationRegistry {
         register("hasValue", Signatures.unaryFunc(ANY, BOOLEAN)),
 
         // TYPE TESTING (FHIRPath Spec 6.1)
+        // Note: is/as/ofType are intercepted early by Analyzer.resolveTypeOperation() before
+        // normal signature resolution. This registration exists so that the "unknown function"
+        // guard in resolveFunctionCall() does not reject the operation name.
 
         register("is", Signatures.typeTest(ANY)),
 

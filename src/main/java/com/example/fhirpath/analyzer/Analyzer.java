@@ -22,6 +22,7 @@ import com.example.fhirpath.operation.OperationResolver;
 import com.example.fhirpath.operation.OperatorNormalizer;
 import com.example.fhirpath.operation.OverloadResolutionException;
 import com.example.fhirpath.operation.OverloadResolver;
+import com.example.fhirpath.operation.signature.ResolvedSignature;
 import com.example.fhirpath.operation.signature.SignatureDefinition;
 import com.example.fhirpath.typing.ChoiceType;
 import com.example.fhirpath.typing.DateTimeValue;
@@ -491,7 +492,12 @@ public class Analyzer {
         null);
   }
 
-  /** Strips FHIR namespace prefix (e.g., "FHIR.Quantity" → "Quantity"). */
+  /**
+   * Strips FHIR namespace prefix (e.g., "FHIR.Quantity" → "Quantity").
+   *
+   * <p>Note: {@code System.} namespace qualifiers (e.g., {@code System.String}) are not yet
+   * supported. These are uncommon in practice and can be added when needed.
+   */
   @Nonnull
   private static String stripNamespace(@Nonnull final String typeSpec) {
     if (typeSpec.startsWith("FHIR.")) {
@@ -534,9 +540,8 @@ public class Analyzer {
       case "ofType", "as" -> variantTraversal;
       case "is" -> {
         // is → check if the variant column is non-null
-        final com.example.fhirpath.operation.signature.ResolvedSignature isSig =
-            new com.example.fhirpath.operation.signature.ResolvedSignature(
-                List.of(variantTraversal.getType()), Shape.single(Types.BOOLEAN));
+        final ResolvedSignature isSig =
+            new ResolvedSignature(List.of(variantTraversal.getType()), Shape.single(Types.BOOLEAN));
         yield new Operation("is", List.of(variantTraversal), isSig);
       }
       default -> throw new IllegalStateException("Unexpected type operation: " + operation);

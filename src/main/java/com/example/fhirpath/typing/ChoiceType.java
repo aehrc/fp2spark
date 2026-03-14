@@ -4,7 +4,8 @@ import ca.uhn.fhir.context.BaseRuntimeElementDefinition;
 import ca.uhn.fhir.context.RuntimeChildChoiceDefinition;
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
-import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a FHIR choice type (e.g., {@code value[x]} on Observation).
@@ -17,6 +18,8 @@ import java.util.Set;
  * variant.
  */
 public final class ChoiceType implements Type {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ChoiceType.class);
 
   private final RuntimeChildChoiceDefinition childDefinition;
   private final String elementName;
@@ -54,7 +57,7 @@ public final class ChoiceType implements Type {
    * {@code is}, or {@code as} first.
    */
   @Override
-  public Optional<FieldSpec> resolveField(final String fieldName) {
+  public Optional<FieldSpec> resolveField(@Nonnull final String fieldName) {
     return Optional.empty();
   }
 
@@ -74,11 +77,17 @@ public final class ChoiceType implements Type {
         elementName + typeName.substring(0, 1).toUpperCase() + typeName.substring(1);
 
     // Check if this is a valid variant.
-    // HAPI throws AssertionError for invalid child names on RuntimeChildChoiceDefinition.
+    // HAPI throws AssertionError (not IllegalArgumentException) for invalid child names
+    // on RuntimeChildChoiceDefinition — this is an upstream quirk we must work around.
     final BaseRuntimeElementDefinition<?> elementDef;
     try {
       elementDef = childDefinition.getChildByName(columnName);
     } catch (final IllegalArgumentException | AssertionError e) {
+      LOG.warn(
+          "Variant '{}' not found on choice element '{}': {}",
+          columnName,
+          elementName,
+          e.getMessage());
       return Optional.empty();
     }
     if (elementDef == null) {
@@ -87,22 +96,6 @@ public final class ChoiceType implements Type {
 
     final Type variantType = FhirComplexType.toFhirPathType(elementDef);
     return Optional.of(new FieldSpec(columnName, Shape.single(variantType)));
-  }
-
-  /**
-   * Returns the set of valid variant column names (e.g., "valueQuantity", "valueString").
-   *
-   * @return set of valid child names from the HAPI definition
-   */
-  @Nonnull
-  public Set<String> getVariantNames() {
-    return childDefinition.getValidChildNames();
-  }
-
-  /** Returns the base element name (e.g., "value", "deceased"). */
-  @Nonnull
-  public String getElementName() {
-    return elementName;
   }
 
   @Override

@@ -100,7 +100,6 @@ Key points:
 - [ARCHITECTURE.md](ARCHITECTURE.md) - System architecture and design patterns
 - [JAVA_CODING_STYLE.md](JAVA_CODING_STYLE.md) - Java coding conventions
 - [docs/SHAREABLE_VIEW_REQUIREMENTS.md](docs/SHAREABLE_VIEW_REQUIREMENTS.md) - FHIRPath requirements
-- [docs/phase1/PHASE1_STRATEGY.md](docs/phase1/PHASE1_STRATEGY.md) - Phase 1 implementation plan
 
 ## License
 

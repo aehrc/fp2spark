@@ -70,7 +70,7 @@ Type information is resolved during analysis and stored in IR nodes:
 - **OperationResolver**: Facade for operation resolution
 - **OperationRegistry**: Maps operation names to signatures
 - **OverloadResolver**: Selects best-matching signature by adaptation cost
-- **Type System**: See [docs/TYPE_SYSTEM_DESIGN.md](docs/TYPE_SYSTEM_DESIGN.md)
+- **Type System**: See [TYPE_SYSTEM.md](TYPE_SYSTEM.md)
 
 **Input**: AST tree
 **Output**: Typed IR tree with resolved signatures
@@ -115,7 +115,7 @@ Type information is resolved during analysis and stored in IR nodes:
 
 ## Type System
 
-**Full documentation**: [docs/TYPE_SYSTEM_DESIGN.md](docs/TYPE_SYSTEM_DESIGN.md)
+**Full documentation**: [TYPE_SYSTEM.md](TYPE_SYSTEM.md)
 
 ### Element-First Model
 
@@ -338,7 +338,6 @@ com.example.fhirpath/
 
 ### Design Documents
 
-- **[docs/TYPE_SYSTEM_DESIGN.md](docs/TYPE_SYSTEM_DESIGN.md)** - Type system design, element-first model, implementation phases
 - **[docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)** - Code generator architecture, functional operation registry
 
 ### Specifications

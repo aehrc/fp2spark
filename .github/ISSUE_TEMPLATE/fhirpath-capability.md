@@ -65,7 +65,6 @@ Part of #3 (Phase 1 - Stage X.Y)
 
 ## References
 
-- Phase 1 Strategy: [docs/phase1/PHASE1_STRATEGY.md](https://github.com/piotrszul/fp2spark/blob/main/docs/phase1/PHASE1_STRATEGY.md)
 - Epic: #3
 - FHIRPath Spec: `specs/FHIRPath.md` (Section X.Y: [Section Name])
 - Prerequisites: #XX (Stage X.Y)

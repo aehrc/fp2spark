@@ -68,7 +68,7 @@ Type information is resolved during analysis and stored in IR nodes:
 
 **Key Subsystems**:
 - **OperationResolver**: Facade for operation resolution
-- **OperationRegistry**: Maps operation names to signatures
+- **OperationRegistry**: Maps operation names to signature definitions (single source of truth)
 - **OverloadResolver**: Selects best-matching signature by adaptation cost
 - **Type System**: See [TYPE_SYSTEM.md](TYPE_SYSTEM.md)
 
@@ -99,17 +99,7 @@ Type information is resolved during analysis and stored in IR nodes:
 
 **Architecture**: See [docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)
 
-**Key Design**:
-- **Functional Operation Registry**: Operations are pure functions registered in `SparkOperationRegistry`
-- **Simple dispatch**: `SparkCodeGenerator.visitOperation()` looks up operation by name and calls the function
-- **Grouped registration**: Operations organized by domain in `ops/` package (`BooleanOps`, `ArithmeticOps`, etc.)
-- **No reflection, annotations, or base classes** — just functions
-
-**Code generators implement** `IRNodeVisitor<T>` where `T` is target type:
-- `SparkCodeGenerator implements IRNodeVisitor<Column>`
-- `SqlServerCodeGenerator implements IRNodeVisitor<String>`
-
-**Adding New Targets**: Implement new visitor class. No changes to IR or other layers required.
+**Code generators implement** `IRNodeVisitor<T>` where `T` is target type (e.g., `Column` for Spark, `String` for SQL Server). Adding new targets requires only implementing a new visitor — no changes to IR or other layers.
 
 ---
 
@@ -117,96 +107,9 @@ Type information is resolved during analysis and stored in IR nodes:
 
 **Full documentation**: [TYPE_SYSTEM.md](TYPE_SYSTEM.md)
 
-### Element-First Model
+The type system uses an **element-first model**: types represent individual elements (`INTEGER`, `STRING`, `QUANTITY`, etc.), and cardinality (`SINGLE` or `MANY`) is orthogonal metadata — not part of the type hierarchy. The combination of element type + cardinality forms a **Shape** (e.g., `Shape(SINGLE, INTEGER)`).
 
-**Core Concepts**:
-- **Element Types**: `INTEGER`, `STRING`, `BOOLEAN`, `DATE_TIME`, `DECIMAL`, `QUANTITY`, etc.
-- **Cardinality**: `SINGLE` (0..1) or `MANY` (0..*)
-- **Shape**: Combines element type + cardinality (e.g., `Shape(ONE, INTEGER)`)
-
-**Key Principle**: Cardinality is metadata, not part of type hierarchy. No `CollectionType` - all types represent elements.
-
-**Implicit Adaptations** (for overload resolution):
-- Numeric widening: `INTEGER → DECIMAL` (cost 1)
-- Numeric to Quantity: `INTEGER → QUANTITY`, `DECIMAL → QUANTITY` (cost 1)
-- Temporal: `DATE → DATE_TIME` (cost 1)
-- FHIR value extraction: `Fhir[T] → T` (cost 1)
-
-### Implementation Status
-
-**Phase 1 - Complete** (Simple signatures):
-- ✅ Element-first type system with cardinality as metadata
-- ✅ Simple signatures with concrete types
-- ✅ Cardinality enforcement per FHIRPath spec
-- ✅ Arithmetic, comparison, string, collection operations
-- ✅ Quantity type with literal parsing, same-unit equality/comparison
-- ✅ Temporal types (Date, DateTime, Time) with literals and equality/comparison
-
-**Phase 2 - Future** (Polymorphic signatures):
-- Type variables for polymorphism (`?T`, `*T`)
-- Type constraints (e.g., `T ∈ Arithmetic`)
-- Mixed-type arithmetic (`2 + 2.5`)
-- Polymorphic operators (`union`, `in`, `contains`)
-
-### Signature System
-
-**Current** (Phase 1):
-```
-ParamSpec(Type, Cardinality)
-ResultTypeSpec(Type, Cardinality)
-SignatureDefinition(params, result, minArity)
-```
-
-**Example signatures** enumerate types explicitly:
-- `+(INTEGER, INTEGER) → INTEGER`
-- `+(DECIMAL, DECIMAL) → DECIMAL`
-- `count(*T) → ?INTEGER`
-
----
-
-## Code Generation Architecture
-
-**Full documentation**: [docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)
-
-### Functional Operation Registry
-
-Operations are pure functions dispatched through `SparkOperationRegistry`:
-
-```java
-@FunctionalInterface
-public interface SparkOperationDef {
-    Column generate(List<Column> args, List<IRNode> argNodes,
-                    Type resultType, SparkCodeGenerator generator);
-}
-```
-
-### Convenience Registration
-
-- `registry.binary(name, fn)` — simple two-argument ops (e.g., `Column::and`)
-- `registry.unary(name, fn)` — simple one-argument ops (e.g., `functions::not`)
-- `registry.register(name, def)` — full control for type-dispatched or complex ops
-
-### Operation Groups
-
-Operations are organized by domain in the `ops/` package:
-
-Each `*Ops` class registers related operations for a domain area (e.g., `BooleanOps` for `and`/`or`/`xor`/`implies`/`not`, `ArithmeticOps` for arithmetic operators, `CombineOps` for the combine operator). See the `ops/` package for the full set.
-
----
-
-## Operation Registry
-
-The `OperationRegistry` maps operation names to signature definitions.
-
-**Design Goals**:
-- Zero overhead for single signatures (most common)
-- Minimal code to add functions (~5 lines)
-- Single source of truth for type system
-- Easy to audit against FHIRPath specification
-
-**Current** (Phase 1): Signatures enumerate concrete types explicitly
-
-**Future** (Phase 2): Type variables enable polymorphic signatures with fewer definitions
+This design enables clean overload resolution: the `OverloadResolver` can independently match argument types and validate cardinality constraints, inserting implicit adaptations (numeric widening, temporal promotion, FHIR value extraction) when needed.
 
 ---
 
@@ -280,50 +183,6 @@ The `OperationRegistry` maps operation names to signature definitions.
 
 ---
 
-## Package Organization
-
-```
-com.example.fhirpath/
-├── analyzer/              - AST → IR transformation
-│   └── Analyzer.java
-├── operation/             - Operation resolution subsystem
-│   ├── OperationResolver.java
-│   ├── OperationRegistry.java
-│   ├── OverloadResolver.java
-│   └── ...
-├── operation/signature/   - Type signature specifications
-│   ├── SignatureDefinition.java
-│   ├── ParamSpec.java
-│   ├── ResultTypeSpec.java
-│   └── ...
-├── typing/                - Type system (element-first model)
-│   ├── Type.java
-│   ├── Shape.java
-│   ├── Cardinality.java
-│   └── ...
-├── ir/                    - Intermediate representation nodes
-│   ├── IRNode.java
-│   ├── Operation.java
-│   ├── Literal.java
-│   └── ...
-└── codegen/
-    └── spark/
-        ├── SparkCodeGenerator.java    - IR → Column visitor
-        ├── SparkOperationDef.java     - Functional interface for operations
-        ├── SparkOperationRegistry.java - Operation name → function map
-        ├── SparkTypeMapper.java       - FHIRPath → Spark type mapping
-        ├── CollectionValue.java        - Column + cardinality wrapper
-        ├── SparkOpContext.java         - Operation context with helpers
-        └── ops/                       - Grouped operation registrations
-            ├── BooleanOps.java
-            ├── ArithmeticOps.java
-            ├── ComparisonOps.java
-            ├── CollectionOps.java
-            └── FilteringOps.java
-```
-
----
-
 ## Testing Strategy
 
 **Primary strategy**: FHIRPath expression tests (full pipeline)
@@ -338,6 +197,7 @@ com.example.fhirpath/
 
 ### Design Documents
 
+- **[TYPE_SYSTEM.md](TYPE_SYSTEM.md)** - Element-first type system, adaptation costs, signature syntax
 - **[docs/CODEGEN_DESIGN.md](docs/CODEGEN_DESIGN.md)** - Code generator architecture, functional operation registry
 
 ### Specifications

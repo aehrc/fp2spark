@@ -53,20 +53,12 @@ public non-sealed class FhirComplexType implements ComplexType {
     // Determine cardinality (shared by both choice and non-choice paths)
     final Cardinality cardinality = childDef.getMax() != 1 ? Cardinality.MANY : Cardinality.SINGLE;
 
-    // Extension children (RuntimeChildExtension extends RuntimeChildChoiceDefinition in HAPI,
-    // but are not actual choice types — they are composite Extension elements). Must be checked
-    // before the choice type branch to avoid misclassification.
-    if (childDef instanceof RuntimeChildExtension) {
-      final BaseRuntimeElementDefinition<?> elementDef = resolveElementDefinition(childDef);
-      if (elementDef == null) {
-        return Optional.empty();
-      }
-      final Type fieldType = toFhirPathType(elementDef);
-      return Optional.of(new FieldSpec(fieldName, Shape.of(fieldType, cardinality)));
-    }
-
-    // Choice types (e.g., value[x]) — return ChoiceType for narrowing via ofType/is/as
-    if (childDef instanceof RuntimeChildChoiceDefinition choiceDef) {
+    // Choice types (e.g., value[x]) — return ChoiceType for narrowing via ofType/is/as.
+    // RuntimeChildExtension extends RuntimeChildChoiceDefinition in HAPI but is NOT a
+    // polymorphic choice type — it is a composite Extension element. Exclude it here so
+    // it falls through to the general composite resolution path below.
+    if (childDef instanceof RuntimeChildChoiceDefinition choiceDef
+        && !(childDef instanceof RuntimeChildExtension)) {
       return Optional.of(
           new FieldSpec(fieldName, Shape.of(new ChoiceType(choiceDef, fieldName), cardinality)));
     }

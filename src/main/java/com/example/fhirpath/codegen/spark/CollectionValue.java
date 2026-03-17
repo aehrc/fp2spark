@@ -68,8 +68,7 @@ public record CollectionValue(Column column, boolean isSingular) {
    */
   @Nonnull
   public CollectionValue map(@Nonnull final Function<Column, Column> fn) {
-    final Column result =
-        isSingular ? fn.apply(column) : functions.transform(column, elem -> fn.apply(elem));
+    final Column result = isSingular ? fn.apply(column) : functions.transform(column, fn::apply);
     return new CollectionValue(result, isSingular);
   }
 

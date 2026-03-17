@@ -119,4 +119,16 @@ class ExtensionFunctionTest extends FhirPathTestBase {
             "Count nested extensions")
         .build();
   }
+
+  @TestFactory
+  Stream<DynamicTest> testExtensionEdgeCases() {
+    return builder()
+        .group("extension() edge cases")
+        .withSubject(createPatientWithExtensions())
+        .testEmpty("extension('')", "Empty URL returns empty")
+        .withSubject(new Patient())
+        .testEmpty("extension('http://example.org/any')", "No extensions on resource")
+        .testEquals(0, "extension().count()", "No-arg count on resource with no extensions")
+        .build();
+  }
 }

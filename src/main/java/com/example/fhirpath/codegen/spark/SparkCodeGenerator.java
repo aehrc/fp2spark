@@ -38,6 +38,12 @@ import org.apache.spark.sql.types.DataType;
  */
 public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
+  /** Pathling flat schema: resource-level map from _fid to extension arrays. */
+  private static final String EXTENSION_MAP_COLUMN = "_extension";
+
+  /** Pathling flat schema: integer identity field present on every composite struct. */
+  private static final String FID_COLUMN = "_fid";
+
   @Nullable private final Column thisColumn;
 
   @Nonnull private final SparkOperationRegistry registry;
@@ -192,16 +198,17 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
    */
   @Nonnull
   private Column visitExtensionTraversal(@Nonnull final Traversal trav) {
-    final Column extensionMap = col("_extension");
+    // _extension is always a resource-level column in Pathling's flat schema, not a field
+    // of the target element. It is a Map<Integer, Array<Extension>> keyed by _fid.
+    final Column extensionMap = col(EXTENSION_MAP_COLUMN);
 
     if (trav.target() instanceof Resource) {
-      // Resource-level: element_at(_extension, _fid)
-      return functions.element_at(extensionMap, col("_fid"));
+      return functions.element_at(extensionMap, col(FID_COLUMN));
     }
 
     final Column target = trav.target().accept(this);
     return new CollectionValue(target, trav.target().isSingular())
-        .map(elem -> functions.element_at(extensionMap, elem.getField("_fid")))
+        .map(elem -> functions.element_at(extensionMap, elem.getField(FID_COLUMN)))
         .filterNulls()
         .flatten()
         .column();

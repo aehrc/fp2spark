@@ -60,6 +60,48 @@ public record CollectionValue(Column column, boolean isSingular) {
   }
 
   /**
+   * Applies an element-wise transformation. For arrays, uses Spark's {@code transform()}. For
+   * singular values, applies the function directly. The result preserves the original cardinality.
+   *
+   * @param fn the function to apply to each element
+   * @return a new CollectionValue with the transformation applied
+   */
+  @Nonnull
+  public CollectionValue map(@Nonnull final Function<Column, Column> fn) {
+    final Column result =
+        isSingular ? fn.apply(column) : functions.transform(column, elem -> fn.apply(elem));
+    return new CollectionValue(result, isSingular);
+  }
+
+  /**
+   * Removes null elements. For arrays, uses Spark's {@code filter(isNotNull)}. For singular values,
+   * this is a no-op (null propagation is handled elsewhere).
+   *
+   * @return a new CollectionValue with nulls removed
+   */
+  @Nonnull
+  public CollectionValue filterNulls() {
+    if (isSingular) {
+      return this;
+    }
+    return new CollectionValue(functions.filter(column, Column::isNotNull), false);
+  }
+
+  /**
+   * Flattens nested arrays. For arrays, uses Spark's {@code flatten()}. For singular values, this
+   * is a no-op since there is nothing to flatten.
+   *
+   * @return a new CollectionValue with nested arrays flattened
+   */
+  @Nonnull
+  public CollectionValue flatten() {
+    if (isSingular) {
+      return this;
+    }
+    return new CollectionValue(functions.flatten(column), false);
+  }
+
+  /**
    * Create a function that always returns a constant value as a literal column.
    *
    * @param constValue The constant value to return

@@ -200,19 +200,11 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     }
 
     final Column target = trav.target().accept(this);
-    final CollectionValue targetValue = new CollectionValue(target, trav.target().isSingular());
-
-    return targetValue.apply(
-        // MANY: transform each element to its extensions, then flatten
-        arr -> {
-          Column mapped =
-              functions.transform(
-                  arr, elem -> functions.element_at(extensionMap, elem.getField("_fid")));
-          mapped = functions.filter(mapped, Column::isNotNull);
-          return functions.flatten(mapped);
-        },
-        // SINGLE: direct map lookup
-        elem -> functions.element_at(extensionMap, elem.getField("_fid")));
+    return new CollectionValue(target, trav.target().isSingular())
+        .map(elem -> functions.element_at(extensionMap, elem.getField("_fid")))
+        .filterNulls()
+        .flatten()
+        .column();
   }
 
   @Override

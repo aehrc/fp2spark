@@ -167,7 +167,13 @@ public class Analyzer {
   /**
    * Desugars function calls with known equivalences.
    *
-   * <p>Current transformations: - exists(criteria) → where(criteria).exists()
+   * <p>Current transformations:
+   *
+   * <ul>
+   *   <li>{@code exists(criteria)} → {@code where(criteria).exists()}
+   *   <li>{@code extension()} → {@code .extension} traversal (all extensions, convenience shortcut)
+   *   <li>{@code extension(url)} → {@code .extension.where(url = <url>)}
+   * </ul>
    */
   @Nonnull
   private AstNode desugarFunctionCall(@Nonnull final AstFunctionCall call) {
@@ -176,6 +182,20 @@ public class Analyzer {
       final AstFunctionCall whereCall =
           new AstFunctionCall("where", call.target(), call.arguments());
       return new AstFunctionCall("exists", whereCall, List.of());
+    }
+
+    // extension() with no args is a convenience shortcut (not in the FHIR FHIRPath spec).
+    // Equivalent to the plain .extension traversal, returning all extensions on the element.
+    if ("extension".equals(call.functionName()) && call.arguments().isEmpty()) {
+      return new AstTraversal("extension", call.target());
+    }
+
+    // extension(url) → .extension.where(url = <url>)
+    if ("extension".equals(call.functionName()) && call.arguments().size() == 1) {
+      final AstTraversal extensionTraversal = new AstTraversal("extension", call.target());
+      final AstBinaryOperator urlEquals =
+          new AstBinaryOperator("=", new AstTraversal("url"), call.arguments().get(0));
+      return new AstFunctionCall("where", extensionTraversal, List.of(urlEquals));
     }
 
     return call;

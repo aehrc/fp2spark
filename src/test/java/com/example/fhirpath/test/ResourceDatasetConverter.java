@@ -4,12 +4,9 @@ import com.example.fhirpath.typing.ResourceType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import java.util.List;
-import java.util.Map;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.types.DataTypes;
-import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
 /**
@@ -49,8 +46,7 @@ class ResourceDatasetConverter {
   /**
    * Convert ResourceTestData to a Spark Dataset.
    *
-   * <p>Creates a Dataset with a single column named after the resource type, containing a struct
-   * with all the resource fields.
+   * <p>Creates a Dataset with a flat schema where resource fields are top-level columns.
    *
    * @param spark The SparkSession to use
    * @param resource The resource test data to convert
@@ -69,28 +65,17 @@ class ResourceDatasetConverter {
           SCHEMA_CONVERTER.toStructType(
               (com.example.fhirpath.typing.InlineComplexType) resourceType);
 
-      // Step 3: Create outer schema with resource type name as column
-      final StructType outerSchema =
-          DataTypes.createStructType(
-              new StructField[] {
-                DataTypes.createStructField(resource.getResourceTypeName(), fieldsSchema, true)
-              });
+      // Step 3: Convert Map data to JSON string (flat schema — no outer wrapping)
+      final String jsonData = JSON_MAPPER.writeValueAsString(resource.getData());
 
-      // Step 4: Wrap the data in an outer object with resource type name as key
-      final Map<String, Object> wrappedData =
-          Map.of(resource.getResourceTypeName(), resource.getData());
-
-      // Step 5: Convert wrapped Map to JSON string
-      final String jsonData = JSON_MAPPER.writeValueAsString(wrappedData);
-
-      // Step 6: Create single-element JSON list
+      // Step 4: Create single-element JSON list
       final String jsonArray = "[" + jsonData + "]";
 
-      // Step 7: Create Dataset from JSON with outer schema
+      // Step 5: Create Dataset from JSON with flat schema
       final Dataset<Row> dataset =
           spark
               .read()
-              .schema(outerSchema)
+              .schema(fieldsSchema)
               .json(
                   spark.createDataset(List.of(jsonArray), org.apache.spark.sql.Encoders.STRING()));
 

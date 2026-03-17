@@ -408,6 +408,13 @@ public class Analyzer {
     // Resolve implicit target if needed
     final AstTraversal resolvedTraversal = resolveWithImplicitTarget(traversal);
     final IRNode targetIr = analyze(resolvedTraversal.target());
+
+    // Resource type name reference (e.g., "Patient" when context is a Patient resource)
+    if (targetIr instanceof Resource res
+        && resolvedTraversal.path().equals(res.type().getResourceName())) {
+      return res;
+    }
+
     return targetIr
         .getType()
         .resolveField(resolvedTraversal.path())

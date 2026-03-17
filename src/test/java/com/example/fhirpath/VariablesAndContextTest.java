@@ -96,6 +96,8 @@ public class VariablesAndContextTest extends FhirPathTestBase {
                         "name", n -> n.string("use", "official"), n -> n.string("use", "alias")))
         .testEquals(1, "%resource.count()")
         .testTrue("exists()")
+        .testEquals(1, "Patient.count()")
+        .testTrue("Patient.exists()")
         .build();
   }
 

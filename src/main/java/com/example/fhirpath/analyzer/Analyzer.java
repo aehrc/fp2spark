@@ -504,7 +504,7 @@ public class Analyzer {
    * Extracts the type specifier string from a function call argument.
    *
    * <p>Handles both desugared is/as (AstLiteral("Quantity")) and ofType(Quantity) parsed as
-   * AstTraversal.
+   * AstTraversal. Also used by {@code getReferenceKey(Type)} for its optional type argument.
    */
   @Nonnull
   private String extractTypeSpecifier(@Nonnull final AstFunctionCall call) {

@@ -50,16 +50,15 @@ public final class FhirOps {
         "getReferenceKey",
         ctx -> {
           final CollectionValue ref = ctx.collectionArg(0);
-          // No type arg, or the optional arg was padded with a null literal (variadic sentinel)
-          if (ctx.args().size() <= 1 || ctx.argNode(1) instanceof Literal l && l.value() == null) {
+          if (ctx.args().size() <= 1) {
             return ref.map(r -> r.getField("reference")).column();
           }
           // With type filter: extract reference only if it matches "Type/..."
-          final String typeSpec = (String) ((Literal) ctx.argNode(1)).value();
+          final String typePrefix = ((Literal) ctx.argNode(1)).value() + "/";
           return ref.map(
                   r -> {
                     final org.apache.spark.sql.Column refField = r.getField("reference");
-                    return when(refField.startsWith(typeSpec + "/"), refField);
+                    return when(refField.startsWith(typePrefix), refField);
                   })
               .filterNulls()
               .column();

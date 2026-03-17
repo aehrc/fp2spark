@@ -282,6 +282,12 @@ public class Analyzer {
       return typeOp.get();
     }
 
+    // Check for SQL on FHIR key functions (getResourceKey, getReferenceKey)
+    final Optional<IRNode> keyOp = resolveKeyFunction(resolvedCall, targetIr);
+    if (keyOp.isPresent()) {
+      return keyOp.get();
+    }
+
     // Get all signatures for this function
     final List<SignatureDefinition> signatures =
         OperationResolver.getSignatures(call.functionName());
@@ -608,6 +614,76 @@ public class Analyzer {
 
     // Check complex types by name
     return type.getName().equals(typeSpec);
+  }
+
+  /**
+   * Resolves SQL on FHIR key functions (getResourceKey, getReferenceKey).
+   *
+   * <p>These are intercepted before normal signature resolution because:
+   *
+   * <ul>
+   *   <li>{@code getResourceKey()} requires access to the resource type name from the IR
+   *   <li>{@code getReferenceKey(Type)} takes an optional type specifier argument (not an
+   *       expression)
+   * </ul>
+   */
+  @Nonnull
+  private Optional<IRNode> resolveKeyFunction(
+      @Nonnull final AstFunctionCall call, @Nonnull final IRNode targetIr) {
+    return switch (call.functionName()) {
+      case "getResourceKey" -> Optional.of(resolveGetResourceKey(call, targetIr));
+      case "getReferenceKey" -> Optional.of(resolveGetReferenceKey(call, targetIr));
+      default -> Optional.empty();
+    };
+  }
+
+  /**
+   * Resolves {@code getResourceKey()} — returns "ResourceType/id".
+   *
+   * <p>Must be called on a Resource node with no arguments.
+   */
+  @Nonnull
+  private IRNode resolveGetResourceKey(
+      @Nonnull final AstFunctionCall call, @Nonnull final IRNode targetIr) {
+    if (!call.arguments().isEmpty()) {
+      throw new InvalidExpressionException("getResourceKey() takes no arguments", null);
+    }
+    if (!(targetIr instanceof Resource)) {
+      throw new InvalidExpressionException(
+          "getResourceKey() can only be called on a resource root", null);
+    }
+    final ResolvedSignature sig =
+        new ResolvedSignature(List.of(targetIr.getType()), Shape.single(Types.STRING));
+    return new Operation("getResourceKey", List.of(targetIr), sig);
+  }
+
+  /**
+   * Resolves {@code getReferenceKey([type])} — returns the reference string, optionally filtered by
+   * type.
+   *
+   * <p>Must be called on a Reference element. The optional type argument is a type specifier (not
+   * an expression).
+   */
+  @Nonnull
+  private IRNode resolveGetReferenceKey(
+      @Nonnull final AstFunctionCall call, @Nonnull final IRNode targetIr) {
+    if (call.arguments().size() > 1) {
+      throw new InvalidExpressionException("getReferenceKey() takes 0 or 1 arguments", null);
+    }
+    if (!"Reference".equals(targetIr.getType().getName())) {
+      throw new InvalidExpressionException(
+          "getReferenceKey() can only be called on a Reference element", null);
+    }
+    // Preserve target cardinality: singular Reference → ?STRING, collection → *STRING
+    final Shape resultShape = Shape.of(Types.STRING, targetIr.getShape().cardinality());
+    final ResolvedSignature sig = new ResolvedSignature(List.of(targetIr.getType()), resultShape);
+    if (call.arguments().isEmpty()) {
+      return new Operation("getReferenceKey", List.of(targetIr), sig);
+    }
+    // Extract type specifier from argument
+    final String typeSpec = extractTypeSpecifier(call);
+    return new Operation(
+        "getReferenceKey", List.of(targetIr, new Literal(typeSpec, Types.STRING)), sig);
   }
 
   private Type inferType(final Object value) {

@@ -147,7 +147,11 @@ public final class OperationRegistry {
         // Collection<T>.iif(Lambda<Boolean>, Lambda<Collection<R>>) → Collection<R>
         // Both lambdas operate on entire collection (COLLECTION_WISE binding)
         // Phase 1: Use ANY for generic types (Phase 2 will add type variables)
-        register("iif", Signatures.conditionalIif(ANY, ANY)));
+        register("iif", Signatures.conditionalIif(ANY, ANY)),
+
+        // SQL ON FHIR KEY FUNCTIONS (intercepted by Analyzer.resolveKeyFunction())
+        register("getResourceKey", Signatures.unaryFunc(ANY, STRING)),
+        register("getReferenceKey", Signatures.unaryFunc(ANY, STRING)));
   }
 
   /**

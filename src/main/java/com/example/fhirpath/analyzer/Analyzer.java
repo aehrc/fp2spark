@@ -408,6 +408,15 @@ public class Analyzer {
     // Resolve implicit target if needed
     final AstTraversal resolvedTraversal = resolveWithImplicitTarget(traversal);
     final IRNode targetIr = analyze(resolvedTraversal.target());
+
+    // FHIRPath type specifier shorthand: "Patient.X" ≡ "X" when the context is already a Patient.
+    // Assumes resource type name never collides with a field name (true for FHIR resources).
+    // Must be extended if polymorphic collection support is added.
+    if (targetIr instanceof Resource res
+        && resolvedTraversal.path().equals(res.type().getResourceName())) {
+      return res;
+    }
+
     return targetIr
         .getType()
         .resolveField(resolvedTraversal.path())

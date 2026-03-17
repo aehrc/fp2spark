@@ -9,7 +9,6 @@ import java.util.List;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.functions;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 
 /**
@@ -39,12 +38,12 @@ record HapiTestSubject(@Nonnull IBaseResource resource) implements TestSubject {
   @Nonnull
   public Dataset<Row> toDataset(@Nonnull final SparkSession spark) {
     // Use Pathling encoders for complete schema (all fields present, nulls for absent)
+    // Safe cast: resource.getClass() is always a concrete IBaseResource subtype
     @SuppressWarnings("unchecked")
     final var encoder = FHIR_ENCODERS.of((Class<IBaseResource>) resource.getClass());
     final Dataset<Row> flat = spark.createDataset(List.of(resource), encoder).toDF();
 
-    // Wrap all columns into a struct named after the resource type
-    final String name = getResourceTypeName();
-    return flat.select(functions.struct(flat.col("*")).alias(name));
+    // Flat schema: return dataset directly (Pathling encoders already produce flat columns)
+    return flat;
   }
 }

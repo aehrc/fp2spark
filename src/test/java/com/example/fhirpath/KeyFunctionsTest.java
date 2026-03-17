@@ -95,6 +95,8 @@ class KeyFunctionsTest extends FhirPathTestBase {
             InvalidExpressionException.class,
             "subject.getResourceKey()",
             "Called on non-resource target")
+        .testError(
+            InvalidExpressionException.class, "getResourceKey(Patient)", "Called with argument")
         .build();
   }
 
@@ -107,6 +109,10 @@ class KeyFunctionsTest extends FhirPathTestBase {
             InvalidExpressionException.class,
             "getReferenceKey()",
             "Called on resource root, not Reference")
+        .testError(
+            InvalidExpressionException.class,
+            "subject.getReferenceKey(Patient, Encounter)",
+            "Too many arguments")
         .build();
   }
 }

@@ -150,6 +150,9 @@ public final class OperationRegistry {
         register("iif", Signatures.conditionalIif(ANY, ANY)),
 
         // SQL ON FHIR KEY FUNCTIONS (intercepted by Analyzer.resolveKeyFunction())
+        // These registrations are never reached by OverloadResolver — the intercept fires first.
+        // They exist so that the "unknown function" guard in resolveFunctionCall() does not reject
+        // the operation name. Spark code generation is registered separately in FhirOps.
         register("getResourceKey", Signatures.unaryFunc(ANY, STRING)),
         register("getReferenceKey", Signatures.unaryFunc(ANY, STRING)));
   }

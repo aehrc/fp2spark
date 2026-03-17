@@ -501,7 +501,7 @@ public class Analyzer {
   }
 
   /**
-   * Extracts the type specifier string from a type operation argument.
+   * Extracts the type specifier string from a function call argument.
    *
    * <p>Handles both desugared is/as (AstLiteral("Quantity")) and ofType(Quantity) parsed as
    * AstTraversal.
@@ -510,7 +510,7 @@ public class Analyzer {
   private String extractTypeSpecifier(@Nonnull final AstFunctionCall call) {
     if (call.arguments().isEmpty()) {
       throw new InvalidExpressionException(
-          "Type operation '" + call.functionName() + "' requires a type argument", null);
+          "Function '" + call.functionName() + "' requires a type argument", null);
     }
     final AstNode arg = call.arguments().get(0);
     if (arg instanceof AstLiteral lit && lit.value() instanceof String s) {
@@ -520,7 +520,7 @@ public class Analyzer {
       return stripNamespace(trav.path());
     }
     throw new InvalidExpressionException(
-        "Type operation '"
+        "Function '"
             + call.functionName()
             + "' requires a type specifier, got: "
             + arg.getClass().getSimpleName(),

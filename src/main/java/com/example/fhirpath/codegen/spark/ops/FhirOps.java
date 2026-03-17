@@ -18,6 +18,9 @@ import com.example.fhirpath.ir.Resource;
  */
 public final class FhirOps {
 
+  /** Pathling flat schema: resource logical id column. */
+  private static final String RESOURCE_ID_COLUMN = "id";
+
   private FhirOps() {}
 
   /**
@@ -36,9 +39,10 @@ public final class FhirOps {
     registry.register(
         "getResourceKey",
         ctx -> {
+          // Guaranteed by Analyzer.resolveGetResourceKey() — target is always a Resource node.
           final Resource resource = (Resource) ctx.argNode(0);
           final String resourceName = resource.type().getResourceName();
-          return concat(lit(resourceName + "/"), col("id"));
+          return concat(lit(resourceName + "/"), col(RESOURCE_ID_COLUMN));
         });
 
     // getReferenceKey([type]) — returns reference string, optionally filtered by type
@@ -46,8 +50,8 @@ public final class FhirOps {
         "getReferenceKey",
         ctx -> {
           final CollectionValue ref = ctx.collectionArg(0);
+          // No type arg, or the optional arg was padded with a null literal (variadic sentinel)
           if (ctx.args().size() <= 1 || ctx.argNode(1) instanceof Literal l && l.value() == null) {
-            // No type filter: extract the reference field
             return ref.map(r -> r.getField("reference")).column();
           }
           // With type filter: extract reference only if it matches "Type/..."

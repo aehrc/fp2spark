@@ -38,6 +38,7 @@ record HapiTestSubject(@Nonnull IBaseResource resource) implements TestSubject {
   @Nonnull
   public Dataset<Row> toDataset(@Nonnull final SparkSession spark) {
     // Use Pathling encoders for complete schema (all fields present, nulls for absent)
+    // Safe cast: resource.getClass() is always a concrete IBaseResource subtype
     @SuppressWarnings("unchecked")
     final var encoder = FHIR_ENCODERS.of((Class<IBaseResource>) resource.getClass());
     final Dataset<Row> flat = spark.createDataset(List.of(resource), encoder).toDF();

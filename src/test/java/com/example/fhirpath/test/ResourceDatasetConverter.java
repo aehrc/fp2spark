@@ -72,14 +72,10 @@ class ResourceDatasetConverter {
       final String jsonArray = "[" + jsonData + "]";
 
       // Step 5: Create Dataset from JSON with flat schema
-      final Dataset<Row> dataset =
-          spark
-              .read()
-              .schema(fieldsSchema)
-              .json(
-                  spark.createDataset(List.of(jsonArray), org.apache.spark.sql.Encoders.STRING()));
-
-      return dataset;
+      return spark
+          .read()
+          .schema(fieldsSchema)
+          .json(spark.createDataset(List.of(jsonArray), org.apache.spark.sql.Encoders.STRING()));
     } catch (Exception e) {
       throw new RuntimeException(
           "Failed to convert ResourceTestData to Dataset: " + e.getMessage(), e);

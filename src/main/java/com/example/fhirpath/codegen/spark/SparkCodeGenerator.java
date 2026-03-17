@@ -160,7 +160,8 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   @Nonnull
   public Column visitTraversal(@Nonnull final Traversal trav) {
     if (trav.target() instanceof Resource) {
-      // Flat schema: resource fields are top-level columns
+      // Flat schema: resource fields are top-level columns.
+      // Assumes Resource is always the outermost target (root of the IR tree).
       return col(trav.fieldSpec().getName());
     }
     final Column target = trav.target().accept(this);
@@ -199,6 +200,8 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   @Override
   @Nonnull
   public Column visitResource(@Nonnull final Resource res) {
+    // Sentinel: lit(true) represents resource existence (always non-null for known types),
+    // making count()/exists() work naturally. Matches Pathling's ResourceRepresentation.
     return res.type() != InlineResourceType.EMPTY ? lit(true) : lit(null);
   }
 

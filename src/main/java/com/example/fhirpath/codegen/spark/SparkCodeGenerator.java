@@ -159,6 +159,11 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   @Override
   @Nonnull
   public Column visitTraversal(@Nonnull final Traversal trav) {
+    // Special handling: extension field uses _extension[_fid] map lookup
+    if ("extension".equals(trav.fieldSpec().getName())) {
+      return visitExtensionTraversal(trav);
+    }
+
     if (trav.target() instanceof Resource) {
       // Flat schema: resource fields are top-level columns.
       // Assumes Resource is always the outermost target (root of the IR tree).
@@ -175,6 +180,39 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
       }
     }
     return result;
+  }
+
+  /**
+   * Generates code for extension traversal using the _extension[_fid] map lookup.
+   *
+   * <p>In Pathling's flat schema, extensions are stored in a resource-level {@code _extension} map
+   * ({@code Map<Integer, Array<Extension>>}), keyed by {@code _fid} (an integer identity on every
+   * composite struct). Accessing extensions requires {@code element_at(_extension, element._fid)}
+   * rather than a normal field access.
+   */
+  @Nonnull
+  private Column visitExtensionTraversal(@Nonnull final Traversal trav) {
+    final Column extensionMap = col("_extension");
+
+    if (trav.target() instanceof Resource) {
+      // Resource-level: element_at(_extension, _fid)
+      return functions.element_at(extensionMap, col("_fid"));
+    }
+
+    final Column target = trav.target().accept(this);
+    final CollectionValue targetValue = new CollectionValue(target, trav.target().isSingular());
+
+    return targetValue.apply(
+        // MANY: transform each element to its extensions, then flatten
+        arr -> {
+          Column mapped =
+              functions.transform(
+                  arr, elem -> functions.element_at(extensionMap, elem.getField("_fid")));
+          mapped = functions.filter(mapped, Column::isNotNull);
+          return functions.flatten(mapped);
+        },
+        // SINGLE: direct map lookup
+        elem -> functions.element_at(extensionMap, elem.getField("_fid")));
   }
 
   @Override

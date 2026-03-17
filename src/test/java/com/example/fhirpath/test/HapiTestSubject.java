@@ -20,7 +20,11 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 record HapiTestSubject(@Nonnull IBaseResource resource) implements TestSubject {
 
   private static final FhirContext FHIR_CONTEXT = FhirContext.forR4Cached();
-  private static final FhirEncoders FHIR_ENCODERS = FhirEncoders.forR4().getOrCreate();
+  private static final FhirEncoders FHIR_ENCODERS =
+      FhirEncoders.forR4()
+          .withExtensionsEnabled(true)
+          .withOpenTypes(FhirEncoders.STANDARD_OPEN_TYPES)
+          .getOrCreate();
 
   @Override
   @Nonnull

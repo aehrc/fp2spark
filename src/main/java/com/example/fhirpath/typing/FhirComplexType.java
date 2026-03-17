@@ -4,6 +4,7 @@ import ca.uhn.fhir.context.BaseRuntimeChildDefinition;
 import ca.uhn.fhir.context.BaseRuntimeElementCompositeDefinition;
 import ca.uhn.fhir.context.BaseRuntimeElementDefinition;
 import ca.uhn.fhir.context.RuntimeChildChoiceDefinition;
+import ca.uhn.fhir.context.RuntimeChildExtension;
 import ca.uhn.fhir.context.RuntimePrimitiveDatatypeDefinition;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -51,6 +52,18 @@ public non-sealed class FhirComplexType implements ComplexType {
 
     // Determine cardinality (shared by both choice and non-choice paths)
     final Cardinality cardinality = childDef.getMax() != 1 ? Cardinality.MANY : Cardinality.SINGLE;
+
+    // Extension children (RuntimeChildExtension extends RuntimeChildChoiceDefinition in HAPI,
+    // but are not actual choice types — they are composite Extension elements). Must be checked
+    // before the choice type branch to avoid misclassification.
+    if (childDef instanceof RuntimeChildExtension) {
+      final BaseRuntimeElementDefinition<?> elementDef = resolveElementDefinition(childDef);
+      if (elementDef == null) {
+        return Optional.empty();
+      }
+      final Type fieldType = toFhirPathType(elementDef);
+      return Optional.of(new FieldSpec(fieldName, Shape.of(fieldType, cardinality)));
+    }
 
     // Choice types (e.g., value[x]) — return ChoiceType for narrowing via ofType/is/as
     if (childDef instanceof RuntimeChildChoiceDefinition choiceDef) {

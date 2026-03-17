@@ -178,6 +178,19 @@ public class Analyzer {
       return new AstFunctionCall("exists", whereCall, List.of());
     }
 
+    // extension() → .extension (plain traversal returning all extensions)
+    if ("extension".equals(call.functionName()) && call.arguments().isEmpty()) {
+      return new AstTraversal("extension", call.target());
+    }
+
+    // extension(url) → .extension.where(url = <url>)
+    if ("extension".equals(call.functionName()) && call.arguments().size() == 1) {
+      final AstTraversal extensionTraversal = new AstTraversal("extension", call.target());
+      final AstBinaryOperator urlEquals =
+          new AstBinaryOperator("=", new AstTraversal("url"), call.arguments().get(0));
+      return new AstFunctionCall("where", extensionTraversal, List.of(urlEquals));
+    }
+
     return call;
   }
 

@@ -4,28 +4,9 @@ Ra# Claude Code Reference
 
 This project implements FHIRPath to SQL translation.
 
-## Pathling Reference Implementation
-
-The `.local/pathling/` directory (symlink) contains the Pathling project, a mature FHIRPath to SparkSQL implementation. Use it as a reference when implementing FHIRPath capabilities.
-
-**IMPORTANT:** Use symlink-following options when searching (e.g., `find -L`, `grep -R`).
-
-**Key directories:**
-- `.local/pathling/fhirpath/src/main/java/au/csiro/pathling/fhirpath/` - Core FHIRPath logic
-- `.local/pathling/fhirpath/src/test/java/` - Test patterns and examples
-- `.local/pathling/utilities/src/main/java/au/csiro/pathling/fhirpath/literal/` - Literal parsing
-
 ## Working Files
 
 Working documents go in `.local/work/` (gitignored). Migrate finalized content to appropriate locations.
-
-## Important References
-
-### FHIRPath Specification
-
-The complete FHIRPath specification is at `specs/FHIRPath.md`. The FHIR-specific bindings are at `specs/FHIR_FHIRpath.md`.
-
-**IMPORTANT:** These files are very large. Do NOT load entirely — use `Grep` to search for specific sections, then `Read` with offset/limit.
 
 ## Testing Guidelines
 

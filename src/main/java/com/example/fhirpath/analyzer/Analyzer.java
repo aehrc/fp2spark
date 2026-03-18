@@ -41,6 +41,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -63,9 +64,11 @@ public class Analyzer {
   @Nullable
   private final Shape thisShape; // For lambda analysis - tracks both type and cardinality of $this
 
+  @Nonnull private final Map<String, IRNode> userVariables;
+
   /** Creates an analyzer with no context or resource type. */
   public Analyzer() {
-    this(AstVariable.resourceVariable(), InlineResourceType.EMPTY, null);
+    this(AstVariable.resourceVariable(), InlineResourceType.EMPTY, null, Map.of());
   }
 
   /**
@@ -74,7 +77,7 @@ public class Analyzer {
    * @param contextNode the context node for %context resolution
    */
   public Analyzer(@Nonnull final AstNode contextNode) {
-    this(contextNode, InlineResourceType.EMPTY, null);
+    this(contextNode, InlineResourceType.EMPTY, null, Map.of());
   }
 
   /**
@@ -83,7 +86,7 @@ public class Analyzer {
    * @param resourceSpec the resource type specification
    */
   public Analyzer(@Nonnull final ResourceType resourceSpec) {
-    this(AstVariable.resourceVariable(), resourceSpec, null);
+    this(AstVariable.resourceVariable(), resourceSpec, null, Map.of());
   }
 
   /**
@@ -93,17 +96,30 @@ public class Analyzer {
    * @param resourceSpec the resource type specification
    */
   public Analyzer(@Nonnull final AstNode contextNode, @Nonnull final ResourceType resourceSpec) {
-    this(contextNode, resourceSpec, null);
+    this(contextNode, resourceSpec, null, Map.of());
+  }
+
+  /**
+   * Creates an analyzer with the given resource type and user-defined variables.
+   *
+   * @param resourceSpec the resource type specification
+   * @param userVariables named variables available as %name in FHIRPath expressions
+   */
+  public Analyzer(
+      @Nonnull final ResourceType resourceSpec, @Nonnull final Map<String, IRNode> userVariables) {
+    this(AstVariable.resourceVariable(), resourceSpec, null, userVariables);
   }
 
   /** Private constructor for full configuration including lambda $this binding. */
   private Analyzer(
       @Nonnull final AstNode contextNode,
       @Nonnull final ResourceType resourceSpec,
-      @Nullable final Shape thisShape) {
+      @Nullable final Shape thisShape,
+      @Nonnull final Map<String, IRNode> userVariables) {
     this.contextNode = contextNode;
     this.resourceSpec = resourceSpec;
     this.thisShape = thisShape;
+    this.userVariables = userVariables;
   }
 
   /**
@@ -112,7 +128,7 @@ public class Analyzer {
    * @param shape the shape (type + cardinality) of $this
    */
   private Analyzer withThisShape(@Nonnull final Shape shape) {
-    return new Analyzer(this.contextNode, this.resourceSpec, shape);
+    return new Analyzer(this.contextNode, this.resourceSpec, shape, this.userVariables);
   }
 
   /**
@@ -233,9 +249,15 @@ public class Analyzer {
     return switch (variable.name()) {
       case CONTEXT_VARIABLE -> new Analyzer(resourceSpec).analyze(contextNode);
       case RESOURCE_VARIABLE -> new Resource(resourceSpec);
-      default ->
-          throw new InvalidExpressionException(
-              "Unknown FHIRPath environment variable: " + variable.name(), null);
+      default -> {
+        // Check user-defined variables before throwing.
+        final IRNode userVar = userVariables.get(variable.name());
+        if (userVar != null) {
+          yield userVar;
+        }
+        throw new InvalidExpressionException(
+            "Unknown FHIRPath environment variable: " + variable.name(), null);
+      }
     };
   }
 

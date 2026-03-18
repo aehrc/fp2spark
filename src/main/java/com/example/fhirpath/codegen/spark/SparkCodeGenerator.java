@@ -46,6 +46,8 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
   @Nullable private final Column thisColumn;
 
+  @Nullable private final Column rootColumn;
+
   @Nonnull private final SparkOperationRegistry registry;
 
   /**
@@ -54,13 +56,16 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
    * @param registry the operation registry for dispatch
    */
   public SparkCodeGenerator(@Nonnull final SparkOperationRegistry registry) {
-    this(null, registry);
+    this(null, null, registry);
   }
 
-  /** Private constructor for creating instances with a bound $this column. */
+  /** Private constructor for creating instances with full configuration. */
   private SparkCodeGenerator(
-      @Nullable final Column thisColumn, @Nonnull final SparkOperationRegistry registry) {
+      @Nullable final Column thisColumn,
+      @Nullable final Column rootColumn,
+      @Nonnull final SparkOperationRegistry registry) {
     this.thisColumn = thisColumn;
+    this.rootColumn = rootColumn;
     this.registry = registry;
   }
 
@@ -70,7 +75,21 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
    */
   @Nonnull
   SparkCodeGenerator withThisColumn(@Nonnull final Column thisColumn) {
-    return new SparkCodeGenerator(thisColumn, this.registry);
+    return new SparkCodeGenerator(thisColumn, this.rootColumn, this.registry);
+  }
+
+  /**
+   * Creates a new SparkCodeGenerator with the root column bound to the specified column. When set,
+   * resource-level field access uses {@code rootColumn.getField(fieldName)} instead of {@code
+   * col(fieldName)}, enabling evaluation relative to a sub-element (e.g., a Spark lambda
+   * parameter).
+   *
+   * @param root the column to use as the root for field access
+   * @return a new generator with the root column bound
+   */
+  @Nonnull
+  public SparkCodeGenerator withRootColumn(@Nullable final Column root) {
+    return new SparkCodeGenerator(this.thisColumn, root, this.registry);
   }
 
   @Override
@@ -171,9 +190,12 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     }
 
     if (trav.target() instanceof Resource) {
-      // Flat schema: resource fields are top-level columns.
-      // Assumes Resource is always the outermost target (root of the IR tree).
-      return col(trav.fieldSpec().getName());
+      // Flat schema: resource fields are top-level columns when rootColumn is null.
+      // When rootColumn is set, field access is relative to the root column (e.g., a lambda
+      // parameter for forEach/repeat evaluation).
+      return rootColumn != null
+          ? rootColumn.getField(trav.fieldSpec().getName())
+          : col(trav.fieldSpec().getName());
     }
     final Column target = trav.target().accept(this);
     Column result = target.getField(trav.fieldSpec().getName());
@@ -205,7 +227,10 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     final Column extensionMap = col(EXTENSION_MAP_COLUMN);
 
     if (trav.target() instanceof Resource) {
-      return functions.element_at(extensionMap, col(FID_COLUMN));
+      // When rootColumn is set, _fid access is relative to the root column. The extension map
+      // is always resource-level (col(_extension)), regardless of root binding.
+      final Column fid = rootColumn != null ? rootColumn.getField(FID_COLUMN) : col(FID_COLUMN);
+      return functions.element_at(extensionMap, fid);
     }
 
     final Column target = trav.target().accept(this);

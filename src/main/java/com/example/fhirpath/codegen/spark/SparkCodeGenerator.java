@@ -184,6 +184,8 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
       if (!trav.fieldSpec().isSingular()) {
         result = functions.flatten(result);
       }
+      // Convert empty arrays to null (FHIRPath empty collection = null in Spark)
+      result = when(functions.size(result).gt(lit(0)), result);
     }
     return result;
   }

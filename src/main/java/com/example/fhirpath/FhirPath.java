@@ -8,6 +8,8 @@ import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.parser.ParserFacade;
 import com.example.fhirpath.typing.ResourceType;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.spark.sql.Column;
 
@@ -89,6 +91,42 @@ public final class FhirPath {
       @Nonnull final String context,
       @Nonnull final ResourceType resourceSpec) {
     return compile(expr, context, resourceSpec);
+  }
+
+  /**
+   * Compiles a FHIRPath expression into an IR node without generating target-specific code. This
+   * allows two-step compilation: compile once, then generate with different root bindings.
+   *
+   * @param expr the FHIRPath expression to compile
+   * @param resourceSpec the resource type specification
+   * @param variables named variables available as %name in FHIRPath expressions
+   * @return an IR node representing the compiled expression
+   */
+  @Nonnull
+  public static IRNode compileToIr(
+      @Nonnull final String expr,
+      @Nonnull final ResourceType resourceSpec,
+      @Nonnull final Map<String, IRNode> variables) {
+    log.debug("Compiling FHIRPath expression to IR: {}", expr);
+    final AstNode ast = ParserFacade.parse(expr);
+    final Analyzer analyzer = new Analyzer(resourceSpec, variables);
+    return analyzer.analyze(ast);
+  }
+
+  /**
+   * Generates a Spark SQL Column from a pre-compiled IR node, optionally with a root column
+   * binding. When rootColumn is null, resource-level field access uses top-level dataset columns.
+   * When rootColumn is set, field access is relative to the root column.
+   *
+   * @param ir the pre-compiled IR node
+   * @param rootColumn the root column for field access, or null for dataset root
+   * @return a Spark SQL Column representing the IR
+   */
+  @Nonnull
+  public static Column generate(@Nonnull final IRNode ir, @Nullable final Column rootColumn) {
+    final SparkCodeGenerator gen =
+        new SparkCodeGenerator(SparkOperationRegistry.standard()).withRootColumn(rootColumn);
+    return ir.accept(gen);
   }
 
   /**

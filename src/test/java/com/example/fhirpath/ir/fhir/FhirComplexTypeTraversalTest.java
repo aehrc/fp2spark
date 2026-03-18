@@ -94,6 +94,19 @@ class FhirComplexTypeTraversalTest extends FhirPathTestBase {
   }
 
   @TestFactory
+  Stream<DynamicTest> testEmptyNestedCollectionTraversal() {
+    return builder()
+        .withSubject(
+            patientWithNameType(),
+            sb -> sb.string("id", "p1").elementArray("name", n -> n.string("family", "Smith")))
+        .group("Empty nested collection")
+        .testFalse("name.given.exists()")
+        .testTrue("name.given.empty()")
+        .testEquals(0, "name.given.count()")
+        .build();
+  }
+
+  @TestFactory
   Stream<DynamicTest> testSingleNameTraversal() {
     return builder()
         .withSubject(

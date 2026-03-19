@@ -69,15 +69,19 @@ public final class MembershipOps {
     final Column element = ctx.arg(elementIdx);
     final CollectionValue collection = ctx.collectionArg(collectionIdx);
 
-    // Convert collection to array (wraps singular in array if needed, null → empty array)
-    final Column collectionArray = collection.asArray();
-
     // Build type-aware equality comparator
     final BiFunction<Column, Column, Column> equalsFn = equalityForType(elementType);
 
-    // exists(collection, e -> equals(e, element))
+    // For arrays: exists(array, e -> equals(e, element))
+    // For singular: direct equality comparison (avoids unnecessary array wrapping)
+    // Null collection at runtime → false (empty collection returns false per spec)
+    final Column result =
+        collection.applyNonNull(
+            arr -> exists(arr, e -> equalsFn.apply(e, element)),
+            col -> equalsFn.apply(col, element),
+            functions.lit(false));
+
     // When element is null at runtime, return null (empty collection semantics)
-    final Column result = exists(collectionArray, e -> equalsFn.apply(e, element));
     return when(element.isNotNull(), result).otherwise(functions.lit(null));
   }
 

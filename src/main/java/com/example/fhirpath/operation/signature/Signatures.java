@@ -205,6 +205,23 @@ public final class Signatures {
   }
 
   /**
+   * Collection subsetter: (*T, ...) → *T. Returns a sub-collection preserving element type.
+   *
+   * <p>Uses dynamic result type resolution to preserve the actual element type from the input
+   * collection, with MANY cardinality.
+   *
+   * <p>Examples: *T.tail() → *T, *T.skip(?INTEGER) → *T
+   */
+  @Nonnull
+  public static SignatureDefinition collectionSubsetter(
+      @Nonnull final Type elementType, @Nonnull final ParamSpec... additionalParams) {
+    final List<ParamSpec> params = new java.util.ArrayList<>();
+    params.add(many(elementType));
+    params.addAll(java.util.Arrays.asList(additionalParams));
+    return new SignatureDefinition(params, ResultTypeSpec.effectiveInputType(Cardinality.MANY));
+  }
+
+  /**
    * Collection aggregator: *T → ?R. Reduces collection to single value.
    *
    * <p>Example: *T.count() → ?INTEGER

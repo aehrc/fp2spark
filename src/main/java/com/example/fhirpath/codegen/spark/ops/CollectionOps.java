@@ -8,7 +8,8 @@ import java.util.function.Function;
 import org.apache.spark.sql.functions;
 
 /**
- * Collection function registrations (count, exists, empty, first, indexer).
+ * Collection function registrations (count, exists, empty, first, last, tail, skip, take, single,
+ * indexer).
  *
  * <p>Uses {@code collectionArg()} from the operation context to handle singular vs array
  * cardinality.
@@ -34,6 +35,70 @@ public final class CollectionOps {
     registry.register(
         "first",
         ctx -> ctx.collectionArg(0).apply(c -> functions.get(c, lit(0)), Function.identity()));
+
+    // last(): array → last element, singular → identity
+    registry.register(
+        "last",
+        ctx ->
+            ctx.collectionArg(0)
+                .apply(
+                    c -> functions.get(c, functions.size(c).minus(lit(1))), Function.identity()));
+
+    // tail(): array → all but first (slice from index 2, 1-based), singular → empty
+    registry.register(
+        "tail",
+        ctx ->
+            ctx.collectionArg(0)
+                .apply(
+                    c ->
+                        when(c.isNull(), lit(null))
+                            .otherwise(functions.slice(c, lit(2), functions.size(c))),
+                    c -> lit(null)));
+
+    // skip(n): array → skip first n elements, singular → n<=0 returns as array, else empty
+    // Guard: Spark slice() requires start != 0; when n<=0 return array unchanged
+    registry.register(
+        "skip",
+        ctx -> {
+          final var n = ctx.arg(1);
+          return ctx.collectionArg(0)
+              .apply(
+                  c ->
+                      when(c.isNull(), lit(null))
+                          .when(n.leq(lit(0)), c)
+                          .otherwise(functions.slice(c, n.plus(lit(1)), functions.size(c))),
+                  c -> when(c.isNull().or(n.gt(lit(0))), lit(null)).otherwise(functions.array(c)));
+        });
+
+    // take(n): array → first n elements, singular → n>=1 returns as array, else empty
+    // Guard: Spark slice() requires length >= 0; when n<=0 return empty array
+    registry.register(
+        "take",
+        ctx -> {
+          final var n = ctx.arg(1);
+          return ctx.collectionArg(0)
+              .apply(
+                  c ->
+                      when(c.isNull(), lit(null))
+                          .when(n.leq(lit(0)), functions.array())
+                          .otherwise(functions.slice(c, lit(1), n)),
+                  c -> when(c.isNull().or(n.leq(lit(0))), lit(null)).otherwise(functions.array(c)));
+        });
+
+    // single(): array → element if size=1, error if >1, empty if size=0; singular → identity
+    registry.register(
+        "single",
+        ctx ->
+            ctx.collectionArg(0)
+                .apply(
+                    c ->
+                        when(functions.size(c).equalTo(lit(1)), functions.get(c, lit(0)))
+                            .when(
+                                functions.size(c).gt(lit(1)),
+                                functions.raise_error(
+                                    lit("single() expected one element but found multiple")))
+                            .otherwise(lit(null)),
+                    Function.identity()));
 
     registry.register(
         "indexer",

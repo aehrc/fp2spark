@@ -4,7 +4,7 @@ import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.ir.Lambda;
 
 /**
- * Filtering and conditional operation registrations (where, iif).
+ * Filtering, projection, and conditional operation registrations (where, select, iif).
  *
  * <p>Delegates to methods on SparkCodeGenerator for lambda evaluation.
  */
@@ -26,6 +26,16 @@ public final class FilteringOps {
                 "where() requires a Lambda argument, got: " + ctx.argNode(1).getClass());
           }
           return ctx.generator().evaluateWhere(ctx.arg(0), ctx.argNode(0).isSingular(), lambda);
+        });
+
+    registry.register(
+        "select",
+        ctx -> {
+          if (!(ctx.argNode(1) instanceof Lambda lambda)) {
+            throw new IllegalArgumentException(
+                "select() requires a Lambda argument, got: " + ctx.argNode(1).getClass());
+          }
+          return ctx.generator().evaluateSelect(ctx.arg(0), ctx.argNode(0).isSingular(), lambda);
         });
 
     registry.register(

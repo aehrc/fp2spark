@@ -145,6 +145,51 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   }
 
   /**
+   * Evaluates a select() projection operation.
+   *
+   * <p>For each element in the input collection, evaluates the lambda body and collects results. If
+   * the lambda body returns MANY (a collection), results are flattened — FHIRPath collections are
+   * one-dimensional.
+   *
+   * @param collection the input collection column
+   * @param isSingular whether the input is a singular value or an array
+   * @param lambda the projection lambda to evaluate per element
+   * @return a Column representing the projected (and possibly flattened) results
+   */
+  @Nonnull
+  public Column evaluateSelect(
+      @Nonnull final Column collection, final boolean isSingular, @Nonnull final Lambda lambda) {
+    if (isSingular) {
+      // Singular value: evaluate lambda with the value as $this
+      // If input is null, result is null (empty collection propagation)
+      final SparkCodeGenerator singularGen = withThisColumn(collection);
+      final Column result = lambda.body().accept(singularGen);
+      return when(collection.isNotNull(), result);
+    } else {
+      // Collection: use Spark's transform to evaluate lambda for each element
+      final Column transformed =
+          functions.transform(
+              collection,
+              elem -> {
+                final SparkCodeGenerator lambdaGen = withThisColumn(elem);
+                return lambda.body().accept(lambdaGen);
+              });
+
+      final Column result;
+      if (lambda.body().isSingular()) {
+        // Lambda returns singular: transform gives array of values, filter out nulls
+        result = functions.filter(transformed, Column::isNotNull);
+      } else {
+        // Lambda returns MANY: transform gives array of arrays, flatten then filter nulls
+        result = functions.filter(functions.flatten(transformed), Column::isNotNull);
+      }
+
+      // Return null if the result array is empty (FHIRPath empty collection semantics)
+      return when(functions.size(result).gt(lit(0)), result);
+    }
+  }
+
+  /**
    * Evaluates iif() collection-level conditional.
    *
    * <p>FHIRPath semantics: - Both lambdas are evaluated with $this bound to the entire collection -

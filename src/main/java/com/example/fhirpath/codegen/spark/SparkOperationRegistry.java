@@ -9,6 +9,7 @@ import com.example.fhirpath.codegen.spark.ops.EqualityOps;
 import com.example.fhirpath.codegen.spark.ops.FhirOps;
 import com.example.fhirpath.codegen.spark.ops.FilteringOps;
 import com.example.fhirpath.codegen.spark.ops.MembershipOps;
+import com.example.fhirpath.codegen.spark.ops.SetOps;
 import com.example.fhirpath.codegen.spark.ops.TypeOps;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -68,6 +69,7 @@ public final class SparkOperationRegistry {
     EqualityOps.register(registry);
     MembershipOps.register(registry);
     CombineOps.register(registry);
+    SetOps.register(registry);
     CollectionOps.register(registry);
     FilteringOps.register(registry);
     FhirOps.register(registry);

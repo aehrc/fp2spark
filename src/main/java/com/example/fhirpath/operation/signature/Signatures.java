@@ -9,6 +9,8 @@ import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -198,9 +200,9 @@ public final class Signatures {
   @Nonnull
   public static SignatureDefinition collectionPreserver(
       @Nonnull final Type elementType, @Nonnull final ParamSpec... additionalParams) {
-    final List<ParamSpec> params = new java.util.ArrayList<>();
+    final List<ParamSpec> params = new ArrayList<>();
     params.add(many(elementType));
-    params.addAll(java.util.Arrays.asList(additionalParams));
+    params.addAll(Arrays.asList(additionalParams));
     return new SignatureDefinition(params, ResultTypeSpec.many(elementType));
   }
 
@@ -215,9 +217,9 @@ public final class Signatures {
   @Nonnull
   public static SignatureDefinition collectionSubsetter(
       @Nonnull final Type elementType, @Nonnull final ParamSpec... additionalParams) {
-    final List<ParamSpec> params = new java.util.ArrayList<>();
+    final List<ParamSpec> params = new ArrayList<>();
     params.add(many(elementType));
-    params.addAll(java.util.Arrays.asList(additionalParams));
+    params.addAll(Arrays.asList(additionalParams));
     return new SignatureDefinition(params, ResultTypeSpec.effectiveInputType(Cardinality.MANY));
   }
 

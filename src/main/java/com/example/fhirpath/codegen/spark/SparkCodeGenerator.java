@@ -74,7 +74,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
    * evaluation.
    */
   @Nonnull
-  SparkCodeGenerator withThisColumn(@Nonnull final Column thisColumn) {
+  public SparkCodeGenerator withThisColumn(@Nonnull final Column thisColumn) {
     return new SparkCodeGenerator(thisColumn, this.rootColumn, this.registry);
   }
 

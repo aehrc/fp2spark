@@ -236,6 +236,25 @@ public final class Signatures {
   }
 
   /**
+   * Collection test with lambda: (*T, ?Lambda(?BOOLEAN)) → ?BOOLEAN.
+   *
+   * <p>Example: *T.all(?Lambda(?BOOLEAN)) → ?BOOLEAN
+   *
+   * <p>Uses ELEMENT_WISE binding: $this = T (element type). Like {@link #collectionFilter} but
+   * returns a single BOOLEAN instead of preserving the collection.
+   */
+  @Nonnull
+  public static SignatureDefinition collectionTest(@Nonnull final Type elementType) {
+    final LambdaType lambdaType = new LambdaType(Shape.single(Types.BOOLEAN));
+    return new SignatureDefinition(
+        List.of(many(elementType), single(lambdaType)),
+        ResultTypeSpec.single(Types.BOOLEAN),
+        2, // minArity
+        LambdaBindingStrategy.ELEMENT_WISE // $this = element
+        );
+  }
+
+  /**
    * Union operation: (*T, *T) → *T with dynamic result type.
    *
    * <p>Used by both union ({@code |}) and combine ({@code ;}) operators. The result type is

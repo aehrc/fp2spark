@@ -182,4 +182,73 @@ class SetOperationsTest extends FhirPathTestBase {
         .testFalse("('a' ; 'b').supersetOf('c')", "String not superset")
         .build();
   }
+
+  // ========== Quantity equality in set operations ==========
+
+  @TestFactory
+  Stream<DynamicTest> testSetOpsWithQuantity() {
+    return builder()
+        .group("union: calendar duration singular/plural dedup")
+        .testEquals(1, "(2 second | 2 seconds).count()", "second/seconds deduplicated")
+        .testEquals(1, "(3 day | 3 days).count()", "day/days deduplicated")
+        .group("distinct: calendar duration dedup")
+        .testEquals(1, "(1 year ; 1 years).distinct().count()", "year/years deduplicated")
+        .group("isDistinct: calendar duration")
+        .testFalse("(2 month ; 2 months).isDistinct()", "month/months are not distinct")
+        .testTrue("(1 day ; 2 days).isDistinct()", "Different values are distinct")
+        .group("intersect: calendar duration")
+        .testEquals(1, "(5 hour ; 10 hours).intersect(5 hours).count()", "hour/hours intersect")
+        .testEmpty("(5 hour).intersect(10 hours)", "Different values no intersection")
+        .group("subsetOf/supersetOf: calendar duration")
+        .testTrue("(2 minute).subsetOf(2 minutes ; 3 minutes)", "minute/minutes subset")
+        .testTrue("(2 seconds ; 3 seconds).supersetOf(2 second)", "second/seconds superset")
+        .group("exclude: calendar duration")
+        .testEquals(
+            1, "(1 week ; 2 weeks).exclude(1 weeks).count()", "week/weeks excluded correctly")
+        .build();
+  }
+
+  // ========== DateTime equality in set operations ==========
+
+  @TestFactory
+  Stream<DynamicTest> testSetOpsWithDateTime() {
+    return builder()
+        .group("union: same instant different timezone offset")
+        .testEquals(
+            1,
+            "(@2017-11-05T01:30:00.0-04:00 | @2017-11-05T00:30:00.0-05:00).count()",
+            "Same instant deduplicated")
+        .testEquals(
+            2,
+            "(@2017-11-05T01:30:00.0-04:00 | @2017-11-05T01:15:00.0-05:00).count()",
+            "Different instants not deduplicated")
+        .group("distinct: same instant different offset")
+        .testEquals(
+            1,
+            "(@2017-11-05T01:30:00.0-04:00 ; @2017-11-05T00:30:00.0-05:00).distinct().count()",
+            "Same instant deduplicated by distinct")
+        .group("isDistinct: same instant different offset")
+        .testFalse(
+            "(@2017-11-05T01:30:00.0-04:00 ; @2017-11-05T00:30:00.0-05:00).isDistinct()",
+            "Same instant not distinct")
+        .testTrue(
+            "(@2017-11-05T01:30:00.0-04:00 ; @2017-11-05T01:15:00.0-05:00).isDistinct()",
+            "Different instants are distinct")
+        .group("intersect: same instant different offset")
+        .testEquals(
+            1,
+            "(@2017-11-05T01:30:00.0-04:00).intersect(@2017-11-05T00:30:00.0-05:00).count()",
+            "Same instant found in intersection")
+        .testEmpty(
+            "(@2017-11-05T01:30:00.0-04:00).intersect(@2017-11-05T01:15:00.0-05:00)",
+            "Different instants not in intersection")
+        .group("subsetOf/supersetOf: same instant different offset")
+        .testTrue(
+            "(@2017-11-05T01:30:00.0-04:00).subsetOf(@2017-11-05T00:30:00.0-05:00)",
+            "Same instant recognized as subset")
+        .testTrue(
+            "(@2017-11-05T00:30:00.0-05:00).supersetOf(@2017-11-05T01:30:00.0-04:00)",
+            "Same instant recognized as superset")
+        .build();
+  }
 }

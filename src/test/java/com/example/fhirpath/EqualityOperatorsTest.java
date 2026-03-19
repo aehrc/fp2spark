@@ -256,6 +256,76 @@ class EqualityOperatorsTest extends FhirPathTestBase {
         .build();
   }
 
+  // ========== Collection equality: Quantity ==========
+
+  @TestFactory
+  Stream<DynamicTest> testCollectionQuantityEquality() {
+    return builder()
+        .group("Quantity collection equality: same literals")
+        .testTrue("(10 'mg' ; 20 'mg') = (10 'mg' ; 20 'mg')", "Equal UCUM collections")
+        .testFalse("(10 'mg' ; 20 'mg') = (10 'mg' ; 30 'mg')", "Different UCUM values")
+        .group("Quantity collection equality: calendar duration singular/plural")
+        .testTrue("(2 second ; 2 year) = (2 seconds ; 2 years)", "Singular/plural forms equal")
+        .testTrue("(1 day ; 3 month) = (1 days ; 3 months)", "day/days and month/months")
+        .testFalse(
+            "(2 second ; 2 year) != (2 seconds ; 2 years)", "Not-equals singular/plural forms")
+        .testFalse("(1 hour ; 2 minute) = (1 hours ; 3 minutes)", "Different values not equal")
+        .group("Quantity collection equality: order matters")
+        .testEmpty(
+            "(2 year ; 2 second) = (2 seconds ; 2 years)",
+            "Different units at same position returns empty")
+        .group("Quantity collection equality: different sizes")
+        .testFalse("(1 day) = (1 day ; 2 days)", "Different sizes")
+        .group("Quantity collection equality: different unit")
+        .testEmpty("(10 'mg') = (10 'kg')", "Different unit returns empty")
+        .group("Quantity collection equality: three-valued logic")
+        .testEmpty(
+            "(1 day ; 1 second) = (1 day ; 1 'a')",
+            "true + empty → empty (first pair equal, second incomparable)")
+        .testFalse(
+            "(2 day ; 1 second) = (1 day ; 1 'a')",
+            "false + empty → false (first pair unequal, second incomparable)")
+        .testEmpty(
+            "(1 day ; 1 second) != (1 day ; 1 'a')",
+            "not(true + empty) → empty (negation of empty is empty)")
+        .testTrue(
+            "(2 day ; 1 second) != (1 day ; 1 'a')",
+            "not(false + empty) → true (negation of false is true)")
+        .build();
+  }
+
+  // ========== Collection equality: DateTime ==========
+
+  @TestFactory
+  Stream<DynamicTest> testCollectionDateTimeEquality() {
+    return builder()
+        .group("DateTime collection equality: same literals")
+        .testTrue(
+            "(@2014-01-25 ; @2014-01-26) = (@2014-01-25 ; @2014-01-26)", "Equal date collections")
+        .testFalse("(@2014-01-25 ; @2014-01-26) = (@2014-01-25 ; @2014-01-27)", "Different dates")
+        .group("DateTime collection equality: same instant different offset")
+        .testTrue(
+            "(@2017-11-05T01:30:00.0-04:00 ; @2014-01-25)"
+                + " = (@2017-11-05T00:30:00.0-05:00 ; @2014-01-25)",
+            "Same instant with different timezone offsets")
+        .testFalse(
+            "(@2017-11-05T01:30:00.0-04:00 ; @2014-01-25)"
+                + " != (@2017-11-05T00:30:00.0-05:00 ; @2014-01-25)",
+            "Not-equals same instants")
+        .group("DateTime collection equality: different precision")
+        .testEmpty("(@2014 ; @2015) = (@2014-01 ; @2015-01)", "Different precision returns empty")
+        .group("DateTime collection equality: order matters")
+        .testFalse("(@2014-01-25 ; @2014-01-26) = (@2014-01-26 ; @2014-01-25)", "Order matters")
+        .group("DateTime collection equality: three-valued logic")
+        .testEmpty(
+            "(@2014-01-25 ; @2014) = (@2014-01-25 ; @2014-01)",
+            "true + empty → empty (first pair equal, second different precision)")
+        .testFalse(
+            "(@2014-01-26 ; @2014) = (@2014-01-25 ; @2014-01)",
+            "false + empty → false (first pair unequal, second different precision)")
+        .build();
+  }
+
   // ========== Singular value vs array field (resource) ==========
 
   @TestFactory

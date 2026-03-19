@@ -1,6 +1,9 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static org.apache.spark.sql.functions.exists;
+import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
+import static org.apache.spark.sql.functions.zip_with;
 
 import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOpContext;
@@ -8,6 +11,7 @@ import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
@@ -22,6 +26,10 @@ import org.apache.spark.sql.functions;
  *   <li>Incompatible types (ANY,ANY fallback): returns {@code lit(false)} / {@code lit(true)}
  *   <li>Compatible types: scalar or array comparison via {@code equalTo}
  * </ul>
+ *
+ * <p>For types with custom equality semantics (Quantity, temporal), both singular and collection
+ * comparisons use type-aware comparators. Collection comparison uses {@code zip_with} for pairwise
+ * element comparison.
  */
 public final class EqualityOps {
 
@@ -54,37 +62,97 @@ public final class EqualityOps {
       return functions.lit(negate);
     }
 
-    // Quantity type: struct-aware equality with same-unit check
-    if (leftType == Types.QUANTITY) {
-      final Column eq = QuantityOps.quantityEquals(ctx.arg(0), ctx.arg(1));
-      return negate ? functions.not(eq) : eq;
-    }
-
-    // Temporal types: precision-aware equality via TemporalOps
-    if (TemporalOps.isTemporalType(leftType)) {
-      final Column eq = TemporalOps.temporalEquals(ctx.arg(0), ctx.arg(1));
-      return negate ? functions.not(eq) : eq;
-    }
-
     final CollectionValue left = ctx.collectionArg(0);
     final CollectionValue right = ctx.collectionArg(1);
 
-    // Normalize cardinality:
-    // - Both singular: compare directly (scalar = scalar), null propagates naturally
-    // - Mixed or both plural: normalize to arrays (array = array)
-    //   When wrapping singular to array, preserve null semantics:
-    //   null → null (not array(null)) so that empty collection equality returns empty
     final Column result;
-    if (left.isSingular() && right.isSingular()) {
-      result = left.column().equalTo(right.column());
+    if (usesDefaultEquality(leftType)) {
+      // Default SQL equality: use Spark's equalTo directly
+      if (left.isSingular() && right.isSingular()) {
+        result = left.column().equalTo(right.column());
+      } else {
+        final Column leftArray =
+            left.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
+        final Column rightArray =
+            right.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
+        result = leftArray.equalTo(rightArray);
+      }
     } else {
-      final Column leftArray =
-          left.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
-      final Column rightArray =
-          right.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
-      result = leftArray.equalTo(rightArray);
+      // Custom equality (Quantity, temporal): use type-aware comparator
+      final BiFunction<Column, Column, Column> eq = equalityForType(leftType);
+      if (left.isSingular() && right.isSingular()) {
+        result = eq.apply(left.column(), right.column());
+      } else {
+        result = collectionEqualWithCustomEquality(left, right, eq);
+      }
     }
 
     return negate ? functions.not(result) : result;
+  }
+
+  /**
+   * Compares two collections element-by-element using a custom equality comparator.
+   *
+   * <p>Returns {@code false} if sizes differ. For same-size collections, uses {@code zip_with} for
+   * pairwise comparison. Propagates {@code null} if any element comparison returns null (e.g.,
+   * different Quantity units or different DateTime precisions).
+   */
+  @Nonnull
+  private static Column collectionEqualWithCustomEquality(
+      @Nonnull final CollectionValue left,
+      @Nonnull final CollectionValue right,
+      @Nonnull final BiFunction<Column, Column, Column> eq) {
+
+    final Column leftArray =
+        left.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
+    final Column rightArray =
+        right.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
+
+    final Column sameSize = functions.size(leftArray).equalTo(functions.size(rightArray));
+
+    // zip_with produces array<boolean?> of pairwise comparison results
+    final Column pairResults = zip_with(leftArray, rightArray, eq::apply);
+
+    // Three-valued logic: false if any pair is false, null if any pair is null, true otherwise
+    final Column anyFalse = exists(pairResults, x -> x.equalTo(lit(false)));
+    final Column anyNull = exists(pairResults, Column::isNull);
+    final Column allMatch =
+        when(anyFalse, lit(false)).when(anyNull, lit(null)).otherwise(lit(true));
+
+    // Different sizes → false; same size → check elements
+    return when(sameSize, allMatch).otherwise(lit(false));
+  }
+
+  /**
+   * Returns a type-aware equality comparator for the given FHIRPath type.
+   *
+   * <p>Quantity uses struct-aware equality (system+code+value). Temporal types use precision-aware
+   * equality. All other types use Spark's default {@code equalTo}.
+   *
+   * @param type the FHIRPath type
+   * @return a binary function producing a Boolean column from two input columns
+   */
+  @Nonnull
+  static BiFunction<Column, Column, Column> equalityForType(@Nonnull final Type type) {
+    if (type == Types.QUANTITY) {
+      return QuantityOps::quantityEquals;
+    }
+    if (TemporalOps.isTemporalType(type)) {
+      return TemporalOps::temporalEquals;
+    }
+    return Column::equalTo;
+  }
+
+  /**
+   * Returns whether the given type uses Spark's default SQL equality for array operations.
+   *
+   * <p>Types with custom equality semantics (Quantity, temporal) require custom array set
+   * operations instead of Spark's built-in {@code array_union}, {@code array_distinct}, etc.
+   *
+   * @param type the FHIRPath type
+   * @return true if Spark's built-in array functions use correct equality for this type
+   */
+  static boolean usesDefaultEquality(@Nonnull final Type type) {
+    return type != Types.QUANTITY && !TemporalOps.isTemporalType(type);
   }
 }

@@ -77,6 +77,73 @@ class EqualityOperatorsTest extends FhirPathTestBase {
         .build();
   }
 
+  // ========== Quantity equality ==========
+
+  @TestFactory
+  Stream<DynamicTest> testQuantityEquality() {
+    return builder()
+        .group("Quantity equality: same unit")
+        .testTrue("10 'mg' = 10 'mg'", "Equal value and unit")
+        .testFalse("10 'mg' = 20 'mg'", "Different value, same unit")
+        .testFalse("10 'mg' != 10 'mg'", "Not-equals equal quantities")
+        .testTrue("10 'mg' != 20 'mg'", "Not-equals different values")
+        .group("Quantity equality: different unit")
+        .testEmpty("10 'mg' = 10 'kg'", "Different unit returns empty")
+        .testEmpty("10 'mg' != 10 'kg'", "Not-equals different unit returns empty")
+        .group("Quantity equality: decimal values")
+        .testTrue("1.5 'cm' = 1.5 'cm'", "Equal decimal quantities")
+        .testFalse("1.5 'cm' = 2.5 'cm'", "Different decimal quantities")
+        .group("Quantity equality: calendar duration singular/plural")
+        .testTrue("2 year = 2 years", "year/years")
+        .testTrue("3 month = 3 months", "month/months")
+        .testTrue("1 week = 1 weeks", "week/weeks")
+        .testTrue("5 day = 5 days", "day/days")
+        .testTrue("4 hour = 4 hours", "hour/hours")
+        .testTrue("10 minute = 10 minutes", "minute/minutes")
+        .testTrue("30 second = 30 seconds", "second/seconds")
+        .testTrue("500 millisecond = 500 milliseconds", "millisecond/milliseconds")
+        .group("Quantity equality: calendar vs definite duration")
+        .testEmpty("1 year = 1 'a'", "Spec: calendar year vs UCUM 'a' returns empty")
+        .testEmpty(
+            "1 second = 1 's'", "Calendar second vs UCUM 's' (unit conversion not supported)")
+        .build();
+  }
+
+  // ========== DateTime equality ==========
+
+  @TestFactory
+  Stream<DynamicTest> testDateTimeEquality() {
+    return builder()
+        .group("Date equality: same precision")
+        .testTrue("@2014-01-25 = @2014-01-25", "Equal dates")
+        .testFalse("@2014-01-25 = @2014-01-26", "Different dates")
+        .testFalse("@2014-01-25 != @2014-01-25", "Not-equals equal dates")
+        .testTrue("@2014-01-25 != @2014-01-26", "Not-equals different dates")
+        .group("Date equality: different precision")
+        .testEmpty("@2014 = @2014-01", "Year vs month returns empty")
+        .testEmpty("@2014 != @2014-01", "Not-equals year vs month returns empty")
+        .testEmpty("@2014-01 = @2014-01-01", "Month vs day returns empty")
+        .group("DateTime equality: with timezone offset")
+        .testTrue(
+            "@2017-11-05T01:30:00.0-04:00 = @2017-11-05T00:30:00.0-05:00",
+            "Spec: same instant, different offsets")
+        .testFalse(
+            "@2017-11-05T01:30:00.0-04:00 = @2017-11-05T01:15:00.0-05:00",
+            "Spec: different instants, different offsets")
+        .testTrue("@2012-01-01T10:30:00Z = @2012-01-01T10:30:00+00:00", "Z equals +00:00")
+        .testTrue("@2012-01-01T10:30:00Z = @2012-01-01T10:30:00-00:00", "Z equals -00:00")
+        .testTrue(
+            "@2012-01-01T12:00:00+02:00 = @2012-01-01T10:00:00Z",
+            "Positive offset normalized to UTC")
+        .testFalse(
+            "@2012-01-01T12:00:00+02:00 != @2012-01-01T10:00:00Z",
+            "Not-equals same instant different offset")
+        .group("DateTime equality: seconds/milliseconds precision")
+        .testTrue("@2012-01-01T10:30:31.0 = @2012-01-01T10:30:31", "Spec: trailing zero")
+        .testFalse("@2012-01-01T10:30:31.1 = @2012-01-01T10:30:31", "Spec: different sub-second")
+        .build();
+  }
+
   // ========== Cross-type numeric equality ==========
 
   @TestFactory

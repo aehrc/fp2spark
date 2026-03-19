@@ -108,7 +108,7 @@ public final class SetOps {
     final Type leftType = ctx.argType(0);
     final Type rightType = ctx.argType(1);
 
-    if (leftType != Types.NULL && rightType != Types.NULL && !leftType.equals(rightType)) {
+    if (EqualityOps.typesAreIncompatible(leftType, rightType)) {
       throw new IllegalArgumentException(
           "Union operator (|) requires compatible types, but got "
               + leftType.getName()
@@ -125,8 +125,8 @@ public final class SetOps {
     }
 
     // concat + distinct with custom equality (Pathling pattern)
-    return CollectionValue.nullIfEmpty(
-        arrayDistinctWithEquality(concat(leftArr, rightArr), EqualityOps.equalityForType(type)));
+    final BiFunction<Column, Column, Column> eq = EqualityOps.equalityForType(type);
+    return CollectionValue.nullIfEmpty(arrayDistinctWithEquality(concat(leftArr, rightArr), eq));
   }
 
   // ========== intersect ==========
@@ -136,7 +136,7 @@ public final class SetOps {
     final Type leftType = ctx.argType(0);
     final Type rightType = ctx.argType(1);
 
-    if (leftType != Types.NULL && rightType != Types.NULL && !leftType.equals(rightType)) {
+    if (EqualityOps.typesAreIncompatible(leftType, rightType)) {
       return lit(null);
     }
 
@@ -161,8 +161,8 @@ public final class SetOps {
     final Type leftType = ctx.argType(0);
     final Type rightType = ctx.argType(1);
 
-    if (leftType != Types.NULL && rightType != Types.NULL && !leftType.equals(rightType)) {
-      return ctx.collectionArg(0).asArray();
+    if (EqualityOps.typesAreIncompatible(leftType, rightType)) {
+      return CollectionValue.nullIfEmpty(ctx.collectionArg(0).asArray());
     }
 
     final Column leftArr = ctx.collectionArg(0).asArray();
@@ -187,7 +187,7 @@ public final class SetOps {
     final Type subType = ctx.argType(subIdx);
     final Type superType = ctx.argType(superIdx);
 
-    if (subType != Types.NULL && superType != Types.NULL && !subType.equals(superType)) {
+    if (EqualityOps.typesAreIncompatible(subType, superType)) {
       return lit(false);
     }
 

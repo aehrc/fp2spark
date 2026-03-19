@@ -5,7 +5,6 @@ import static org.apache.spark.sql.functions.concat;
 import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.typing.Type;
-import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
 
@@ -42,7 +41,7 @@ public final class CombineOps {
     // Incompatible types (ANY,ANY fallback): throw error — no common element type
     // After analyzer coercion, compatible types always have equal types.
     // NULL is compatible with anything (handled below).
-    if (leftType != Types.NULL && rightType != Types.NULL && !leftType.equals(rightType)) {
+    if (EqualityOps.typesAreIncompatible(leftType, rightType)) {
       throw new IllegalArgumentException(
           "Combine operator (;) requires compatible types, but got "
               + leftType.getName()

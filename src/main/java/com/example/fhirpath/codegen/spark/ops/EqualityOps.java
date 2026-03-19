@@ -124,6 +124,22 @@ public final class EqualityOps {
   }
 
   /**
+   * Returns whether two non-NULL types are incompatible for equality-based operations.
+   *
+   * <p>After analyzer coercion, compatible types always have equal types. If either type is NULL
+   * (empty collection), the types are always compatible. This check is used by set operations
+   * (union, intersect, exclude, subsetOf/supersetOf) and combine to detect the ANY,ANY fallback
+   * case.
+   *
+   * @param leftType the left operand type
+   * @param rightType the right operand type
+   * @return true if both types are non-NULL and not equal
+   */
+  static boolean typesAreIncompatible(@Nonnull final Type leftType, @Nonnull final Type rightType) {
+    return leftType != Types.NULL && rightType != Types.NULL && !leftType.equals(rightType);
+  }
+
+  /**
    * Returns a type-aware equality comparator for the given FHIRPath type.
    *
    * <p>Quantity uses struct-aware equality (system+code+value). Temporal types use precision-aware

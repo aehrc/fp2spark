@@ -31,7 +31,8 @@ public sealed interface ResultTypeSpec
     permits ResultTypeSpec.Static,
         ResultTypeSpec.InputType,
         ResultTypeSpec.EffectiveInputType,
-        ResultTypeSpec.LambdaBodyType {
+        ResultTypeSpec.LambdaBodyType,
+        ResultTypeSpec.LambdaBodyTypeMany {
 
   /**
    * Resolve the result shape from analyzed arguments.
@@ -95,6 +96,21 @@ public sealed interface ResultTypeSpec
   @Nonnull
   static ResultTypeSpec lambdaBodyType(int argumentIndex) {
     return new LambdaBodyType(argumentIndex);
+  }
+
+  /**
+   * Creates a dynamic result spec that extracts the TYPE from a lambda body but always uses MANY
+   * cardinality.
+   *
+   * <p>Used for operations like {@code select()} where each input element produces a result, so the
+   * output is always a collection regardless of the lambda body's cardinality.
+   *
+   * @param argumentIndex the index of the lambda argument to extract type from
+   * @return dynamic result spec with MANY cardinality
+   */
+  @Nonnull
+  static ResultTypeSpec lambdaBodyTypeMany(int argumentIndex) {
+    return new LambdaBodyTypeMany(argumentIndex);
   }
 
   /**
@@ -223,6 +239,50 @@ public sealed interface ResultTypeSpec
     @Override
     public String toString() {
       return "S (from lambda[" + argumentIndex + "] body)";
+    }
+  }
+
+  /**
+   * Dynamic result type - extracts type from lambda body, forces MANY cardinality.
+   *
+   * <p>Used for projection operations like {@code select()} where each input element produces a
+   * result, so the output is always a collection (MANY) regardless of whether the lambda body
+   * returns a singular or collection value.
+   *
+   * <p>Example: {@code select(*T, ?Lambda(?S)) → *S} The type S comes from the lambda body, but
+   * cardinality is always MANY.
+   *
+   * @param argumentIndex the index of the lambda argument to extract type from
+   */
+  record LambdaBodyTypeMany(int argumentIndex) implements ResultTypeSpec {
+    @Override
+    @Nonnull
+    public Shape resolve(@Nonnull final List<IRNode> resolvedArgs) {
+      if (argumentIndex >= resolvedArgs.size()) {
+        throw new IllegalArgumentException(
+            "LambdaBodyTypeMany requires argument at index "
+                + argumentIndex
+                + " but only "
+                + resolvedArgs.size()
+                + " arguments provided");
+      }
+
+      final IRNode lambdaArg = resolvedArgs.get(argumentIndex);
+      if (!(lambdaArg instanceof com.example.fhirpath.ir.Lambda lambda)) {
+        throw new IllegalArgumentException(
+            "LambdaBodyTypeMany expects Lambda at argument index "
+                + argumentIndex
+                + " but got "
+                + lambdaArg.getClass().getSimpleName());
+      }
+
+      // Extract the type from the lambda body, but always use MANY cardinality
+      return Shape.many(lambda.body().getType());
+    }
+
+    @Override
+    public String toString() {
+      return "*S (from lambda[" + argumentIndex + "] body, MANY)";
     }
   }
 }

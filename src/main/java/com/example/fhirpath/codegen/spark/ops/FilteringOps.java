@@ -29,6 +29,18 @@ public final class FilteringOps {
         });
 
     registry.register(
+        "select",
+        ctx -> {
+          if (!(ctx.argNode(1) instanceof Lambda lambda)) {
+            throw new IllegalArgumentException(
+                "select() requires a Lambda argument, got: " + ctx.argNode(1).getClass());
+          }
+          return ctx.generator()
+              .evaluateSelect(
+                  ctx.arg(0), ctx.argNode(0).isSingular(), lambda, lambda.body().isSingular());
+        });
+
+    registry.register(
         "iif",
         ctx -> {
           if (!(ctx.argNode(1) instanceof Lambda criterion)) {

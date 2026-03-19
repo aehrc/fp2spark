@@ -125,6 +125,10 @@ public final class OperationRegistry {
         // Collection<T>.where(Lambda(T, Boolean)) → Collection<T>
         register("where", Signatures.collectionFilter(ANY)),
 
+        // select() projects/maps collection elements through a lambda expression
+        // Collection<T>.select(Lambda(T, S)) → Collection<S>
+        register("select", Signatures.collectionProjection(ANY)),
+
         // COMBINE OPERATOR (FHIRPath Spec 6.6 — combine operator)
         // Three tiers for combine overload resolution:
         // 1. forTypes(EQUATABLE): matched for compatible concrete types with coercion

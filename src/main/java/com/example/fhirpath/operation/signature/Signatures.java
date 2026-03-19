@@ -212,6 +212,33 @@ public final class Signatures {
   }
 
   /**
+   * Collection projection with lambda: (*T, ?Lambda(S)) → S.
+   *
+   * <p>Example: *T.select(?Lambda(S)) → S
+   *
+   * <p>Uses ELEMENT_WISE binding: $this = T (element type). The result type and cardinality are
+   * determined by the lambda body's return shape via {@link ResultTypeSpec#lambdaBodyType(int)}.
+   *
+   * <p>If the lambda returns MANY, the results are flattened (FHIRPath collections are
+   * one-dimensional). If the lambda returns SINGLE, results are collected into an array.
+   *
+   * @param elementType the element type of the input collection
+   * @return a signature definition for collection-projection operations
+   */
+  @Nonnull
+  public static SignatureDefinition collectionProjection(@Nonnull final Type elementType) {
+    // Lambda accepts any return type/cardinality
+    final LambdaType lambdaType = new LambdaType(Shape.single(elementType));
+
+    return new SignatureDefinition(
+        List.of(many(elementType), single(lambdaType)),
+        ResultTypeSpec.lambdaBodyTypeMany(1), // Dynamic: extract type from lambda body, always MANY
+        2, // minArity
+        LambdaBindingStrategy.ELEMENT_WISE // $this = element
+        );
+  }
+
+  /**
    * Collection filter with lambda: (*T, ?Lambda(?BOOLEAN)) → *T Example:
    * *T.where(?Lambda(?BOOLEAN)) → *T
    *

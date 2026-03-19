@@ -70,7 +70,7 @@ public final class MembershipOps {
     final CollectionValue collection = ctx.collectionArg(collectionIdx);
 
     // Build type-aware equality comparator
-    final BiFunction<Column, Column, Column> equalsFn = equalityForType(elementType);
+    final BiFunction<Column, Column, Column> equalsFn = EqualityOps.equalityForType(elementType);
 
     // For arrays: exists(array, e -> equals(e, element))
     // For singular: direct equality comparison (avoids unnecessary array wrapping)
@@ -83,16 +83,5 @@ public final class MembershipOps {
 
     // When element is null at runtime, return null (empty collection semantics)
     return when(element.isNotNull(), result).otherwise(functions.lit(null));
-  }
-
-  @Nonnull
-  private static BiFunction<Column, Column, Column> equalityForType(@Nonnull final Type type) {
-    if (type == Types.QUANTITY) {
-      return QuantityOps::quantityEquals;
-    }
-    if (TemporalOps.isTemporalType(type)) {
-      return TemporalOps::temporalEquals;
-    }
-    return Column::equalTo;
   }
 }

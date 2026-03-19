@@ -168,8 +168,8 @@ public final class OperationRegistry {
         // Collection<T>.select(Lambda(T, S)) → Collection<S>
         register("select", Signatures.collectionProjection(ANY)),
 
-        // COMBINE OPERATOR (FHIRPath Spec 6.6 — combine operator)
-        // Three tiers for combine overload resolution:
+        // COMBINE AND UNION OPERATORS (FHIRPath Spec 6.6)
+        // Three tiers for overload resolution:
         // 1. forTypes(EQUATABLE): matched for compatible concrete types with coercion
         // 2. union(NULL): matched when either operand is empty (NULL type)
         // 3. union(ANY): fallback for complex types; code generator validates compatibility
@@ -179,6 +179,49 @@ public final class OperationRegistry {
             forTypes(EQUATABLE).define(Signatures::union),
             Signatures.union(NULL),
             Signatures.union(ANY)),
+        register(
+            "union",
+            forTypes(EQUATABLE).define(Signatures::union),
+            Signatures.union(NULL),
+            Signatures.union(ANY)),
+
+        // SET OPERATIONS (FHIRPath Spec 5.6.3 / 5.6.4)
+
+        // distinct(): *T → *T (removes duplicates)
+        register("distinct", Signatures.collectionSubsetter(ANY)),
+
+        // isDistinct(): *T → ?BOOLEAN (true if all items distinct; empty → true)
+        register("isDistinct", Signatures.collectionAggregator(ANY, BOOLEAN)),
+
+        // intersect(other): (*T, *T) → *T (elements in both; duplicates eliminated)
+        register(
+            "intersect",
+            forTypes(EQUATABLE).define(Signatures::union),
+            Signatures.union(NULL),
+            Signatures.union(ANY)),
+
+        // exclude(other): (*T, *T) → *T (elements NOT in other)
+        register(
+            "exclude",
+            forTypes(EQUATABLE).define(Signatures::union),
+            Signatures.union(NULL),
+            Signatures.union(ANY)),
+
+        // subsetOf(other): (*T, *T) → ?BOOLEAN (all input items in other)
+        // Reuses equalityOp shape (*T, *T) → ?BOOLEAN; actual subset semantics in SetOps
+        register(
+            "subsetOf",
+            forTypes(EQUATABLE).define(Signatures::equalityOp),
+            Signatures.equalityOp(NULL),
+            Signatures.equalityOp(ANY)),
+
+        // supersetOf(other): (*T, *T) → ?BOOLEAN (all other items in input)
+        // Reuses equalityOp shape (*T, *T) → ?BOOLEAN; actual superset semantics in SetOps
+        register(
+            "supersetOf",
+            forTypes(EQUATABLE).define(Signatures::equalityOp),
+            Signatures.equalityOp(NULL),
+            Signatures.equalityOp(ANY)),
 
         // FHIR-SPECIFIC FUNCTIONS
 

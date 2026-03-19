@@ -217,8 +217,10 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
   @Override
   public AstNode visitMembershipExpression(final FhirPathParser.MembershipExpressionContext ctx) {
-    throw new UnsupportedOperationException(
-        "Membership expressions (in, contains) are not yet supported");
+    final AstNode left = visit(ctx.expression(0));
+    final AstNode right = visit(ctx.expression(1));
+    final String op = ctx.getChild(1).getText();
+    return new AstBinaryOperator(op, left, right);
   }
 
   @Override

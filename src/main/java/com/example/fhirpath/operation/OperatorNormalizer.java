@@ -39,7 +39,9 @@ public final class OperatorNormalizer {
           Map.entry("=", "equals"),
           Map.entry("!=", "notEquals"),
           Map.entry("&", "stringConcat"),
-          Map.entry(";", "combine"));
+          Map.entry(";", "combine"),
+          Map.entry("in", "in"),
+          Map.entry("contains", "memberContains"));
 
   private OperatorNormalizer() {
     // Utility class - no instantiation

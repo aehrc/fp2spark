@@ -242,6 +242,9 @@ public final class Signatures {
    *
    * <p>Uses ELEMENT_WISE binding: $this = T (element type). Like {@link #collectionFilter} but
    * returns a single BOOLEAN instead of preserving the collection.
+   *
+   * @param elementType the element type of the input collection
+   * @return a signature definition for collection-test operations
    */
   @Nonnull
   public static SignatureDefinition collectionTest(@Nonnull final Type elementType) {

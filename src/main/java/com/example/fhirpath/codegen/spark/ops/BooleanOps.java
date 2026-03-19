@@ -3,7 +3,6 @@ package com.example.fhirpath.codegen.spark.ops;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
-import com.example.fhirpath.codegen.spark.SparkCodeGenerator;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.ir.Lambda;
 import java.util.function.Function;
@@ -89,37 +88,7 @@ public final class BooleanOps {
             throw new IllegalArgumentException(
                 "all() requires a Lambda argument, got: " + ctx.argNode(1).getClass());
           }
-          return evaluateAll(ctx.arg(0), ctx.argNode(0).isSingular(), lambda, ctx.generator());
+          return ctx.generator().evaluateAll(ctx.arg(0), ctx.argNode(0).isSingular(), lambda);
         });
-  }
-
-  /**
-   * Evaluates the all(criteria) function.
-   *
-   * <p>Returns true if for every element in the input collection, criteria evaluates to true. Empty
-   * input returns true per the FHIRPath spec.
-   */
-  private static Column evaluateAll(
-      final Column collection,
-      final boolean isSingular,
-      final Lambda lambda,
-      final SparkCodeGenerator generator) {
-    if (isSingular) {
-      // Singular: evaluate lambda with value as $this, empty → true
-      final SparkCodeGenerator singularGen = generator.withThisColumn(collection);
-      final Column criteriaResult = lambda.body().accept(singularGen);
-      return when(collection.isNull(), lit(true)).otherwise(criteriaResult);
-    } else {
-      // Collection: use Spark's forall with lambda evaluation
-      // forall returns true on empty arrays, matching FHIRPath spec
-      return when(collection.isNull(), lit(true))
-          .otherwise(
-              functions.forall(
-                  collection,
-                  elem -> {
-                    final SparkCodeGenerator lambdaGen = generator.withThisColumn(elem);
-                    return lambda.body().accept(lambdaGen);
-                  }));
-    }
   }
 }

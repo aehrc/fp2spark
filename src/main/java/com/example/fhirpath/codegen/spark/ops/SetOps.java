@@ -107,6 +107,9 @@ public final class SetOps {
       return ctx.collectionArg(0).asArray();
     }
 
+    // Phase 1 limitation: array_except eliminates duplicates, but the spec says
+    // "Duplicate items will not be eliminated by this function." Spark's filter+array_contains
+    // approach can't handle void-typed empty arrays. Matches Pathling's approach.
     return CollectionValue.nullIfEmpty(
         array_except(ctx.collectionArg(0).asArray(), ctx.collectionArg(1).asArray()));
   }

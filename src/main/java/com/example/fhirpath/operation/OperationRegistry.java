@@ -208,6 +208,7 @@ public final class OperationRegistry {
             Signatures.union(ANY)),
 
         // subsetOf(other): (*T, *T) → ?BOOLEAN (all input items in other)
+        // Reuses equalityOp shape (*T, *T) → ?BOOLEAN; actual subset semantics in SetOps
         register(
             "subsetOf",
             forTypes(EQUATABLE).define(Signatures::equalityOp),
@@ -215,6 +216,7 @@ public final class OperationRegistry {
             Signatures.equalityOp(ANY)),
 
         // supersetOf(other): (*T, *T) → ?BOOLEAN (all other items in input)
+        // Reuses equalityOp shape (*T, *T) → ?BOOLEAN; actual superset semantics in SetOps
         register(
             "supersetOf",
             forTypes(EQUATABLE).define(Signatures::equalityOp),

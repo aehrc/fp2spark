@@ -35,9 +35,7 @@ public final class FilteringOps {
             throw new IllegalArgumentException(
                 "select() requires a Lambda argument, got: " + ctx.argNode(1).getClass());
           }
-          return ctx.generator()
-              .evaluateSelect(
-                  ctx.arg(0), ctx.argNode(0).isSingular(), lambda, lambda.body().isSingular());
+          return ctx.generator().evaluateSelect(ctx.arg(0), ctx.argNode(0).isSingular(), lambda);
         });
 
     registry.register(

@@ -154,15 +154,11 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
    * @param collection the input collection column
    * @param isSingular whether the input is a singular value or an array
    * @param lambda the projection lambda to evaluate per element
-   * @param lambdaBodyIsSingular whether the lambda body returns a singular or collection result
    * @return a Column representing the projected (and possibly flattened) results
    */
   @Nonnull
   public Column evaluateSelect(
-      @Nonnull final Column collection,
-      final boolean isSingular,
-      @Nonnull final Lambda lambda,
-      final boolean lambdaBodyIsSingular) {
+      @Nonnull final Column collection, final boolean isSingular, @Nonnull final Lambda lambda) {
     if (isSingular) {
       // Singular value: evaluate lambda with the value as $this
       // If input is null, result is null (empty collection propagation)
@@ -180,7 +176,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
               });
 
       final Column result;
-      if (lambdaBodyIsSingular) {
+      if (lambda.body().isSingular()) {
         // Lambda returns singular: transform gives array of values, filter out nulls
         result = functions.filter(transformed, Column::isNotNull);
       } else {

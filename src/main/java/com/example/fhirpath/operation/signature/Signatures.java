@@ -228,7 +228,9 @@ public final class Signatures {
    */
   @Nonnull
   public static SignatureDefinition collectionProjection(@Nonnull final Type elementType) {
-    // Lambda accepts any return type/cardinality
+    // Phase 1 limitation: LambdaType uses Shape.single(elementType) as a placeholder because
+    // we lack type variables. The actual return type/cardinality is extracted dynamically at
+    // resolution time via ResultTypeSpec.lambdaBodyTypeMany().
     final LambdaType lambdaType = new LambdaType(Shape.single(elementType));
 
     return new SignatureDefinition(

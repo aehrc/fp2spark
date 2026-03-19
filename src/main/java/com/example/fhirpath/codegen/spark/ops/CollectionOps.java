@@ -83,13 +83,15 @@ public final class CollectionOps {
         ctx ->
             ctx.collectionArg(0)
                 .apply(
-                    c ->
-                        when(functions.size(c).equalTo(lit(1)), functions.get(c, lit(0)))
-                            .when(
-                                functions.size(c).gt(lit(1)),
-                                functions.raise_error(
-                                    lit("single() expected one element but found multiple")))
-                            .otherwise(lit(null)),
+                    c -> {
+                      final var sz = functions.size(c);
+                      return when(sz.equalTo(lit(1)), functions.get(c, lit(0)))
+                          .when(
+                              sz.gt(lit(1)),
+                              functions.raise_error(
+                                  lit("single() expected one element but found multiple")))
+                          .otherwise(lit(null));
+                    },
                     Function.identity()));
 
     registry.register(

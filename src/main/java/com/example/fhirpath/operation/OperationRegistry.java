@@ -1,5 +1,6 @@
 package com.example.fhirpath.operation;
 
+import static com.example.fhirpath.operation.signature.ParamSpec.single;
 import static com.example.fhirpath.operation.signature.TypeGroups.forTypes;
 import static com.example.fhirpath.typing.TypeSets.COMPARABLE;
 import static com.example.fhirpath.typing.TypeSets.EQUATABLE;
@@ -115,6 +116,26 @@ public final class OperationRegistry {
         // first() returns the first element from a collection
         // Collection<T> → T (extracts element type)
         register("first", Signatures.elementExtractor(ANY)),
+
+        // last() returns the last element from a collection
+        // Collection<T> → T (extracts element type)
+        register("last", Signatures.elementExtractor(ANY)),
+
+        // tail() returns all but the first element
+        // *T → *T (preserves element type, MANY cardinality)
+        register("tail", Signatures.collectionSubsetter(ANY)),
+
+        // skip(num) skips first num elements
+        // (*T, ?INTEGER) → *T
+        register("skip", Signatures.collectionSubsetter(ANY, single(INTEGER))),
+
+        // take(num) takes first num elements
+        // (*T, ?INTEGER) → *T
+        register("take", Signatures.collectionSubsetter(ANY, single(INTEGER))),
+
+        // single() returns the value if exactly one element, empty otherwise
+        // Collection<T> → T (extracts element type)
+        register("single", Signatures.elementExtractor(ANY)),
 
         // indexer ([]) returns the element at the given index (0-based)
         // (*T, ?INTEGER) → ?T (singular inputs treated as one-element collection)

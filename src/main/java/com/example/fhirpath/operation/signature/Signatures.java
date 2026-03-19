@@ -9,6 +9,8 @@ import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -198,10 +200,34 @@ public final class Signatures {
   @Nonnull
   public static SignatureDefinition collectionPreserver(
       @Nonnull final Type elementType, @Nonnull final ParamSpec... additionalParams) {
-    final List<ParamSpec> params = new java.util.ArrayList<>();
+    return collectionOperation(ResultTypeSpec.many(elementType), elementType, additionalParams);
+  }
+
+  /**
+   * Collection subsetter: (*T, ...) → *T. Returns a sub-collection preserving element type.
+   *
+   * <p>Uses dynamic result type resolution to preserve the actual element type from the input
+   * collection, with MANY cardinality.
+   *
+   * <p>Examples: *T.tail() → *T, *T.skip(?INTEGER) → *T
+   */
+  @Nonnull
+  public static SignatureDefinition collectionSubsetter(
+      @Nonnull final Type elementType, @Nonnull final ParamSpec... additionalParams) {
+    return collectionOperation(
+        ResultTypeSpec.effectiveInputType(Cardinality.MANY), elementType, additionalParams);
+  }
+
+  /** Common builder for collection operations that take *T input and optional extra params. */
+  @Nonnull
+  private static SignatureDefinition collectionOperation(
+      @Nonnull final ResultTypeSpec resultSpec,
+      @Nonnull final Type elementType,
+      @Nonnull final ParamSpec... additionalParams) {
+    final List<ParamSpec> params = new ArrayList<>();
     params.add(many(elementType));
-    params.addAll(java.util.Arrays.asList(additionalParams));
-    return new SignatureDefinition(params, ResultTypeSpec.many(elementType));
+    params.addAll(Arrays.asList(additionalParams));
+    return new SignatureDefinition(params, resultSpec);
   }
 
   /**

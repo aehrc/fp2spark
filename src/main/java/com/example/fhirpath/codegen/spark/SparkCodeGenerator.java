@@ -163,6 +163,39 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     return when(criterionResult, trueValue);
   }
 
+  /**
+   * Evaluates the all(criteria) function.
+   *
+   * <p>Returns true if for every element in the input collection, criteria evaluates to true. Empty
+   * input returns true per the FHIRPath spec.
+   *
+   * @param collection the input collection column
+   * @param isSingular whether the input is a singular value or an array
+   * @param lambda the criteria lambda to evaluate per element
+   * @return a Column representing the boolean result
+   */
+  @Nonnull
+  public Column evaluateAll(
+      final Column collection, final boolean isSingular, @Nonnull final Lambda lambda) {
+    if (isSingular) {
+      // Singular: evaluate lambda with value as $this, empty → true
+      final SparkCodeGenerator singularGen = withThisColumn(collection);
+      final Column criteriaResult = lambda.body().accept(singularGen);
+      return when(collection.isNull(), lit(true)).otherwise(criteriaResult);
+    } else {
+      // Collection: use Spark's forall with lambda evaluation.
+      // forall returns true on empty arrays, matching FHIRPath spec.
+      return when(collection.isNull(), lit(true))
+          .otherwise(
+              functions.forall(
+                  collection,
+                  elem -> {
+                    final SparkCodeGenerator lambdaGen = withThisColumn(elem);
+                    return lambda.body().accept(lambdaGen);
+                  }));
+    }
+  }
+
   // ========== Infrastructure Nodes ==========
 
   @Override

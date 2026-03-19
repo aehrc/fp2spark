@@ -1,24 +1,29 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
+import com.example.fhirpath.ir.Lambda;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
 /**
- * Boolean operator registrations for FHIRPath three-valued logic.
+ * Boolean operator and boolean collection function registrations.
  *
- * <p>All operators follow FHIRPath specification section 6.5 where operands can be true, false, or
- * empty (NULL).
+ * <p>Boolean operators follow FHIRPath specification section 6.5 where operands can be true, false,
+ * or empty (NULL).
+ *
+ * <p>Boolean collection functions (section 5.6.1): allTrue(), anyTrue(), allFalse(), anyFalse(),
+ * all(criteria).
  */
 public final class BooleanOps {
 
   private BooleanOps() {}
 
   /**
-   * Registers all boolean operators into the given registry.
+   * Registers all boolean operators and collection functions into the given registry.
    *
    * @param registry the registry to register operations into
    */
@@ -36,5 +41,46 @@ public final class BooleanOps {
 
     // not: Spark's NOT handles three-valued logic correctly
     registry.unary("not", functions::not);
+
+    // Boolean collection functions (FHIRPath Spec 5.6.1)
+    // Uses array_min/array_max pattern from Pathling: min(booleans) is false iff any is false,
+    // max(booleans) is true iff any is true. coalesce handles empty → default value.
+
+    // allTrue(): empty → true, all true → true, any false → false
+    registry.register(
+        "allTrue",
+        ctx -> coalesce(ctx.collectionArg(0).apply(functions::array_min, c -> c), lit(true)));
+
+    // anyTrue(): empty → false, any true → true
+    registry.register(
+        "anyTrue",
+        ctx -> coalesce(ctx.collectionArg(0).apply(functions::array_max, c -> c), lit(false)));
+
+    // allFalse(): empty → true, all false → true, any true → false
+    registry.register(
+        "allFalse",
+        ctx ->
+            coalesce(
+                functions.not(ctx.collectionArg(0).apply(functions::array_max, c -> c)),
+                lit(true)));
+
+    // anyFalse(): empty → false, any false → true
+    registry.register(
+        "anyFalse",
+        ctx ->
+            coalesce(
+                functions.not(ctx.collectionArg(0).apply(functions::array_min, c -> c)),
+                lit(false)));
+
+    // all(criteria): empty → true, all match → true, any mismatch → false
+    registry.register(
+        "all",
+        ctx -> {
+          if (!(ctx.argNode(1) instanceof Lambda lambda)) {
+            throw new IllegalArgumentException(
+                "all() requires a Lambda argument, got: " + ctx.argNode(1).getClass());
+          }
+          return ctx.generator().evaluateAll(ctx.arg(0), ctx.argNode(0).isSingular(), lambda);
+        });
   }
 }

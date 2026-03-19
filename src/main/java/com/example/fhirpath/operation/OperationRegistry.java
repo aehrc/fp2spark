@@ -111,6 +111,14 @@ public final class OperationRegistry {
         // empty() returns true if the collection is empty
         register("empty", Signatures.collectionAggregator(ANY, BOOLEAN)),
 
+        // BOOLEAN COLLECTION FUNCTIONS (FHIRPath Spec 5.6.1)
+
+        register("allTrue", Signatures.collectionAggregator(BOOLEAN, BOOLEAN)),
+        register("anyTrue", Signatures.collectionAggregator(BOOLEAN, BOOLEAN)),
+        register("allFalse", Signatures.collectionAggregator(BOOLEAN, BOOLEAN)),
+        register("anyFalse", Signatures.collectionAggregator(BOOLEAN, BOOLEAN)),
+        register("all", Signatures.collectionTest(ANY)),
+
         // FILTERING AND PROJECTION (FHIRPath Spec 5.2.5)
 
         // where() filters a collection based on lambda criteria

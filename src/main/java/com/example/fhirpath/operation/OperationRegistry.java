@@ -70,8 +70,11 @@ public final class OperationRegistry {
             Signatures.equalityOp(ANY)),
 
         // MEMBERSHIP OPERATORS (FHIRPath Spec 6.5)
-        // in: element in collection → returns boolean (equality semantics)
-        // memberContains: collection contains element → converse of in
+        // Three tiers matching the equality pattern:
+        // 1. forTypes(EQUATABLE): matched for compatible concrete types
+        // 2. membershipIn/Contains(NULL): when element or collection is empty (NULL type)
+        //    - codegen returns {} for empty element, false for empty collection
+        // 3. membershipIn/Contains(ANY): fallback for incompatible types → false
 
         register(
             "in",

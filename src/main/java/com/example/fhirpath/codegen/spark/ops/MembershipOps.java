@@ -20,7 +20,7 @@ import org.apache.spark.sql.functions;
  * for Quantity (struct-aware) and temporal types (precision-aware), matching the behavior of the
  * {@code =} operator.
  *
- * <p>Handles three cases:
+ * <p>Handles four cases:
  *
  * <ul>
  *   <li>NULL type (empty element): returns {@code null} (empty collection)
@@ -78,7 +78,7 @@ public final class MembershipOps {
     // exists(collection, e -> equals(e, element))
     // When element is null at runtime, return null (empty collection semantics)
     final Column result = exists(collectionArray, e -> equalsFn.apply(e, element));
-    return when(element.isNotNull(), result);
+    return when(element.isNotNull(), result).otherwise(functions.lit(null));
   }
 
   @Nonnull

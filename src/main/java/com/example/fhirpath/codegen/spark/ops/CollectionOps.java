@@ -3,8 +3,11 @@ package com.example.fhirpath.codegen.spark.ops;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
+import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
+import jakarta.annotation.Nonnull;
 import java.util.function.Function;
+import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
 /**
@@ -36,7 +39,6 @@ public final class CollectionOps {
         "first",
         ctx -> ctx.collectionArg(0).apply(c -> functions.get(c, lit(0)), Function.identity()));
 
-    // last(): array → last element, singular → identity
     registry.register(
         "last",
         ctx ->
@@ -44,67 +46,67 @@ public final class CollectionOps {
                 .apply(
                     c -> functions.get(c, functions.size(c).minus(lit(1))), Function.identity()));
 
-    // tail(): array → all but first (slice from index 2, 1-based), singular → empty
     registry.register(
         "tail",
         ctx ->
             ctx.collectionArg(0)
                 .apply(c -> functions.slice(c, lit(2), functions.size(c)), c -> lit(null)));
 
-    // skip(n): array → skip first n elements, singular → n<=0 returns as array, else empty
-    // Guard: Spark slice() requires start != 0; when n<=0 return array unchanged
-    registry.register(
-        "skip",
-        ctx -> {
-          final var n = ctx.arg(1);
-          return ctx.collectionArg(0)
-              .apply(
-                  c ->
-                      when(n.leq(lit(0)), c)
-                          .otherwise(functions.slice(c, n.plus(lit(1)), functions.size(c))),
-                  c -> when(c.isNull().or(n.gt(lit(0))), lit(null)).otherwise(functions.array(c)));
-        });
+    registry.register("skip", CollectionOps::generateSkip);
+    registry.register("take", CollectionOps::generateTake);
+    registry.register("single", CollectionOps::generateSingle);
+    registry.register("indexer", CollectionOps::generateIndexer);
+  }
 
-    // take(n): array → first n elements, singular → n>=1 returns as array, else empty
-    // Guard: Spark slice() requires length >= 0; when n<=0 return empty
-    registry.register(
-        "take",
-        ctx -> {
-          final var n = ctx.arg(1);
-          return ctx.collectionArg(0)
-              .apply(
-                  c -> when(n.leq(lit(0)), lit(null)).otherwise(functions.slice(c, lit(1), n)),
-                  c -> when(c.isNull().or(n.leq(lit(0))), lit(null)).otherwise(functions.array(c)));
-        });
+  /** skip(n): array → skip first n elements, singular → n<=0 returns as array, else empty. */
+  @Nonnull
+  private static Column generateSkip(@Nonnull final SparkOpContext ctx) {
+    final var n = ctx.arg(1);
+    return ctx.collectionArg(0)
+        .apply(
+            // Guard: Spark slice() requires start != 0; when n<=0 return array unchanged.
+            c ->
+                when(n.leq(lit(0)), c)
+                    .otherwise(functions.slice(c, n.plus(lit(1)), functions.size(c))),
+            c -> when(c.isNull().or(n.gt(lit(0))), lit(null)).otherwise(functions.array(c)));
+  }
 
-    // single(): array → element if size=1, error if >1, empty if size=0; singular → identity
-    registry.register(
-        "single",
-        ctx ->
-            ctx.collectionArg(0)
-                .apply(
-                    c -> {
-                      final var sz = functions.size(c);
-                      return when(sz.equalTo(lit(1)), functions.get(c, lit(0)))
-                          .when(
-                              sz.gt(lit(1)),
-                              functions.raise_error(
-                                  lit("single() expected one element but found multiple")))
-                          .otherwise(lit(null));
-                    },
-                    Function.identity()));
+  /** take(n): array → first n elements, singular → n>=1 returns as array, else empty. */
+  @Nonnull
+  private static Column generateTake(@Nonnull final SparkOpContext ctx) {
+    final var n = ctx.arg(1);
+    return ctx.collectionArg(0)
+        .apply(
+            // Guard: Spark slice() requires length >= 0; when n<=0 return empty.
+            c -> when(n.leq(lit(0)), lit(null)).otherwise(functions.slice(c, lit(1), n)),
+            c -> when(c.isNull().or(n.leq(lit(0))), lit(null)).otherwise(functions.array(c)));
+  }
 
-    registry.register(
-        "indexer",
-        ctx -> {
-          final var index = ctx.arg(1);
-          return ctx.collectionArg(0)
-              .apply(
-                  // Collection: use Spark's get() (0-based, returns null for out-of-bounds)
-                  // Guard against negative indices: Spark's get() indexes from end for negatives
-                  col -> when(index.lt(lit(0)), lit(null)).otherwise(functions.get(col, index)),
-                  // Singular value: only index 0 returns the value
-                  col -> when(index.equalTo(lit(0)), col).otherwise(lit(null)));
-        });
+  /** single(): array → element if size=1, error if >1, empty if size=0; singular → identity. */
+  @Nonnull
+  private static Column generateSingle(@Nonnull final SparkOpContext ctx) {
+    return ctx.collectionArg(0)
+        .apply(
+            c -> {
+              final var sz = functions.size(c);
+              return when(sz.equalTo(lit(1)), functions.get(c, lit(0)))
+                  .when(
+                      sz.gt(lit(1)),
+                      functions.raise_error(
+                          lit("single() expected one element but found multiple")))
+                  .otherwise(lit(null));
+            },
+            Function.identity());
+  }
+
+  /** indexer ([]): collection → element at index, singular → only index 0 returns value. */
+  @Nonnull
+  private static Column generateIndexer(@Nonnull final SparkOpContext ctx) {
+    final var index = ctx.arg(1);
+    return ctx.collectionArg(0)
+        .apply(
+            // Guard against negative indices: Spark's get() indexes from end for negatives.
+            col -> when(index.lt(lit(0)), lit(null)).otherwise(functions.get(col, index)),
+            col -> when(index.equalTo(lit(0)), col).otherwise(lit(null)));
   }
 }

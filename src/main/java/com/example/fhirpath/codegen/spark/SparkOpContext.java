@@ -2,7 +2,9 @@ package com.example.fhirpath.codegen.spark;
 
 import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.ir.Lambda;
+import com.example.fhirpath.ir.Literal;
 import com.example.fhirpath.ir.Operation;
+import com.example.fhirpath.ir.Resource;
 import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
@@ -94,6 +96,38 @@ public record SparkOpContext(
           "Expected PrimitiveType at argument " + i + ", got: " + type.getClass());
     }
     return pt;
+  }
+
+  /**
+   * Returns the Resource at the given argument index, throwing if the argument is not a Resource.
+   *
+   * @param i the argument index
+   * @return the Resource at the given index
+   * @throws IllegalArgumentException if the argument is not a Resource
+   */
+  @Nonnull
+  public Resource resourceArg(final int i) {
+    if (!(argNodes.get(i) instanceof Resource resource)) {
+      throw new IllegalArgumentException(
+          "Expected a Resource at argument " + i + ", got: " + argNodes.get(i).getClass());
+    }
+    return resource;
+  }
+
+  /**
+   * Returns the Literal at the given argument index, throwing if the argument is not a Literal.
+   *
+   * @param i the argument index
+   * @return the Literal at the given index
+   * @throws IllegalArgumentException if the argument is not a Literal
+   */
+  @Nonnull
+  public Literal literalArg(final int i) {
+    if (!(argNodes.get(i) instanceof Literal literal)) {
+      throw new IllegalArgumentException(
+          "Expected a Literal at argument " + i + ", got: " + argNodes.get(i).getClass());
+    }
+    return literal;
   }
 
   /**

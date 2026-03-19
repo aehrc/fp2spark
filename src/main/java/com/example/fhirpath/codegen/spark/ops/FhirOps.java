@@ -7,7 +7,6 @@ import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
-import com.example.fhirpath.ir.Literal;
 import com.example.fhirpath.ir.Resource;
 
 /**
@@ -39,8 +38,7 @@ public final class FhirOps {
     registry.register(
         "getResourceKey",
         ctx -> {
-          // Guaranteed by Analyzer.resolveGetResourceKey() — target is always a Resource node.
-          final Resource resource = (Resource) ctx.argNode(0);
+          final Resource resource = ctx.resourceArg(0);
           final String resourceName = resource.type().getResourceName();
           return concat(lit(resourceName + "/"), col(RESOURCE_ID_COLUMN));
         });
@@ -54,7 +52,7 @@ public final class FhirOps {
             return ref.map(r -> r.getField("reference")).column();
           }
           // With type filter: extract reference only if it matches "Type/..."
-          final String typePrefix = ((Literal) ctx.argNode(1)).value() + "/";
+          final String typePrefix = ctx.literalArg(1).value() + "/";
           return ref.map(
                   r -> {
                     final org.apache.spark.sql.Column refField = r.getField("reference");

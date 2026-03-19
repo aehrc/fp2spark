@@ -1,11 +1,11 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.ir.Lambda;
-import java.util.function.Function;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
@@ -43,42 +43,34 @@ public final class BooleanOps {
     registry.unary("not", functions::not);
 
     // Boolean collection functions (FHIRPath Spec 5.6.1)
+    // Uses array_min/array_max pattern from Pathling: min(booleans) is false iff any is false,
+    // max(booleans) is true iff any is true. coalesce handles empty → default value.
 
     // allTrue(): empty → true, all true → true, any false → false
     registry.register(
         "allTrue",
-        ctx ->
-            ctx.collectionArg(0)
-                .applyNonNull(
-                    col -> functions.forall(col, x -> x), Function.identity(), lit(true)));
+        ctx -> coalesce(ctx.collectionArg(0).apply(functions::array_min, c -> c), lit(true)));
 
     // anyTrue(): empty → false, any true → true
     registry.register(
         "anyTrue",
-        ctx ->
-            ctx.collectionArg(0)
-                .applyNonNull(
-                    col -> functions.exists(col, x -> x), Function.identity(), lit(false)));
+        ctx -> coalesce(ctx.collectionArg(0).apply(functions::array_max, c -> c), lit(false)));
 
     // allFalse(): empty → true, all false → true, any true → false
     registry.register(
         "allFalse",
         ctx ->
-            ctx.collectionArg(0)
-                .applyNonNull(
-                    col -> functions.forall(col, x -> functions.not(x)),
-                    x -> functions.not(x),
-                    lit(true)));
+            coalesce(
+                functions.not(ctx.collectionArg(0).apply(functions::array_max, c -> c)),
+                lit(true)));
 
     // anyFalse(): empty → false, any false → true
     registry.register(
         "anyFalse",
         ctx ->
-            ctx.collectionArg(0)
-                .applyNonNull(
-                    col -> functions.exists(col, x -> functions.not(x)),
-                    x -> functions.not(x),
-                    lit(false)));
+            coalesce(
+                functions.not(ctx.collectionArg(0).apply(functions::array_min, c -> c)),
+                lit(false)));
 
     // all(criteria): empty → true, all match → true, any mismatch → false
     registry.register(

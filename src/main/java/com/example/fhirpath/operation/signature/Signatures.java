@@ -113,6 +113,34 @@ public final class Signatures {
   }
 
   /**
+   * Membership "in" operation: (?T, *T) → ?BOOLEAN.
+   *
+   * <p>Element (singular) in collection (many). Returns true if the element is found in the
+   * collection using equality semantics.
+   *
+   * <p>Example: 1 in (1 ; 2 ; 3) → true
+   */
+  @Nonnull
+  public static SignatureDefinition membershipIn(@Nonnull final Type type) {
+    return new SignatureDefinition(
+        List.of(single(type), many(type)), ResultTypeSpec.single(Types.BOOLEAN));
+  }
+
+  /**
+   * Membership "contains" operation: (*T, ?T) → ?BOOLEAN.
+   *
+   * <p>Collection (many) contains element (singular). Returns true if the collection contains the
+   * element using equality semantics. Converse of {@link #membershipIn}.
+   *
+   * <p>Example: (1 ; 2 ; 3) contains 1 → true
+   */
+  @Nonnull
+  public static SignatureDefinition membershipContains(@Nonnull final Type type) {
+    return new SignatureDefinition(
+        List.of(many(type), single(type)), ResultTypeSpec.single(Types.BOOLEAN));
+  }
+
+  /**
    * Equality operation: (*T, *T) → ?BOOLEAN.
    *
    * <p>Uses {@code many()} params to accept both singular and collection operands. Equality

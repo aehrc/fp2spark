@@ -69,6 +69,24 @@ public final class OperationRegistry {
             Signatures.equalityOp(NULL),
             Signatures.equalityOp(ANY)),
 
+        // MEMBERSHIP OPERATORS (FHIRPath Spec 6.5)
+        // Three tiers matching the equality pattern:
+        // 1. forTypes(EQUATABLE): matched for compatible concrete types
+        // 2. membershipIn/Contains(NULL): when element or collection is empty (NULL type)
+        //    - codegen returns {} for empty element, false for empty collection
+        // 3. membershipIn/Contains(ANY): fallback for incompatible types → false
+
+        register(
+            "in",
+            forTypes(EQUATABLE).define(Signatures::membershipIn),
+            Signatures.membershipIn(NULL),
+            Signatures.membershipIn(ANY)),
+        register(
+            "memberContains",
+            forTypes(EQUATABLE).define(Signatures::membershipContains),
+            Signatures.membershipContains(NULL),
+            Signatures.membershipContains(ANY)),
+
         // COMPARISON OPERATORS (FHIRPath Spec 6.3)
 
         register("gt", forTypes(COMPARABLE).define(Signatures::comparisonOp)),

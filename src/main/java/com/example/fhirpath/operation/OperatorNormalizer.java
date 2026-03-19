@@ -18,6 +18,9 @@ import java.util.Map;
  *   <li>{@code "="} → {@code "equals"}
  *   <li>{@code "!="} → {@code "notEquals"}
  *   <li>{@code ";"} → {@code "combine"} (ordered concatenation)
+ *   <li>{@code "in"} → {@code "in"} (membership)
+ *   <li>{@code "contains"} → {@code "memberContains"} (membership, disambiguated from string
+ *       contains)
  * </ul>
  */
 public final class OperatorNormalizer {
@@ -39,7 +42,10 @@ public final class OperatorNormalizer {
           Map.entry("=", "equals"),
           Map.entry("!=", "notEquals"),
           Map.entry("&", "stringConcat"),
-          Map.entry(";", "combine"));
+          Map.entry(";", "combine"),
+          // Identity mapping so isOperatorSymbol("in") returns true
+          Map.entry("in", "in"),
+          Map.entry("contains", "memberContains"));
 
   private OperatorNormalizer() {
     // Utility class - no instantiation

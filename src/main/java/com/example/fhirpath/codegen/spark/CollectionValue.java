@@ -101,6 +101,18 @@ public record CollectionValue(Column column, boolean isSingular) {
   }
 
   /**
+   * Returns null if the array column is empty; otherwise returns the array as-is. This preserves
+   * FHIRPath empty collection semantics where an empty collection is represented as null.
+   *
+   * @param array the array column to check
+   * @return null if the array is empty, otherwise the array
+   */
+  @Nonnull
+  public static Column nullIfEmpty(@Nonnull final Column array) {
+    return when(functions.size(array).gt(lit(0)), array);
+  }
+
+  /**
    * Create a function that always returns a constant value as a literal column.
    *
    * @param constValue The constant value to return

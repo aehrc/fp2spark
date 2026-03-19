@@ -43,6 +43,11 @@ public final class SparkOperationRegistry {
     operations.put(name, def);
   }
 
+  /** Register a type-dispatched operation built from a {@link TypeDispatch} builder. */
+  public void register(@Nonnull final String name, @Nonnull final TypeDispatch dispatch) {
+    operations.put(name, dispatch.build());
+  }
+
   /**
    * Look up an operation by name.
    *

@@ -1,8 +1,19 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static com.example.fhirpath.codegen.spark.TypeDispatch.binary;
+import static com.example.fhirpath.codegen.spark.TypeDispatch.byArgType;
+import static com.example.fhirpath.codegen.spark.TypeDispatch.types;
+import static com.example.fhirpath.typing.PrimitiveType.DATE;
+import static com.example.fhirpath.typing.PrimitiveType.DATE_TIME;
+import static com.example.fhirpath.typing.PrimitiveType.DECIMAL;
+import static com.example.fhirpath.typing.PrimitiveType.INTEGER;
+import static com.example.fhirpath.typing.PrimitiveType.QUANTITY;
+import static com.example.fhirpath.typing.PrimitiveType.STRING;
+import static com.example.fhirpath.typing.PrimitiveType.TIME;
+
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
-import com.example.fhirpath.typing.PrimitiveType;
 import jakarta.annotation.Nonnull;
+import java.util.function.BinaryOperator;
 import org.apache.spark.sql.Column;
 
 /**
@@ -20,56 +31,21 @@ public final class ComparisonOps {
    * @param registry the registry to register operations into
    */
   public static void register(@Nonnull final SparkOperationRegistry registry) {
-    registry.register(
-        "gt",
-        ctx ->
-            switch ((PrimitiveType) ctx.argType(0)) {
-              case INTEGER, DECIMAL, STRING -> ctx.arg(0).gt(ctx.arg(1));
-              case QUANTITY -> QuantityOps.quantityCompare(ctx.arg(0), ctx.arg(1), Column::gt);
-              case DATE, DATE_TIME, TIME ->
-                  TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::gt);
-              default ->
-                  throw new IllegalArgumentException(
-                      "Unsupported input type for gt: " + ctx.argType(0));
-            });
+    comparison(registry, "gt", Column::gt);
+    comparison(registry, "lt", Column::lt);
+    comparison(registry, "geq", Column::geq);
+    comparison(registry, "leq", Column::leq);
+  }
 
+  private static void comparison(
+      @Nonnull final SparkOperationRegistry registry,
+      @Nonnull final String name,
+      @Nonnull final BinaryOperator<Column> op) {
     registry.register(
-        "lt",
-        ctx ->
-            switch ((PrimitiveType) ctx.argType(0)) {
-              case INTEGER, DECIMAL, STRING -> ctx.arg(0).lt(ctx.arg(1));
-              case QUANTITY -> QuantityOps.quantityCompare(ctx.arg(0), ctx.arg(1), Column::lt);
-              case DATE, DATE_TIME, TIME ->
-                  TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::lt);
-              default ->
-                  throw new IllegalArgumentException(
-                      "Unsupported input type for lt: " + ctx.argType(0));
-            });
-
-    registry.register(
-        "geq",
-        ctx ->
-            switch ((PrimitiveType) ctx.argType(0)) {
-              case INTEGER, DECIMAL, STRING -> ctx.arg(0).geq(ctx.arg(1));
-              case QUANTITY -> QuantityOps.quantityCompare(ctx.arg(0), ctx.arg(1), Column::geq);
-              case DATE, DATE_TIME, TIME ->
-                  TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::geq);
-              default ->
-                  throw new IllegalArgumentException(
-                      "Unsupported input type for geq: " + ctx.argType(0));
-            });
-
-    registry.register(
-        "leq",
-        ctx ->
-            switch ((PrimitiveType) ctx.argType(0)) {
-              case INTEGER, DECIMAL, STRING -> ctx.arg(0).leq(ctx.arg(1));
-              case QUANTITY -> QuantityOps.quantityCompare(ctx.arg(0), ctx.arg(1), Column::leq);
-              case DATE, DATE_TIME, TIME ->
-                  TemporalOps.temporalCompare(ctx.arg(0), ctx.arg(1), Column::leq);
-              default ->
-                  throw new IllegalArgumentException(
-                      "Unsupported input type for leq: " + ctx.argType(0));
-            });
+        name,
+        byArgType(0)
+            .when(types(INTEGER, DECIMAL, STRING), binary(op))
+            .when(types(QUANTITY), binary(QuantityOps.quantityComparator(op)))
+            .when(types(DATE, DATE_TIME, TIME), binary(TemporalOps.temporalComparator(op))));
   }
 }

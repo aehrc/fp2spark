@@ -25,16 +25,15 @@ final class QuantityOps {
 
   @Nonnull
   static Column quantityEquals(@Nonnull final Column left, @Nonnull final Column right) {
-    final Column sameUnit = sameUnit(left, right);
-    return when(sameUnit, left.getField("value").equalTo(right.getField("value")));
+    return quantityComparator(Column::equalTo).apply(left, right);
   }
 
   @Nonnull
-  static Column quantityCompare(
-      @Nonnull final Column left,
-      @Nonnull final Column right,
+  static BinaryOperator<Column> quantityComparator(
       @Nonnull final BinaryOperator<Column> comparator) {
-    final Column sameUnit = sameUnit(left, right);
-    return when(sameUnit, comparator.apply(left.getField("value"), right.getField("value")));
+    return (left, right) -> {
+      final Column sameUnit = sameUnit(left, right);
+      return when(sameUnit, comparator.apply(left.getField("value"), right.getField("value")));
+    };
   }
 }

@@ -4,6 +4,7 @@ import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
+import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.ir.Lambda;
 import org.apache.spark.sql.Column;
@@ -74,13 +75,23 @@ public final class BooleanOps {
 
     // all(criteria): empty → true, all match → true, any mismatch → false
     registry.register(
-        "all",
-        ctx -> {
-          if (!(ctx.argNode(1) instanceof Lambda lambda)) {
-            throw new IllegalArgumentException(
-                "all() requires a Lambda argument, got: " + ctx.argNode(1).getClass());
-          }
-          return ctx.generator().evaluateAll(ctx.arg(0), ctx.argNode(0).isSingular(), lambda);
-        });
+        "all", ctx -> evaluateAll(ctx.arg(0), ctx.argNode(0).isSingular(), ctx.lambdaArg(1), ctx));
+  }
+
+  private static Column evaluateAll(
+      final Column collection,
+      final boolean isSingular,
+      final Lambda lambda,
+      final SparkOpContext ctx) {
+    if (isSingular) {
+      // Singular: evaluate lambda with value as $this, empty → true
+      final Column criteriaResult = ctx.evaluateLambda(collection, lambda);
+      return when(collection.isNull(), lit(true)).otherwise(criteriaResult);
+    } else {
+      // Collection: use Spark's forall with lambda evaluation.
+      // forall returns true on empty arrays, matching FHIRPath spec.
+      return when(collection.isNull(), lit(true))
+          .otherwise(functions.forall(collection, elem -> ctx.evaluateLambda(elem, lambda)));
+    }
   }
 }

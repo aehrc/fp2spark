@@ -1,6 +1,12 @@
 package com.example.fhirpath.codegen.spark.ops;
 
 import static com.example.fhirpath.codegen.spark.SparkTypeMapper.DECIMAL_TYPE;
+import static com.example.fhirpath.codegen.spark.TypeDispatch.binary;
+import static com.example.fhirpath.codegen.spark.TypeDispatch.byResultType;
+import static com.example.fhirpath.codegen.spark.TypeDispatch.types;
+import static com.example.fhirpath.typing.PrimitiveType.DECIMAL;
+import static com.example.fhirpath.typing.PrimitiveType.INTEGER;
+import static com.example.fhirpath.typing.PrimitiveType.STRING;
 import static org.apache.spark.sql.functions.abs;
 import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.concat;
@@ -10,7 +16,6 @@ import static org.apache.spark.sql.functions.signum;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
-import com.example.fhirpath.typing.PrimitiveType;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.types.DataTypes;
@@ -53,34 +58,14 @@ public final class ArithmeticOps {
   public static void register(final SparkOperationRegistry registry) {
     registry.register(
         "add",
-        ctx ->
-            switch ((PrimitiveType) ctx.resultType()) {
-              case INTEGER, DECIMAL -> ctx.arg(0).plus(ctx.arg(1));
-              case STRING -> concat(ctx.arg(0), ctx.arg(1));
-              default ->
-                  throw new IllegalArgumentException(
-                      "Unsupported result type for add: " + ctx.resultType());
-            });
+        byResultType()
+            .when(types(INTEGER, DECIMAL), binary(Column::plus))
+            .when(types(STRING), binary((l, r) -> concat(l, r))));
+
+    registry.register("sub", byResultType().when(types(INTEGER, DECIMAL), binary(Column::minus)));
 
     registry.register(
-        "sub",
-        ctx ->
-            switch ((PrimitiveType) ctx.resultType()) {
-              case INTEGER, DECIMAL -> ctx.arg(0).minus(ctx.arg(1));
-              default ->
-                  throw new IllegalArgumentException(
-                      "Unsupported result type for sub: " + ctx.resultType());
-            });
-
-    registry.register(
-        "multiply",
-        ctx ->
-            switch ((PrimitiveType) ctx.resultType()) {
-              case INTEGER, DECIMAL -> ctx.arg(0).multiply(ctx.arg(1));
-              default ->
-                  throw new IllegalArgumentException(
-                      "Unsupported result type for multiply: " + ctx.resultType());
-            });
+        "multiply", byResultType().when(types(INTEGER, DECIMAL), binary(Column::multiply)));
 
     // Division always returns DECIMAL per FHIRPath spec (divisionOp signature enforces this).
     // No type-dispatch needed since both Integer and Decimal inputs produce Decimal output.
@@ -100,7 +85,7 @@ public final class ArithmeticOps {
     registry.register(
         "div",
         ctx ->
-            switch ((PrimitiveType) ctx.resultType()) {
+            switch (ctx.primitiveResultType()) {
               case INTEGER ->
                   guardDivisionByZero(
                       ctx.arg(1),
@@ -113,7 +98,7 @@ public final class ArithmeticOps {
                       truncateTowardZero(ctx.arg(0).divide(ctx.arg(1))).cast(DECIMAL_TYPE));
               default ->
                   throw new IllegalArgumentException(
-                      "Unsupported result type for div: " + ctx.resultType());
+                      "Unsupported type for div: " + ctx.resultType());
             });
 
     // String concatenation (&): treats null/empty as empty string.

@@ -35,16 +35,6 @@ public final class SparkTypeMapper {
     return shape.isMany() ? DataTypes.createArrayType(elementType) : elementType;
   }
 
-  /**
-   * Maps a FHIRPath type (without cardinality) to a Spark DataType.
-   *
-   * @deprecated Use toSparkDataType(Shape) instead
-   */
-  @Deprecated
-  public static DataType toSparkDataType(final Type t) {
-    return toSparkElementType(t);
-  }
-
   private static DataType toSparkElementType(final Type t) {
     if (t instanceof FhirPrimitiveType fpt) {
       return toSparkElementType(fpt.getSystemType());

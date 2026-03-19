@@ -52,28 +52,26 @@ final class TemporalOps {
    */
   @Nonnull
   static Column temporalEquals(@Nonnull final Column left, @Nonnull final Column right) {
-    return temporalCompare(left, right, Column::equalTo);
+    return temporalComparator(Column::equalTo).apply(left, right);
   }
 
   /**
-   * Precision-aware temporal comparison. Normalizes both values, compares string lengths
-   * (precision). Same precision → applies the given comparator. Different precision → {@code null}
-   * (empty).
+   * Precision-aware temporal comparator factory. Returns a {@link BinaryOperator} that normalizes
+   * both values, compares string lengths (precision). Same precision → applies the given
+   * comparator. Different precision → {@code null} (empty).
    *
-   * @param left the left temporal column
-   * @param right the right temporal column
    * @param comparator the comparison function (e.g., {@code Column::gt})
-   * @return a Boolean column: true/false for same precision, null for different precision
+   * @return a binary operator that performs precision-aware temporal comparison
    */
   @Nonnull
-  static Column temporalCompare(
-      @Nonnull final Column left,
-      @Nonnull final Column right,
+  static BinaryOperator<Column> temporalComparator(
       @Nonnull final BinaryOperator<Column> comparator) {
-    final Column normLeft = normalize(left);
-    final Column normRight = normalize(right);
-    final Column samePrecision = length(normLeft).equalTo(length(normRight));
-    return when(samePrecision, comparator.apply(normLeft, normRight));
+    return (left, right) -> {
+      final Column normLeft = normalize(left);
+      final Column normRight = normalize(right);
+      final Column samePrecision = length(normLeft).equalTo(length(normRight));
+      return when(samePrecision, comparator.apply(normLeft, normRight));
+    };
   }
 
   /**

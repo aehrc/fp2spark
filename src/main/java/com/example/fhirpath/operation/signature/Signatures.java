@@ -212,12 +212,13 @@ public final class Signatures {
   }
 
   /**
-   * Collection projection with lambda: (*T, ?Lambda(S)) → S.
+   * Collection projection with lambda: (*T, ?Lambda(S)) → *S.
    *
-   * <p>Example: *T.select(?Lambda(S)) → S
+   * <p>Example: *T.select(?Lambda(S)) → *S
    *
-   * <p>Uses ELEMENT_WISE binding: $this = T (element type). The result type and cardinality are
-   * determined by the lambda body's return shape via {@link ResultTypeSpec#lambdaBodyType(int)}.
+   * <p>Uses ELEMENT_WISE binding: $this = T (element type). The result type is determined by the
+   * lambda body's element type via {@link ResultTypeSpec#lambdaBodyTypeMany(int)}, which extracts
+   * the type from the lambda body and forces MANY cardinality.
    *
    * <p>If the lambda returns MANY, the results are flattened (FHIRPath collections are
    * one-dimensional). If the lambda returns SINGLE, results are collected into an array.

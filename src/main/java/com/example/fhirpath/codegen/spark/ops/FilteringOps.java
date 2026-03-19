@@ -4,7 +4,7 @@ import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.ir.Lambda;
 
 /**
- * Filtering and conditional operation registrations (where, iif).
+ * Filtering, projection, and conditional operation registrations (where, select, iif).
  *
  * <p>Delegates to methods on SparkCodeGenerator for lambda evaluation.
  */

@@ -258,26 +258,9 @@ public sealed interface ResultTypeSpec
     @Override
     @Nonnull
     public Shape resolve(@Nonnull final List<IRNode> resolvedArgs) {
-      if (argumentIndex >= resolvedArgs.size()) {
-        throw new IllegalArgumentException(
-            "LambdaBodyTypeMany requires argument at index "
-                + argumentIndex
-                + " but only "
-                + resolvedArgs.size()
-                + " arguments provided");
-      }
-
-      final IRNode lambdaArg = resolvedArgs.get(argumentIndex);
-      if (!(lambdaArg instanceof com.example.fhirpath.ir.Lambda lambda)) {
-        throw new IllegalArgumentException(
-            "LambdaBodyTypeMany expects Lambda at argument index "
-                + argumentIndex
-                + " but got "
-                + lambdaArg.getClass().getSimpleName());
-      }
-
-      // Extract the type from the lambda body, but always use MANY cardinality
-      return Shape.many(lambda.body().getType());
+      // Reuse LambdaBodyType for validation and lambda extraction, then force MANY
+      final Shape bodyShape = new LambdaBodyType(argumentIndex).resolve(resolvedArgs);
+      return Shape.many(bodyShape.elementType());
     }
 
     @Override

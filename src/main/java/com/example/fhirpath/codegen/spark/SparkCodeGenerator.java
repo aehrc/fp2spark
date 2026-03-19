@@ -159,7 +159,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
    */
   @Nonnull
   public Column evaluateSelect(
-      final Column collection,
+      @Nonnull final Column collection,
       final boolean isSingular,
       @Nonnull final Lambda lambda,
       final boolean lambdaBodyIsSingular) {

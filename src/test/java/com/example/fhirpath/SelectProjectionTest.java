@@ -64,6 +64,7 @@ public class SelectProjectionTest extends FhirPathTestBase {
         .group("select() empty input")
         .testEmpty("{}.select($this)", "Empty input returns empty")
         .testEmpty("{}.select($this + 1)", "Empty input with arithmetic returns empty")
+        .testEmpty("(1 ; 2 ; 3).select({})", "Empty lambda result produces empty collection")
         .group("select() empty lambda result")
         .withSubject(
             "Patient",
@@ -127,6 +128,10 @@ public class SelectProjectionTest extends FhirPathTestBase {
             List.of("Smith", "Doe"),
             "name.select(family)",
             "Project singular field from each element")
+        .testEquals(
+            List.of("Smith", "Doe"),
+            "name.select($this.family)",
+            "Explicit $this.field access in select")
         .group("select() with nested field access")
         .testEquals(
             List.of("John", "Jane"),

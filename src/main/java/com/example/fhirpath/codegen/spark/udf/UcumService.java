@@ -2,6 +2,7 @@ package com.example.fhirpath.codegen.spark.udf;
 
 import io.github.fhnaumann.funcs.CanonicalizerService;
 import io.github.fhnaumann.funcs.ConverterService;
+import io.github.fhnaumann.funcs.RelationCheckerService;
 import io.github.fhnaumann.funcs.UCUMService;
 import io.github.fhnaumann.model.UCUMExpression.CanonicalTerm;
 import io.github.fhnaumann.util.PreciseDecimal;
@@ -57,6 +58,56 @@ final class UcumService {
 
       final String adjustedCode = canonicalCode.isEmpty() ? NO_UNIT_CODE : canonicalCode;
       return new Canonical(magnitude.getValue(), adjustedCode);
+    } catch (final Exception e) {
+      return null;
+    }
+  }
+
+  /**
+   * Checks whether two UCUM codes are commensurable (same dimension).
+   *
+   * @param code1 the first UCUM code
+   * @param code2 the second UCUM code
+   * @return true if the codes have the same dimension, false otherwise
+   */
+  static boolean areCommensurable(@Nonnull final String code1, @Nonnull final String code2) {
+    try {
+      final RelationCheckerService.CommensurableResult result =
+          SERVICE.checkCommensurable(code1, code2);
+      return result instanceof RelationCheckerService.IsCommensurable;
+    } catch (final Exception e) {
+      return false;
+    }
+  }
+
+  /**
+   * Computes the UCUM code resulting from multiplying two unit codes.
+   *
+   * @param code1 the first UCUM code
+   * @param code2 the second UCUM code
+   * @return the product unit code (e.g., "cm.cm" → "cm2"), or {@code null} on failure
+   */
+  @Nullable
+  static String multiplyUnits(@Nonnull final String code1, @Nonnull final String code2) {
+    try {
+      return SERVICE.print(code1 + "." + code2);
+    } catch (final Exception e) {
+      return null;
+    }
+  }
+
+  /**
+   * Computes the UCUM code resulting from dividing two unit codes.
+   *
+   * @param code1 the numerator UCUM code
+   * @param code2 the denominator UCUM code
+   * @return the quotient unit code (e.g., "cm2/cm" → "cm"), or {@code null} on failure
+   */
+  @Nullable
+  static String divideUnits(@Nonnull final String code1, @Nonnull final String code2) {
+    try {
+      final String resultCode = SERVICE.print(code1 + "/" + code2);
+      return resultCode == null || resultCode.isEmpty() ? NO_UNIT_CODE : resultCode;
     } catch (final Exception e) {
       return null;
     }

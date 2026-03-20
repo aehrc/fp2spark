@@ -1,9 +1,10 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static com.example.fhirpath.codegen.spark.SparkDefs.binary;
+import static com.example.fhirpath.codegen.spark.SparkDefs.byResultType;
+import static com.example.fhirpath.codegen.spark.SparkDefs.types;
+import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
 import static com.example.fhirpath.codegen.spark.SparkTypeMapper.DECIMAL_TYPE;
-import static com.example.fhirpath.codegen.spark.TypeDispatch.binary;
-import static com.example.fhirpath.codegen.spark.TypeDispatch.byResultType;
-import static com.example.fhirpath.codegen.spark.TypeDispatch.types;
 import static com.example.fhirpath.typing.PrimitiveType.DECIMAL;
 import static com.example.fhirpath.typing.PrimitiveType.INTEGER;
 import static com.example.fhirpath.typing.PrimitiveType.STRING;
@@ -107,9 +108,9 @@ public final class ArithmeticOps {
         ctx -> concat(coalesce(ctx.arg(0), lit("")), coalesce(ctx.arg(1), lit(""))));
 
     // Unary plus: identity operation.
-    registry.unary("unaryPlus", col -> col);
+    registry.register("unaryPlus", unary(col -> col));
 
     // Unary minus: negation.
-    registry.unary("unaryMinus", col -> col.multiply(lit(-1)));
+    registry.register("unaryMinus", unary(col -> col.multiply(lit(-1))));
   }
 }

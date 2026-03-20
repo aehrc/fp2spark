@@ -1,5 +1,7 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
+
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 
 /**
@@ -24,6 +26,6 @@ public final class TypeOps {
   public static void register(final SparkOperationRegistry registry) {
     // is: check if the variant column is non-null.
     // Corresponds to the IR Operation("is", ...) created by Analyzer.resolveChoiceTypeOperation().
-    registry.unary("is", col -> col.isNotNull());
+    registry.register("is", unary(col -> col.isNotNull()));
   }
 }

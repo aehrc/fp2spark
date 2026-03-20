@@ -9,6 +9,7 @@ import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import java.util.List;
+import java.util.function.UnaryOperator;
 import org.apache.spark.sql.Column;
 
 /**
@@ -156,5 +157,21 @@ public record SparkOpContext(
   @Nonnull
   public Column evaluateLambda(@Nonnull final Column thisBinding, @Nonnull final Lambda lambda) {
     return lambda.body().accept(generator.withThisColumn(thisBinding));
+  }
+
+  /**
+   * Returns a function that evaluates the lambda at the given argument index with a bound {@code
+   * $this} column.
+   *
+   * <p>This binds the lambda argument to a reusable {@code UnaryOperator<Column>}, eliminating the
+   * need to pass both a {@link Lambda} and a {@link SparkOpContext} through helper methods.
+   *
+   * @param i the argument index of the Lambda
+   * @return a function mapping a {@code $this} binding column to the lambda's evaluated result
+   */
+  @Nonnull
+  public UnaryOperator<Column> lambdaEvaluator(final int i) {
+    final Lambda lambda = lambdaArg(i);
+    return thisBinding -> evaluateLambda(thisBinding, lambda);
   }
 }

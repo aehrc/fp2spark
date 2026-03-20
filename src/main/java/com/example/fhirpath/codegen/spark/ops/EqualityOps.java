@@ -12,7 +12,7 @@ import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 import java.util.function.BiFunction;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
@@ -72,9 +72,9 @@ public final class EqualityOps {
         result = left.column().equalTo(right.column());
       } else {
         final Column leftArray =
-            left.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
+            left.apply(UnaryOperator.identity(), c -> when(c.isNotNull(), functions.array(c)));
         final Column rightArray =
-            right.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
+            right.apply(UnaryOperator.identity(), c -> when(c.isNotNull(), functions.array(c)));
         result = leftArray.equalTo(rightArray);
       }
     } else {
@@ -104,9 +104,9 @@ public final class EqualityOps {
       @Nonnull final BiFunction<Column, Column, Column> eq) {
 
     final Column leftArray =
-        left.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
+        left.apply(UnaryOperator.identity(), c -> when(c.isNotNull(), functions.array(c)));
     final Column rightArray =
-        right.apply(Function.identity(), c -> when(c.isNotNull(), functions.array(c)));
+        right.apply(UnaryOperator.identity(), c -> when(c.isNotNull(), functions.array(c)));
 
     final Column sameSize = functions.size(leftArray).equalTo(functions.size(rightArray));
 
@@ -151,10 +151,10 @@ public final class EqualityOps {
   @Nonnull
   static BiFunction<Column, Column, Column> equalityForType(@Nonnull final Type type) {
     if (type == Types.QUANTITY) {
-      return QuantityOps::quantityEquals;
+      return QuantitySupport::quantityEquals;
     }
-    if (TemporalOps.isTemporalType(type)) {
-      return TemporalOps::temporalEquals;
+    if (TemporalSupport.isTemporalType(type)) {
+      return TemporalSupport::temporalEquals;
     }
     return Column::equalTo;
   }
@@ -169,6 +169,6 @@ public final class EqualityOps {
    * @return true if Spark's built-in array functions use correct equality for this type
    */
   static boolean usesDefaultEquality(@Nonnull final Type type) {
-    return type != Types.QUANTITY && !TemporalOps.isTemporalType(type);
+    return type != Types.QUANTITY && !TemporalSupport.isTemporalType(type);
   }
 }

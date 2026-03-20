@@ -1,5 +1,6 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
 import static org.apache.spark.sql.functions.col;
 import static org.apache.spark.sql.functions.concat;
 import static org.apache.spark.sql.functions.lit;
@@ -29,10 +30,10 @@ public final class FhirOps {
    */
   public static void register(final SparkOperationRegistry registry) {
     // getValue() — returns the value of a FHIR primitive (identity for our encoding)
-    registry.unary("getValue", c -> c);
+    registry.register("getValue", unary(c -> c));
 
     // hasValue() — returns true if the element has a value (non-null check)
-    registry.unary("hasValue", c -> c.isNotNull());
+    registry.register("hasValue", unary(c -> c.isNotNull()));
 
     // getResourceKey() — returns "ResourceType/id" for SQL on FHIR joins
     registry.register(

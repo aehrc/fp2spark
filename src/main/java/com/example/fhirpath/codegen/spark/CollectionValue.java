@@ -4,7 +4,7 @@ import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
 import jakarta.annotation.Nonnull;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
@@ -28,7 +28,7 @@ public record CollectionValue(Column column, boolean isSingular) {
    */
   @Nonnull
   public Column apply(
-      final Function<Column, Column> arrayFunction, final Function<Column, Column> singleFunction) {
+      final UnaryOperator<Column> arrayFunction, final UnaryOperator<Column> singleFunction) {
     return isSingular ? singleFunction.apply(column) : arrayFunction.apply(column);
   }
 
@@ -43,8 +43,8 @@ public record CollectionValue(Column column, boolean isSingular) {
    */
   @Nonnull
   public Column applyNonNull(
-      final Function<Column, Column> arrayFunction,
-      final Function<Column, Column> singleFunction,
+      final UnaryOperator<Column> arrayFunction,
+      final UnaryOperator<Column> singleFunction,
       final Column defaultValue) {
     return when(column.isNotNull(), apply(arrayFunction, singleFunction)).otherwise(defaultValue);
   }
@@ -56,7 +56,7 @@ public record CollectionValue(Column column, boolean isSingular) {
    */
   @Nonnull
   public Column asArray() {
-    return applyNonNull(Function.identity(), functions::array, functions.array());
+    return applyNonNull(UnaryOperator.identity(), functions::array, functions.array());
   }
 
   /**
@@ -67,7 +67,7 @@ public record CollectionValue(Column column, boolean isSingular) {
    * @return a new CollectionValue with the transformation applied
    */
   @Nonnull
-  public CollectionValue map(@Nonnull final Function<Column, Column> fn) {
+  public CollectionValue map(@Nonnull final UnaryOperator<Column> fn) {
     final Column result = isSingular ? fn.apply(column) : functions.transform(column, fn::apply);
     return new CollectionValue(result, isSingular);
   }
@@ -120,7 +120,7 @@ public record CollectionValue(Column column, boolean isSingular) {
    *     value
    */
   @Nonnull
-  public static Function<Column, Column> cons(final Object constValue) {
+  public static UnaryOperator<Column> cons(final Object constValue) {
     return ign -> lit(constValue);
   }
 }

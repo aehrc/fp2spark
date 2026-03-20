@@ -1,8 +1,8 @@
 package com.example.fhirpath.codegen.spark.ops;
 
-import static com.example.fhirpath.codegen.spark.TypeDispatch.binary;
-import static com.example.fhirpath.codegen.spark.TypeDispatch.byArgType;
-import static com.example.fhirpath.codegen.spark.TypeDispatch.types;
+import static com.example.fhirpath.codegen.spark.SparkDefs.binary;
+import static com.example.fhirpath.codegen.spark.SparkDefs.byArgType;
+import static com.example.fhirpath.codegen.spark.SparkDefs.types;
 import static com.example.fhirpath.typing.PrimitiveType.DATE;
 import static com.example.fhirpath.typing.PrimitiveType.DATE_TIME;
 import static com.example.fhirpath.typing.PrimitiveType.DECIMAL;
@@ -45,7 +45,7 @@ public final class ComparisonOps {
         name,
         byArgType(0)
             .when(types(INTEGER, DECIMAL, STRING), binary(op))
-            .when(types(QUANTITY), binary(QuantityOps.quantityComparator(op)))
-            .when(types(DATE, DATE_TIME, TIME), binary(TemporalOps.temporalComparator(op))));
+            .when(types(QUANTITY), binary(QuantitySupport.quantityComparator(op)))
+            .when(types(DATE, DATE_TIME, TIME), binary(TemporalSupport.temporalComparator(op))));
   }
 }

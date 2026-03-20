@@ -1,12 +1,13 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static com.example.fhirpath.codegen.spark.SparkDefs.collectionUnary;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import jakarta.annotation.Nonnull;
-import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 
@@ -14,8 +15,9 @@ import org.apache.spark.sql.functions;
  * Collection function registrations (count, exists, empty, first, last, tail, skip, take, single,
  * indexer).
  *
- * <p>Uses {@code collectionArg()} from the operation context to handle singular vs array
- * cardinality.
+ * <p>Uses {@link com.example.fhirpath.codegen.spark.SparkDefs#collectionUnary collectionUnary} for
+ * simple cardinality-dispatched operations, and direct {@code ctx.collectionArg(0).apply()} for
+ * operations that need additional arguments.
  */
 public final class CollectionOps {
 
@@ -27,34 +29,38 @@ public final class CollectionOps {
    * @param registry the registry to register operations into
    */
   public static void register(final SparkOperationRegistry registry) {
-    registry.register(
-        "count", ctx -> ctx.collectionArg(0).applyNonNull(functions::size, c -> lit(1), lit(0)));
+    registry.register("count", collectionUnary(functions::size, c -> lit(1), lit(0)));
 
+    // exists/empty operate on the null-as-empty encoding directly, without cardinality dispatch.
     registry.register(
         "exists", ctx -> when(ctx.arg(0).isNotNull(), lit(true)).otherwise(lit(false)));
-
     registry.register("empty", ctx -> when(ctx.arg(0).isNull(), lit(true)).otherwise(lit(false)));
 
     registry.register(
-        "first",
-        ctx -> ctx.collectionArg(0).apply(c -> functions.get(c, lit(0)), Function.identity()));
-
+        "first", collectionUnary(c -> functions.get(c, lit(0)), UnaryOperator.identity()));
     registry.register(
         "last",
-        ctx ->
-            ctx.collectionArg(0)
-                .apply(
-                    c -> functions.get(c, functions.size(c).minus(lit(1))), Function.identity()));
-
+        collectionUnary(
+            c -> functions.get(c, functions.size(c).minus(lit(1))), UnaryOperator.identity()));
     registry.register(
         "tail",
-        ctx ->
-            ctx.collectionArg(0)
-                .apply(c -> functions.slice(c, lit(2), functions.size(c)), c -> lit(null)));
+        collectionUnary(c -> functions.slice(c, lit(2), functions.size(c)), c -> lit(null)));
+    registry.register(
+        "single",
+        collectionUnary(
+            c -> {
+              final var sz = functions.size(c);
+              return when(sz.equalTo(lit(1)), functions.get(c, lit(0)))
+                  .when(
+                      sz.gt(lit(1)),
+                      functions.raise_error(
+                          lit("single() expected one element but found multiple")))
+                  .otherwise(lit(null));
+            },
+            UnaryOperator.identity()));
 
     registry.register("skip", CollectionOps::generateSkip);
     registry.register("take", CollectionOps::generateTake);
-    registry.register("single", CollectionOps::generateSingle);
     registry.register("indexer", CollectionOps::generateIndexer);
   }
 
@@ -80,23 +86,6 @@ public final class CollectionOps {
             // Guard: Spark slice() requires length >= 0; when n<=0 return empty.
             c -> when(n.leq(lit(0)), lit(null)).otherwise(functions.slice(c, lit(1), n)),
             c -> when(c.isNull().or(n.leq(lit(0))), lit(null)).otherwise(functions.array(c)));
-  }
-
-  /** single(): array → element if size=1, error if >1, empty if size=0; singular → identity. */
-  @Nonnull
-  private static Column generateSingle(@Nonnull final SparkOpContext ctx) {
-    return ctx.collectionArg(0)
-        .apply(
-            c -> {
-              final var sz = functions.size(c);
-              return when(sz.equalTo(lit(1)), functions.get(c, lit(0)))
-                  .when(
-                      sz.gt(lit(1)),
-                      functions.raise_error(
-                          lit("single() expected one element but found multiple")))
-                  .otherwise(lit(null));
-            },
-            Function.identity());
   }
 
   /** indexer ([]): collection → element at index, singular → only index 0 returns value. */

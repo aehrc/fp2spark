@@ -3,15 +3,12 @@ package com.example.fhirpath.codegen.spark.ops;
 import static org.apache.spark.sql.functions.length;
 import static org.apache.spark.sql.functions.when;
 
+import com.example.fhirpath.codegen.spark.udf.TemporalNormalize;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.TypeSets;
 import jakarta.annotation.Nonnull;
 import java.util.function.BinaryOperator;
 import org.apache.spark.sql.Column;
-import org.apache.spark.sql.api.java.UDF1;
-import org.apache.spark.sql.expressions.UserDefinedFunction;
-import org.apache.spark.sql.functions;
-import org.apache.spark.sql.types.DataTypes;
 
 /**
  * Spark column expression helpers for precision-aware temporal comparison.
@@ -23,13 +20,9 @@ import org.apache.spark.sql.types.DataTypes;
  * <p>When two temporal values have different precision levels, equality and comparison return
  * {@code null} (empty collection) per the FHIRPath specification.
  */
-final class TemporalOps {
+final class TemporalSupport {
 
-  private TemporalOps() {}
-
-  /** UDF that normalizes a temporal string for comparison. */
-  private static final UserDefinedFunction NORMALIZE_TEMPORAL =
-      functions.udf((UDF1<String, String>) TemporalNormalize::normalize, DataTypes.StringType);
+  private TemporalSupport() {}
 
   /**
    * Apply the normalize_temporal UDF to a column.
@@ -39,7 +32,7 @@ final class TemporalOps {
    */
   @Nonnull
   private static Column normalize(@Nonnull final Column col) {
-    return NORMALIZE_TEMPORAL.apply(col);
+    return TemporalNormalize.UDF.apply(col);
   }
 
   /**

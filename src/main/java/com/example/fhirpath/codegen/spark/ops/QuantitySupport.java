@@ -12,9 +12,9 @@ import org.apache.spark.sql.Column;
  * <p>Semantics: system and code are compared as-is (case-sensitive). If both match, values are
  * compared. If either differs, the result is {@code null} (empty collection in FHIRPath).
  */
-final class QuantityOps {
+final class QuantitySupport {
 
-  private QuantityOps() {}
+  private QuantitySupport() {}
 
   @Nonnull
   private static Column sameUnit(@Nonnull final Column left, @Nonnull final Column right) {

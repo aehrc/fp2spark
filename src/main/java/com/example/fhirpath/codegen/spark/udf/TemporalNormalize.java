@@ -1,5 +1,6 @@
-package com.example.fhirpath.codegen.spark.ops;
+package com.example.fhirpath.codegen.spark.udf;
 
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -10,6 +11,10 @@ import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.spark.sql.api.java.UDF1;
+import org.apache.spark.sql.expressions.UserDefinedFunction;
+import org.apache.spark.sql.functions;
+import org.apache.spark.sql.types.DataTypes;
 
 /**
  * Normalizes temporal ISO 8601 strings for precision-aware comparison.
@@ -38,9 +43,14 @@ import java.util.regex.Pattern;
  *   <li>Time: HH:mm=5, HH:mm:ss.nnnnnnnnn=14
  * </ul>
  */
-final class TemporalNormalize {
+public final class TemporalNormalize {
 
   private TemporalNormalize() {}
+
+  /** Spark UDF that normalizes a temporal string for comparison. */
+  @Nonnull
+  public static final UserDefinedFunction UDF =
+      functions.udf((UDF1<String, String>) TemporalNormalize::normalize, DataTypes.StringType);
 
   /**
    * Pattern matching a DateTime value with time components and an explicit timezone offset. Group

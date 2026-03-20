@@ -10,6 +10,7 @@ import static com.example.fhirpath.typing.Types.ANY;
 import static com.example.fhirpath.typing.Types.BOOLEAN;
 import static com.example.fhirpath.typing.Types.INTEGER;
 import static com.example.fhirpath.typing.Types.NULL;
+import static com.example.fhirpath.typing.Types.QUANTITY;
 import static com.example.fhirpath.typing.Types.STRING;
 
 import com.example.fhirpath.operation.signature.SignatureDefinition;
@@ -43,10 +44,22 @@ public final class OperationRegistry {
         // ARITHMETIC OPERATORS (FHIRPath Spec 6.2)
         // Phase 1: Only numeric types (INTEGER, DECIMAL) and STRING
 
-        register("add", forTypes(NUMERIC, STRING_LIKE).define(Signatures::binaryOp)),
-        register("sub", forTypes(NUMERIC).define(Signatures::binaryOp)),
-        register("multiply", forTypes(NUMERIC).define(Signatures::binaryOp)),
-        register("divide", forTypes(NUMERIC).define(Signatures::divisionOp)),
+        register(
+            "add",
+            forTypes(NUMERIC, STRING_LIKE).define(Signatures::binaryOp),
+            Signatures.binaryOp(QUANTITY)),
+        register(
+            "sub", forTypes(NUMERIC).define(Signatures::binaryOp), Signatures.binaryOp(QUANTITY)),
+        register(
+            "multiply",
+            forTypes(NUMERIC).define(Signatures::binaryOp),
+            Signatures.binaryOp(QUANTITY)),
+        // Quantity division returns Quantity (unit algebra: cm2 / cm → cm),
+        // unlike numeric division which always returns DECIMAL.
+        register(
+            "divide",
+            forTypes(NUMERIC).define(Signatures::divisionOp),
+            Signatures.binaryOp(QUANTITY)),
         register("mod", forTypes(NUMERIC).define(Signatures::binaryOp)),
         register("div", forTypes(NUMERIC).define(Signatures::binaryOp)),
         register("stringConcat", Signatures.binaryOp(STRING)),

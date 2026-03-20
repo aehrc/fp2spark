@@ -7,6 +7,7 @@ import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
 import static com.example.fhirpath.codegen.spark.SparkTypeMapper.DECIMAL_TYPE;
 import static com.example.fhirpath.typing.PrimitiveType.DECIMAL;
 import static com.example.fhirpath.typing.PrimitiveType.INTEGER;
+import static com.example.fhirpath.typing.PrimitiveType.QUANTITY;
 import static com.example.fhirpath.typing.PrimitiveType.STRING;
 import static org.apache.spark.sql.functions.abs;
 import static org.apache.spark.sql.functions.coalesce;
@@ -16,7 +17,9 @@ import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.signum;
 import static org.apache.spark.sql.functions.when;
 
+import com.example.fhirpath.codegen.spark.SparkOperationDef;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
+import com.example.fhirpath.codegen.spark.udf.QuantityArithmetic;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.types.DataTypes;
@@ -52,6 +55,14 @@ public final class ArithmeticOps {
   }
 
   /**
+   * Creates a quantity arithmetic dispatch that delegates to the {@link QuantityArithmetic} UDF.
+   */
+  @Nonnull
+  private static SparkOperationDef quantityOp(@Nonnull final String opCode) {
+    return ctx -> QuantityArithmetic.UDF.apply(ctx.arg(0), ctx.arg(1), lit(opCode));
+  }
+
+  /**
    * Registers all arithmetic operators into the given registry.
    *
    * @param registry the registry to register operations into
@@ -61,21 +72,34 @@ public final class ArithmeticOps {
         "add",
         byResultType()
             .when(types(INTEGER, DECIMAL), binary(Column::plus))
-            .when(types(STRING), binary((l, r) -> concat(l, r))));
-
-    registry.register("sub", byResultType().when(types(INTEGER, DECIMAL), binary(Column::minus)));
+            .when(types(STRING), binary((l, r) -> concat(l, r)))
+            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_ADD)));
 
     registry.register(
-        "multiply", byResultType().when(types(INTEGER, DECIMAL), binary(Column::multiply)));
+        "sub",
+        byResultType()
+            .when(types(INTEGER, DECIMAL), binary(Column::minus))
+            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_SUB)));
 
-    // Division always returns DECIMAL per FHIRPath spec (divisionOp signature enforces this).
-    // No type-dispatch needed since both Integer and Decimal inputs produce Decimal output.
+    registry.register(
+        "multiply",
+        byResultType()
+            .when(types(INTEGER, DECIMAL), binary(Column::multiply))
+            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_MUL)));
+
+    // Division: for numeric types, always returns DECIMAL per FHIRPath spec.
     // Division by zero returns empty (null).
+    // For quantities, the UDF handles division and unit algebra.
     registry.register(
         "divide",
-        ctx ->
-            guardDivisionByZero(
-                ctx.arg(1), ctx.arg(0).cast(DECIMAL_TYPE).divide(ctx.arg(1).cast(DECIMAL_TYPE))));
+        byResultType()
+            .when(
+                types(INTEGER, DECIMAL),
+                ctx ->
+                    guardDivisionByZero(
+                        ctx.arg(1),
+                        ctx.arg(0).cast(DECIMAL_TYPE).divide(ctx.arg(1).cast(DECIMAL_TYPE))))
+            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_DIV)));
 
     // Modulo: division by zero returns empty (null).
     registry.register("mod", ctx -> guardDivisionByZero(ctx.arg(1), ctx.arg(0).mod(ctx.arg(1))));

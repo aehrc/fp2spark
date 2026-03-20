@@ -87,9 +87,9 @@ class EqualityOperatorsTest extends FhirPathTestBase {
         .testFalse("10 'mg' = 20 'mg'", "Different value, same unit")
         .testFalse("10 'mg' != 10 'mg'", "Not-equals equal quantities")
         .testTrue("10 'mg' != 20 'mg'", "Not-equals different values")
-        .group("Quantity equality: different unit")
-        .testEmpty("10 'mg' = 10 'kg'", "Different unit returns empty")
-        .testEmpty("10 'mg' != 10 'kg'", "Not-equals different unit returns empty")
+        .group("Quantity equality: different unit, same dimension")
+        .testFalse("10 'mg' = 10 'kg'", "Same dimension, different values after conversion")
+        .testTrue("10 'mg' != 10 'kg'", "Not-equals same dimension, different values")
         .group("Quantity equality: decimal values")
         .testTrue("1.5 'cm' = 1.5 'cm'", "Equal decimal quantities")
         .testFalse("1.5 'cm' = 2.5 'cm'", "Different decimal quantities")
@@ -102,10 +102,9 @@ class EqualityOperatorsTest extends FhirPathTestBase {
         .testTrue("10 minute = 10 minutes", "minute/minutes")
         .testTrue("30 second = 30 seconds", "second/seconds")
         .testTrue("500 millisecond = 500 milliseconds", "millisecond/milliseconds")
-        .group("Quantity equality: calendar vs definite duration")
-        .testEmpty("1 year = 1 'a'", "Spec: calendar year vs UCUM 'a' returns empty")
-        .testEmpty(
-            "1 second = 1 's'", "Calendar second vs UCUM 's' (unit conversion not supported)")
+        .group("Quantity equality: calendar vs UCUM")
+        .testEmpty("1 year = 1 'a'", "Spec: non-definite calendar year vs UCUM 'a' returns empty")
+        .testTrue("1 second = 1 's'", "Calendar second converts to UCUM 's'")
         .build();
   }
 
@@ -276,21 +275,16 @@ class EqualityOperatorsTest extends FhirPathTestBase {
             "Different units at same position returns empty")
         .group("Quantity collection equality: different sizes")
         .testFalse("(1 day) = (1 day ; 2 days)", "Different sizes")
-        .group("Quantity collection equality: different unit")
-        .testEmpty("(10 'mg') = (10 'kg')", "Different unit returns empty")
+        .group("Quantity collection equality: different unit, same dimension")
+        .testFalse("(10 'mg') = (10 'kg')", "Same dimension, different values after conversion")
         .group("Quantity collection equality: three-valued logic")
-        .testEmpty(
-            "(1 day ; 1 second) = (1 day ; 1 'a')",
-            "true + empty → empty (first pair equal, second incomparable)")
         .testFalse(
-            "(2 day ; 1 second) = (1 day ; 1 'a')",
-            "false + empty → false (first pair unequal, second incomparable)")
-        .testEmpty(
-            "(1 day ; 1 second) != (1 day ; 1 'a')",
-            "not(true + empty) → empty (negation of empty is empty)")
-        .testTrue(
-            "(2 day ; 1 second) != (1 day ; 1 'a')",
-            "not(false + empty) → true (negation of false is true)")
+            "(1 day ; 1 second) = (1 day ; 1 'a')",
+            "true + false → false (first pair equal, second unequal after conversion)")
+        .testFalse(
+            "(2 day ; 1 second) = (1 day ; 1 'a')", "false + false → false (both pairs unequal)")
+        .testTrue("(1 day ; 1 second) != (1 day ; 1 'a')", "not(false) → true")
+        .testTrue("(2 day ; 1 second) != (1 day ; 1 'a')", "not(false) → true")
         .build();
   }
 

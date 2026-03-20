@@ -61,7 +61,8 @@ class MembershipOperatorsTest extends FhirPathTestBase {
         .group("in: Quantity equality")
         .testTrue("10 'mg' in (5 'mg';10 'mg')", "Same unit, value found")
         .testFalse("15 'mg' in (5 'mg';10 'mg')", "Same unit, value not found")
-        .testEmpty("10 'mg' in (10 'kg';20 'kg')", "Different unit returns empty")
+        .testFalse(
+            "10 'mg' in (10 'kg';20 'kg')", "Same dimension, value not found after conversion")
         .group("in: DateTime equality")
         .testTrue("@2014-01-25 in (@2014-01-25;@2014-01-26)", "Same precision, found")
         .testFalse("@2014-01-27 in (@2014-01-25;@2014-01-26)", "Same precision, not found")

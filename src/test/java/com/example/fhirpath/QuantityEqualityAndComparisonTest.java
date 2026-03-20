@@ -8,24 +8,12 @@ import org.junit.jupiter.api.TestFactory;
 /**
  * Tests for FHIRPath Quantity equality and comparison operators.
  *
- * <p>Based on FHIRPath specification: Quantity equality compares code fields (strict,
- * case-sensitive comparison). If codes match, values are compared. If codes differ, the result is
- * empty.
- *
- * <p>Covers:
- *
- * <ul>
- *   <li>Same-unit equality and inequality
- *   <li>Different-unit returns empty
- *   <li>Calendar duration equality
- *   <li>Calendar vs UCUM returns empty (strict code comparison)
- *   <li>Comparison operators ({@code >}, {@code <}, {@code >=}, {@code <=})
- *   <li>Cross-type implicit conversion (INTEGER/DECIMAL → QUANTITY)
- * </ul>
+ * <p>Covers same-unit comparison, UCUM cross-unit conversion, calendar duration handling,
+ * cross-type implicit conversion, and empty propagation.
  */
 public class QuantityEqualityAndComparisonTest extends FhirPathTestBase {
 
-  // ===== Equality =====
+  // ===== Same-unit equality =====
 
   @TestFactory
   Stream<DynamicTest> testSameUnitEquality() {
@@ -34,18 +22,29 @@ public class QuantityEqualityAndComparisonTest extends FhirPathTestBase {
         .testTrue("10 'mg' = 10 'mg'", "Same value and unit")
         .testFalse("10 'mg' = 20 'mg'", "Different value, same unit")
         .testTrue("1 year = 1 year", "Calendar duration equality")
+        .testTrue("1 'cm' = 1 'cm'", "Same UCUM unit cm")
+        .build();
+  }
+
+  // ===== UCUM cross-unit equality =====
+
+  @TestFactory
+  Stream<DynamicTest> testCrossUnitEquality() {
+    return builder()
+        .group("Cross-unit equality (same dimension)")
+        .testTrue("10 'cm' = 0.1 'm'", "cm to m conversion")
+        .testTrue("1000 'mg' = 1 'g'", "mg to g conversion")
+        .testFalse("10 'cm' = 10 'm'", "Same dimension, different value after conversion")
+        .testFalse("500 'mg' = 1 'g'", "mg vs g not equal")
         .build();
   }
 
   @TestFactory
-  Stream<DynamicTest> testDifferentUnitReturnsEmpty() {
+  Stream<DynamicTest> testDifferentDimensionReturnsEmpty() {
     return builder()
-        .group("Different unit returns empty")
-        .testEmpty("10 'mg' = 10 'kg'", "Different UCUM units")
-        .testEmpty("1 year = 1 'a'", "Calendar vs UCUM")
-        .testEmpty("1 second = 1 's'", "Calendar second vs UCUM 's'")
-        .testEmpty(
-            "1 'year' = 1 year", "UCUM 'year' vs calendar year (same code, different system)")
+        .group("Different dimension returns empty")
+        .testEmpty("10 'cm' = 10 'g'", "Length vs mass → empty")
+        .testEmpty("1 'kg' = 1 's'", "Mass vs time → empty")
         .build();
   }
 
@@ -55,11 +54,62 @@ public class QuantityEqualityAndComparisonTest extends FhirPathTestBase {
         .group("Not equals operator")
         .testTrue("10 'mg' != 20 'mg'", "Different values, same unit")
         .testFalse("10 'mg' != 10 'mg'", "Same values, same unit")
-        .testEmpty("10 'mg' != 10 'kg'", "Different units returns empty")
+        .testTrue("10 'mg' != 10 'kg'", "Same dimension, different values after conversion")
+        .testEmpty("10 'cm' != 10 'g'", "Different dimension returns empty")
         .build();
   }
 
-  // ===== Comparison =====
+  // ===== Calendar duration equality =====
+
+  @TestFactory
+  Stream<DynamicTest> testCalendarDurationEquality() {
+    return builder()
+        .group("Calendar duration equality")
+        .testTrue("1 year = 1 year", "Same calendar unit")
+        .testTrue("1 month = 1 month", "Same calendar month")
+        .testEmpty("1 year = 12 months", "Non-definite different calendar codes → empty")
+        .build();
+  }
+
+  // ===== Calendar definite duration vs UCUM =====
+
+  @TestFactory
+  Stream<DynamicTest> testCalendarDefiniteDurationVsUcum() {
+    return builder()
+        .group("Calendar definite duration vs UCUM")
+        .testTrue("1 second = 1 's'", "Calendar second = UCUM s")
+        .testTrue("1000 milliseconds = 1 's'", "1000 calendar ms = 1 UCUM s")
+        .testFalse("1000 milliseconds > 1 's'", "1000ms is not > 1s")
+        .testTrue("1 second < 2 's'", "Calendar 1 second < 2 UCUM s")
+        .build();
+  }
+
+  // ===== Calendar non-definite vs UCUM =====
+
+  @TestFactory
+  Stream<DynamicTest> testCalendarNonDefiniteVsUcum() {
+    return builder()
+        .group("Calendar non-definite vs UCUM → empty")
+        .testEmpty("1 year = 1 'a'", "Calendar year vs UCUM year")
+        .testEmpty("1 month = 1 'mo'", "Calendar month vs UCUM month")
+        .testEmpty("1 day = 1 'd'", "Calendar day vs UCUM day")
+        .testEmpty("1 hour = 1 'h'", "Calendar hour vs UCUM hour")
+        .testEmpty("1 minute = 1 'min'", "Calendar minute vs UCUM minute")
+        .build();
+  }
+
+  // ===== Different system, same code =====
+
+  @TestFactory
+  Stream<DynamicTest> testDifferentSystemSameCode() {
+    return builder()
+        .group("Different system, same code")
+        .testEmpty(
+            "1 'year' = 1 year", "UCUM 'year' vs calendar year (same code, different system)")
+        .build();
+  }
+
+  // ===== Comparison operators with UCUM conversion =====
 
   @TestFactory
   Stream<DynamicTest> testComparisonSameUnit() {
@@ -77,13 +127,24 @@ public class QuantityEqualityAndComparisonTest extends FhirPathTestBase {
   }
 
   @TestFactory
-  Stream<DynamicTest> testComparisonDifferentUnitReturnsEmpty() {
+  Stream<DynamicTest> testComparisonCrossUnit() {
     return builder()
-        .group("Comparison different unit returns empty")
-        .testEmpty("20 'mg' > 10 'kg'", "gt with different units")
-        .testEmpty("10 'mg' < 20 'kg'", "lt with different units")
-        .testEmpty("10 'mg' >= 20 'kg'", "geq with different units")
-        .testEmpty("10 'mg' <= 20 'kg'", "leq with different units")
+        .group("Comparison cross-unit (same dimension)")
+        .testFalse("20 'mg' > 10 'kg'", "20mg is not > 10kg")
+        .testTrue("10 'mg' < 20 'kg'", "10mg < 20kg")
+        .testFalse("10 'mg' >= 20 'kg'", "10mg is not >= 20kg")
+        .testTrue("10 'mg' <= 20 'kg'", "10mg <= 20kg")
+        .testTrue("2000 'g' > 1 'kg'", "2000g > 1kg")
+        .testTrue("100 'cm' >= 1 'm'", "100cm >= 1m")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testComparisonDifferentDimensionReturnsEmpty() {
+    return builder()
+        .group("Comparison different dimension returns empty")
+        .testEmpty("20 'mg' > 10 's'", "Mass vs time → empty")
+        .testEmpty("10 'cm' < 20 'g'", "Length vs mass → empty")
         .build();
   }
 

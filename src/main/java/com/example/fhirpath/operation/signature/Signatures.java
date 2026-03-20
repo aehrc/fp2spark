@@ -78,15 +78,15 @@ public final class Signatures {
     return binaryFunc(type, type, Types.DECIMAL);
   }
 
-  // Phase 2: Temporal arithmetic deferred
-  // /**
-  //  * Temporal arithmetic operation: (?Temporal, ?Quantity) → ?Temporal
-  //  * Example: ?DATE + ?QUANTITY → ?DATE
-  //  */
-  // @Nonnull
-  // public static SignatureDefinition temporalArithmetic(@Nonnull final Type temporalType) {
-  //     return binaryFunc(temporalType, Types.QUANTITY, temporalType);
-  // }
+  /**
+   * Temporal arithmetic operation: (?Temporal, ?Quantity) → ?Temporal.
+   *
+   * <p>Example: ?DATE + ?QUANTITY → ?DATE
+   */
+  @Nonnull
+  public static SignatureDefinition temporalArithmetic(@Nonnull final Type temporalType) {
+    return binaryFunc(temporalType, Types.QUANTITY, temporalType);
+  }
 
   /**
    * Ternary function: (?T1, ?T2, ?T3) → ?R.

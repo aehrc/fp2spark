@@ -5,10 +5,13 @@ import static com.example.fhirpath.codegen.spark.SparkDefs.byResultType;
 import static com.example.fhirpath.codegen.spark.SparkDefs.types;
 import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
 import static com.example.fhirpath.codegen.spark.SparkTypeMapper.DECIMAL_TYPE;
+import static com.example.fhirpath.typing.PrimitiveType.DATE;
+import static com.example.fhirpath.typing.PrimitiveType.DATE_TIME;
 import static com.example.fhirpath.typing.PrimitiveType.DECIMAL;
 import static com.example.fhirpath.typing.PrimitiveType.INTEGER;
 import static com.example.fhirpath.typing.PrimitiveType.QUANTITY;
 import static com.example.fhirpath.typing.PrimitiveType.STRING;
+import static com.example.fhirpath.typing.PrimitiveType.TIME;
 import static org.apache.spark.sql.functions.abs;
 import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.concat;
@@ -20,6 +23,7 @@ import static org.apache.spark.sql.functions.when;
 import com.example.fhirpath.codegen.spark.SparkOperationDef;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.codegen.spark.udf.QuantityArithmetic;
+import com.example.fhirpath.codegen.spark.udf.TemporalArithmetic;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.types.DataTypes;
@@ -63,6 +67,14 @@ public final class ArithmeticOps {
   }
 
   /**
+   * Creates a temporal arithmetic dispatch that delegates to the {@link TemporalArithmetic} UDF.
+   */
+  @Nonnull
+  private static SparkOperationDef temporalOp(@Nonnull final String opCode) {
+    return ctx -> TemporalArithmetic.UDF.apply(ctx.arg(0), ctx.arg(1), lit(opCode));
+  }
+
+  /**
    * Registers all arithmetic operators into the given registry.
    *
    * @param registry the registry to register operations into
@@ -73,13 +85,15 @@ public final class ArithmeticOps {
         byResultType()
             .when(types(INTEGER, DECIMAL), binary(Column::plus))
             .when(types(STRING), binary((l, r) -> concat(l, r)))
-            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_ADD)));
+            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_ADD))
+            .when(types(DATE, DATE_TIME, TIME), temporalOp(TemporalArithmetic.OP_ADD)));
 
     registry.register(
         "sub",
         byResultType()
             .when(types(INTEGER, DECIMAL), binary(Column::minus))
-            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_SUB)));
+            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_SUB))
+            .when(types(DATE, DATE_TIME, TIME), temporalOp(TemporalArithmetic.OP_SUB)));
 
     registry.register(
         "multiply",

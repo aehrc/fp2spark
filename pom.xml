@@ -54,6 +54,17 @@
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.github.fhnaumann</groupId>
+            <artifactId>ucumate-core</artifactId>
+            <version>1.0.8</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.github.fhnaumann</groupId>
+                    <artifactId>ucumate-test-utils</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
         <!-- HAPI FHIR: used at compile time by FhirComplexType/FhirResourceType for
              runtime type resolution from HAPI definition trees. Kept at compile scope
              because these types are part of the core type system, not just tests. -->

@@ -7,7 +7,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.util.Map;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.api.java.UDF3;
@@ -41,15 +40,6 @@ public final class QuantityArithmetic {
   public static final String OP_MUL = "mul";
   public static final String OP_DIV = "div";
 
-  /**
-   * Calendar duration codes that have definite UCUM equivalents. Mirrors {@link
-   * QuantityCanonicalize#CALENDAR_TO_UCUM}.
-   */
-  private static final Map<String, String> CALENDAR_TO_UCUM =
-      Map.of(
-          "second", "s",
-          "millisecond", "ms");
-
   /** The UDF instance: (Row, Row, String) → Row. */
   @Nonnull
   public static final UserDefinedFunction UDF =
@@ -68,7 +58,6 @@ public final class QuantityArithmetic {
     final String leftCode = left.getString(3);
 
     final BigDecimal rightValue = right.getDecimal(0);
-    final String rightUnit = right.getString(1);
     final String rightSystem = right.getString(2);
     final String rightCode = right.getString(3);
 
@@ -89,30 +78,11 @@ public final class QuantityArithmetic {
               leftSystem,
               leftCode,
               rightValue,
-              rightUnit,
               rightSystem,
               rightCode,
               op.equals(OP_ADD));
-      case OP_MUL ->
-          multiply(
-              leftValue,
-              leftUnit,
-              leftSystem,
-              leftCode,
-              rightValue,
-              rightUnit,
-              rightSystem,
-              rightCode);
-      case OP_DIV ->
-          divide(
-              leftValue,
-              leftUnit,
-              leftSystem,
-              leftCode,
-              rightValue,
-              rightUnit,
-              rightSystem,
-              rightCode);
+      case OP_MUL -> multiply(leftValue, leftSystem, leftCode, rightValue, rightSystem, rightCode);
+      case OP_DIV -> divide(leftValue, leftSystem, leftCode, rightValue, rightSystem, rightCode);
       default -> null;
     };
   }
@@ -130,7 +100,6 @@ public final class QuantityArithmetic {
       @Nonnull final String leftSystem,
       @Nonnull final String leftCode,
       @Nonnull final BigDecimal rightValue,
-      @Nullable final String rightUnit,
       @Nonnull final String rightSystem,
       @Nonnull final String rightCode,
       final boolean isAdd) {
@@ -142,7 +111,7 @@ public final class QuantityArithmetic {
       return null;
     }
 
-    // Same code: no conversion needed
+    // Same code: no conversion needed — preserves original system/unit (e.g., calendar durations)
     if (leftUcum.equals(rightUcum)) {
       final BigDecimal result = isAdd ? leftValue.add(rightValue) : leftValue.subtract(rightValue);
       return quantityRow(result, leftUnit, leftSystem, leftCode);
@@ -168,21 +137,16 @@ public final class QuantityArithmetic {
 
     final BigDecimal result =
         isAdd ? leftConverted.add(rightConverted) : leftConverted.subtract(rightConverted);
-
-    // Resolve unit/system from the granular UCUM code
-    final String resultUnit = granularUcum;
-    return quantityRow(result, resultUnit, QuantityValue.UCUM_SYSTEM, granularUcum);
+    return quantityRow(result, granularUcum, QuantityValue.UCUM_SYSTEM, granularUcum);
   }
 
   /** Multiplication of two quantities. Values are multiplied, unit codes are combined. */
   @Nullable
   private static Row multiply(
       @Nonnull final BigDecimal leftValue,
-      @Nullable final String leftUnit,
       @Nonnull final String leftSystem,
       @Nonnull final String leftCode,
       @Nonnull final BigDecimal rightValue,
-      @Nullable final String rightUnit,
       @Nonnull final String rightSystem,
       @Nonnull final String rightCode) {
 
@@ -208,11 +172,9 @@ public final class QuantityArithmetic {
   @Nullable
   private static Row divide(
       @Nonnull final BigDecimal leftValue,
-      @Nullable final String leftUnit,
       @Nonnull final String leftSystem,
       @Nonnull final String leftCode,
       @Nonnull final BigDecimal rightValue,
-      @Nullable final String rightUnit,
       @Nonnull final String rightSystem,
       @Nonnull final String rightCode) {
 
@@ -243,7 +205,7 @@ public final class QuantityArithmetic {
   private static String toUcumCode(@Nonnull final String system, @Nonnull final String code) {
     return switch (system) {
       case QuantityValue.UCUM_SYSTEM -> code;
-      case QuantityValue.CALENDAR_SYSTEM -> CALENDAR_TO_UCUM.get(code);
+      case QuantityValue.CALENDAR_SYSTEM -> UcumService.CALENDAR_TO_UCUM.get(code);
       default -> null;
     };
   }

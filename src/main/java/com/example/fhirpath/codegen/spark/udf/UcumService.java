@@ -9,6 +9,7 @@ import io.github.fhnaumann.util.PreciseDecimal;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
+import java.util.Map;
 
 /**
  * Wraps the ucumate UCUM service for unit canonicalization and conversion.
@@ -23,6 +24,15 @@ final class UcumService {
 
   private static final UCUMService SERVICE = new UCUMService();
   private static final String NO_UNIT_CODE = "1";
+
+  /**
+   * Calendar duration codes that have definite UCUM equivalents. Non-definite durations (year,
+   * month, week, day, hour, minute) are intentionally absent — they cannot be canonicalized.
+   */
+  static final Map<String, String> CALENDAR_TO_UCUM =
+      Map.of(
+          "second", "s",
+          "millisecond", "ms");
 
   private UcumService() {}
 

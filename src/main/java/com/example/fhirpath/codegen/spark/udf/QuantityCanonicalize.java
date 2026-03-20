@@ -49,14 +49,8 @@ public final class QuantityCanonicalize {
   public static final UserDefinedFunction UDF =
       functions.udf((UDF1<Row, Row>) QuantityCanonicalize::canonicalize, OUTPUT_TYPE);
 
-  /**
-   * Calendar duration codes that have definite UCUM equivalents. Non-definite durations (year,
-   * month, week, day, hour, minute) are intentionally absent — they cannot be canonicalized.
-   */
-  private static final Map<String, String> CALENDAR_TO_UCUM =
-      Map.of(
-          "second", "s",
-          "millisecond", "ms");
+  /** Calendar-to-UCUM code mapping, shared with {@link UcumService#CALENDAR_TO_UCUM}. */
+  private static final Map<String, String> CALENDAR_TO_UCUM = UcumService.CALENDAR_TO_UCUM;
 
   @Nullable
   static Row canonicalize(@Nullable final Row row) {

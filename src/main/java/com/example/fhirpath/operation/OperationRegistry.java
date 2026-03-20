@@ -54,6 +54,8 @@ public final class OperationRegistry {
             "multiply",
             forTypes(NUMERIC).define(Signatures::binaryOp),
             Signatures.binaryOp(QUANTITY)),
+        // Quantity division returns Quantity (unit algebra: cm2 / cm → cm),
+        // unlike numeric division which always returns DECIMAL.
         register(
             "divide",
             forTypes(NUMERIC).define(Signatures::divisionOp),

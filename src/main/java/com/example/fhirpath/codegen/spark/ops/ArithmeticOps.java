@@ -17,6 +17,7 @@ import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.signum;
 import static org.apache.spark.sql.functions.when;
 
+import com.example.fhirpath.codegen.spark.SparkOperationDef;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.codegen.spark.udf.QuantityArithmetic;
 import jakarta.annotation.Nonnull;
@@ -54,6 +55,14 @@ public final class ArithmeticOps {
   }
 
   /**
+   * Creates a quantity arithmetic dispatch that delegates to the {@link QuantityArithmetic} UDF.
+   */
+  @Nonnull
+  private static SparkOperationDef quantityOp(@Nonnull final String opCode) {
+    return ctx -> QuantityArithmetic.UDF.apply(ctx.arg(0), ctx.arg(1), lit(opCode));
+  }
+
+  /**
    * Registers all arithmetic operators into the given registry.
    *
    * @param registry the registry to register operations into
@@ -64,31 +73,19 @@ public final class ArithmeticOps {
         byResultType()
             .when(types(INTEGER, DECIMAL), binary(Column::plus))
             .when(types(STRING), binary((l, r) -> concat(l, r)))
-            .when(
-                types(QUANTITY),
-                ctx ->
-                    QuantityArithmetic.UDF.apply(
-                        ctx.arg(0), ctx.arg(1), lit(QuantityArithmetic.OP_ADD))));
+            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_ADD)));
 
     registry.register(
         "sub",
         byResultType()
             .when(types(INTEGER, DECIMAL), binary(Column::minus))
-            .when(
-                types(QUANTITY),
-                ctx ->
-                    QuantityArithmetic.UDF.apply(
-                        ctx.arg(0), ctx.arg(1), lit(QuantityArithmetic.OP_SUB))));
+            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_SUB)));
 
     registry.register(
         "multiply",
         byResultType()
             .when(types(INTEGER, DECIMAL), binary(Column::multiply))
-            .when(
-                types(QUANTITY),
-                ctx ->
-                    QuantityArithmetic.UDF.apply(
-                        ctx.arg(0), ctx.arg(1), lit(QuantityArithmetic.OP_MUL))));
+            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_MUL)));
 
     // Division: for numeric types, always returns DECIMAL per FHIRPath spec.
     // Division by zero returns empty (null).
@@ -102,11 +99,7 @@ public final class ArithmeticOps {
                     guardDivisionByZero(
                         ctx.arg(1),
                         ctx.arg(0).cast(DECIMAL_TYPE).divide(ctx.arg(1).cast(DECIMAL_TYPE))))
-            .when(
-                types(QUANTITY),
-                ctx ->
-                    QuantityArithmetic.UDF.apply(
-                        ctx.arg(0), ctx.arg(1), lit(QuantityArithmetic.OP_DIV))));
+            .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_DIV)));
 
     // Modulo: division by zero returns empty (null).
     registry.register("mod", ctx -> guardDivisionByZero(ctx.arg(1), ctx.arg(0).mod(ctx.arg(1))));

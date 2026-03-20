@@ -53,11 +53,12 @@ public final class QuantityArithmetic {
     }
 
     final BigDecimal leftValue = left.getDecimal(0);
-    final String leftUnit = left.getString(1);
+    final String leftUnit = left.getString(1); // display unit, used in same-code add/sub result
     final String leftSystem = left.getString(2);
     final String leftCode = left.getString(3);
 
     final BigDecimal rightValue = right.getDecimal(0);
+    // rightUnit not needed — result uses left's unit (same-code) or granular UCUM code (cross-unit)
     final String rightSystem = right.getString(2);
     final String rightCode = right.getString(3);
 
@@ -105,8 +106,8 @@ public final class QuantityArithmetic {
       final boolean isAdd) {
 
     // Resolve both operands to UCUM codes
-    final String leftUcum = toUcumCode(leftSystem, leftCode);
-    final String rightUcum = toUcumCode(rightSystem, rightCode);
+    final String leftUcum = UcumService.toUcumCode(leftSystem, leftCode);
+    final String rightUcum = UcumService.toUcumCode(rightSystem, rightCode);
     if (leftUcum == null || rightUcum == null) {
       return null;
     }
@@ -150,8 +151,8 @@ public final class QuantityArithmetic {
       @Nonnull final String rightSystem,
       @Nonnull final String rightCode) {
 
-    final String leftUcum = toUcumCode(leftSystem, leftCode);
-    final String rightUcum = toUcumCode(rightSystem, rightCode);
+    final String leftUcum = UcumService.toUcumCode(leftSystem, leftCode);
+    final String rightUcum = UcumService.toUcumCode(rightSystem, rightCode);
     if (leftUcum == null || rightUcum == null) {
       return null;
     }
@@ -182,8 +183,8 @@ public final class QuantityArithmetic {
       return null;
     }
 
-    final String leftUcum = toUcumCode(leftSystem, leftCode);
-    final String rightUcum = toUcumCode(rightSystem, rightCode);
+    final String leftUcum = UcumService.toUcumCode(leftSystem, leftCode);
+    final String rightUcum = UcumService.toUcumCode(rightSystem, rightCode);
     if (leftUcum == null || rightUcum == null) {
       return null;
     }
@@ -195,19 +196,6 @@ public final class QuantityArithmetic {
     }
 
     return quantityRow(result, resultCode, QuantityValue.UCUM_SYSTEM, resultCode);
-  }
-
-  /**
-   * Resolves a system+code pair to a UCUM code. Calendar definite durations are mapped to their
-   * UCUM equivalents. Returns {@code null} for non-convertible systems.
-   */
-  @Nullable
-  private static String toUcumCode(@Nonnull final String system, @Nonnull final String code) {
-    return switch (system) {
-      case QuantityValue.UCUM_SYSTEM -> code;
-      case QuantityValue.CALENDAR_SYSTEM -> UcumService.CALENDAR_TO_UCUM.get(code);
-      default -> null;
-    };
   }
 
   /**

@@ -1,11 +1,9 @@
 package com.example.fhirpath.codegen.spark.udf;
 
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
-import com.example.fhirpath.typing.QuantityValue;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
-import java.util.Map;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.api.java.UDF1;
 import org.apache.spark.sql.expressions.UserDefinedFunction;
@@ -49,9 +47,6 @@ public final class QuantityCanonicalize {
   public static final UserDefinedFunction UDF =
       functions.udf((UDF1<Row, Row>) QuantityCanonicalize::canonicalize, OUTPUT_TYPE);
 
-  /** Calendar-to-UCUM code mapping, shared with {@link UcumService#CALENDAR_TO_UCUM}. */
-  private static final Map<String, String> CALENDAR_TO_UCUM = UcumService.CALENDAR_TO_UCUM;
-
   @Nullable
   static Row canonicalize(@Nullable final Row row) {
     if (row == null) {
@@ -66,28 +61,14 @@ public final class QuantityCanonicalize {
       return null;
     }
 
-    return switch (system) {
-      case QuantityValue.UCUM_SYSTEM -> canonicalizeUcum(value, code);
-      case QuantityValue.CALENDAR_SYSTEM -> canonicalizeCalendar(value, code);
-      default -> null;
-    };
-  }
-
-  @Nullable
-  private static Row canonicalizeUcum(@Nonnull final BigDecimal value, @Nonnull final String code) {
-    final UcumService.Canonical canonical = UcumService.canonicalize(value, code);
-    return canonical != null ? toRow(canonical) : null;
-  }
-
-  @Nullable
-  private static Row canonicalizeCalendar(
-      @Nonnull final BigDecimal value, @Nonnull final String code) {
-    final String ucumCode = CALENDAR_TO_UCUM.get(code);
+    // Resolve to UCUM code (handles calendar definite durations → UCUM mapping)
+    final String ucumCode = UcumService.toUcumCode(system, code);
     if (ucumCode == null) {
-      // Non-definite duration — cannot canonicalize
       return null;
     }
-    return canonicalizeUcum(value, ucumCode);
+
+    final UcumService.Canonical canonical = UcumService.canonicalize(value, ucumCode);
+    return canonical != null ? toRow(canonical) : null;
   }
 
   @Nonnull

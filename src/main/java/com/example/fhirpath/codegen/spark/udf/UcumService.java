@@ -1,5 +1,6 @@
 package com.example.fhirpath.codegen.spark.udf;
 
+import com.example.fhirpath.typing.QuantityValue;
 import io.github.fhnaumann.funcs.CanonicalizerService;
 import io.github.fhnaumann.funcs.ConverterService;
 import io.github.fhnaumann.funcs.RelationCheckerService;
@@ -35,6 +36,20 @@ final class UcumService {
           "millisecond", "ms");
 
   private UcumService() {}
+
+  /**
+   * Resolves a FHIR quantity system+code pair to its effective UCUM code. Calendar definite
+   * durations (second, millisecond) are mapped to their UCUM equivalents. Returns {@code null} for
+   * non-convertible systems or non-definite calendar durations.
+   */
+  @Nullable
+  static String toUcumCode(@Nonnull final String system, @Nonnull final String code) {
+    return switch (system) {
+      case QuantityValue.UCUM_SYSTEM -> code;
+      case QuantityValue.CALENDAR_SYSTEM -> CALENDAR_TO_UCUM.get(code);
+      default -> null;
+    };
+  }
 
   /**
    * Canonicalizes a value and UCUM code to their base units.

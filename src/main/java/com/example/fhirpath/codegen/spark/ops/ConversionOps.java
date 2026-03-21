@@ -264,8 +264,7 @@ public final class ConversionOps {
   private static Column validateToDecimal(
       @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
-      case DECIMAL -> lit(true);
-      case BOOLEAN, INTEGER -> lit(true);
+      case DECIMAL, BOOLEAN, INTEGER -> lit(true);
       case STRING -> value.rlike(DECIMAL_REGEX);
       default -> lit(false);
     };
@@ -319,8 +318,7 @@ public final class ConversionOps {
   private static Column validateToQuantity(
       @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
-      case QUANTITY -> lit(true);
-      case BOOLEAN, INTEGER, DECIMAL -> lit(true);
+      case QUANTITY, BOOLEAN, INTEGER, DECIMAL -> lit(true);
       case STRING -> value.rlike(QUANTITY_REGEX);
       default -> lit(false);
     };
@@ -356,16 +354,27 @@ public final class ConversionOps {
         .otherwise(functions.concat(qValue, lit(" '"), code, lit("'")));
   }
 
+  /** Builds a Quantity struct column with the given field expressions. */
+  @Nonnull
+  private static Column quantityStruct(
+      @Nonnull final Column value,
+      @Nonnull final Column unit,
+      @Nonnull final Column system,
+      @Nonnull final Column code) {
+    return functions.struct(
+        value.as("value"), unit.as("unit"), system.as("system"), code.as("code"));
+  }
+
   /** Wraps a numeric value as a Quantity struct with default unit '1'. Returns null for null. */
   @Nonnull
   private static Column numericToQuantity(@Nonnull final Column decimalValue) {
     return when(
         decimalValue.isNotNull(),
-        functions.struct(
-            decimalValue.as("value"),
-            lit(QuantityValue.DEFAULT_UNIT).as("unit"),
-            lit(QuantityValue.UCUM_SYSTEM).as("system"),
-            lit(QuantityValue.DEFAULT_UNIT).as("code")));
+        quantityStruct(
+            decimalValue,
+            lit(QuantityValue.DEFAULT_UNIT),
+            lit(QuantityValue.UCUM_SYSTEM),
+            lit(QuantityValue.DEFAULT_UNIT)));
   }
 
   /**
@@ -404,14 +413,7 @@ public final class ConversionOps {
         when(hasCalendarUnit, lit(QuantityValue.CALENDAR_SYSTEM))
             .otherwise(lit(QuantityValue.UCUM_SYSTEM));
 
-    final Column quantityStruct =
-        functions.struct(
-            decimalValue.as("value"),
-            unitCode.as("unit"),
-            system.as("system"),
-            unitCode.as("code"));
-
-    return when(matches, quantityStruct);
+    return when(matches, quantityStruct(decimalValue, unitCode, system, unitCode));
   }
 
   /**
@@ -421,8 +423,7 @@ public final class ConversionOps {
   @Nonnull
   private static Column extractDateFromDateTime(@Nonnull final Column value) {
     // Extract everything before 'T' (the date part)
-    // If no 'T', the entire string is a date-precision DateTime
-    return when(value.contains(lit("T")), functions.regexp_extract(value, "^([^T]+)", 1))
-        .otherwise(value);
+    // If no 'T', substring_index returns the full string unchanged
+    return functions.substring_index(value, "T", 1);
   }
 }

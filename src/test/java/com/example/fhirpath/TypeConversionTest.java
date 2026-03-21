@@ -389,8 +389,9 @@ public class TypeConversionTest extends FhirPathTestBase {
         .group("Implicit coercion: Decimal → Quantity")
         .testTrue("5.0 + 10 '1' = 15.0 '1'", "Decimal + Quantity (same unit '1')")
         .group("Implicit coercion: Date → DateTime")
-        .testTrue("@2023-06-15 = @2023-06-15", "Date = Date (baseline)")
-        .testTrue("@2023-06-15 = @2023-06-15", "Date promoted to DateTime when needed")
+        .testTrue(
+            "'2023-06-15'.toDate() = '2023-06-15'.toDateTime()",
+            "Date promoted to DateTime for comparison")
         .build();
   }
 }

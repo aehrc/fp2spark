@@ -75,7 +75,7 @@ public final class TemporalNormalize {
    * optional fractional seconds up to 9 digits. Shared by {@link #FLEXIBLE_DATETIME} and {@link
    * #OFFSET_DATETIME}.
    */
-  private static DateTimeFormatterBuilder flexibleDateTimeBuilder() {
+  static DateTimeFormatterBuilder flexibleDateTimeBuilder() {
     return new DateTimeFormatterBuilder()
         .appendPattern("yyyy-MM-dd'T'HH:mm")
         .optionalStart()

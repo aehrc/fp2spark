@@ -148,18 +148,9 @@ public final class TemporalArithmetic {
   private static final Pattern TIME_ONLY =
       Pattern.compile("^(\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?)$");
 
-  /** Flexible DateTime formatter for parsing. */
+  /** Flexible DateTime formatter for parsing (shared definition in {@link TemporalNormalize}). */
   private static final DateTimeFormatter FLEXIBLE_DATETIME =
-      new DateTimeFormatterBuilder()
-          .appendPattern("yyyy-MM-dd'T'HH:mm")
-          .optionalStart()
-          .appendLiteral(':')
-          .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
-          .optionalStart()
-          .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-          .optionalEnd()
-          .optionalEnd()
-          .toFormatter();
+      TemporalNormalize.flexibleDateTimeBuilder().toFormatter();
 
   /** Flexible Time formatter for parsing. */
   private static final DateTimeFormatter FLEXIBLE_TIME =
@@ -173,6 +164,25 @@ public final class TemporalArithmetic {
           .optionalEnd()
           .optionalEnd()
           .toFormatter();
+
+  // ===== Output formatters =====
+
+  private static final DateTimeFormatter DATETIME_MINUTE_FMT =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+
+  private static final DateTimeFormatter DATETIME_SECOND_FMT =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+
+  private static final DateTimeFormatter TIME_MINUTE_FMT = DateTimeFormatter.ofPattern("HH:mm");
+
+  private static final DateTimeFormatter TIME_SECOND_FMT = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+  // ===== Pre-computed conversion factors from sub-day units to days =====
+
+  private static final BigDecimal HOURS_PER_DAY = BigDecimal.valueOf(24);
+  private static final BigDecimal MINUTES_PER_DAY = BigDecimal.valueOf(24L * 60);
+  private static final BigDecimal SECONDS_PER_DAY = BigDecimal.valueOf(24L * 60 * 60);
+  private static final BigDecimal MILLIS_PER_DAY = BigDecimal.valueOf(24L * 60 * 60 * 1000);
 
   @Nullable
   static String compute(
@@ -360,21 +370,12 @@ public final class TemporalArithmetic {
       return null; // Date doesn't accept hour/minute/second/millisecond
     }
     final LocalDate date = LocalDate.parse(temporal);
-    final LocalDate result =
-        switch (unitPrecision) {
-          case YEAR -> date.plusYears(truncate(value));
-          case MONTH -> date.plusMonths(truncate(value));
-          case DAY -> date.plusDays(truncate(value));
-          default ->
-              throw new IllegalStateException(
-                  "Unexpected unit precision for date: " + unitPrecision);
-        };
-    return result.toString();
+    return addToLocalDate(date, value, unitPrecision).toString();
   }
 
   // ===== DateTime partials (year-only, year-month, date-only with T suffix) =====
 
-  @Nullable
+  @Nonnull
   private static String addToYearOnlyDateTime(
       @Nonnull final String datePart,
       @Nonnull final BigDecimal value,
@@ -384,7 +385,7 @@ public final class TemporalArithmetic {
     return year.plusYears(years) + "T";
   }
 
-  @Nullable
+  @Nonnull
   private static String addToYearMonthDateTime(
       @Nonnull final String datePart,
       @Nonnull final BigDecimal value,
@@ -400,20 +401,26 @@ public final class TemporalArithmetic {
       @Nonnull final Precision unitPrecision) {
     final LocalDate date = LocalDate.parse(datePart);
     if (unitPrecision.ordinal() <= Precision.DAY.ordinal()) {
-      final LocalDate result =
-          switch (unitPrecision) {
-            case YEAR -> date.plusYears(truncate(value));
-            case MONTH -> date.plusMonths(truncate(value));
-            case DAY -> date.plusDays(truncate(value));
-            default ->
-                throw new IllegalStateException(
-                    "Unexpected unit precision for date: " + unitPrecision);
-          };
-      return result + "T";
+      return addToLocalDate(date, value, unitPrecision) + "T";
     }
     // Finer than day: convert to days
     final long days = convertToTargetPrecision(value, unitPrecision, Precision.DAY);
     return date.plusDays(days) + "T";
+  }
+
+  /** Adds years, months, or days to a LocalDate based on the given precision. */
+  @Nonnull
+  private static LocalDate addToLocalDate(
+      @Nonnull final LocalDate date,
+      @Nonnull final BigDecimal value,
+      @Nonnull final Precision precision) {
+    return switch (precision) {
+      case YEAR -> date.plusYears(truncate(value));
+      case MONTH -> date.plusMonths(truncate(value));
+      case DAY -> date.plusDays(truncate(value));
+      default ->
+          throw new IllegalStateException("Unexpected unit precision for date: " + precision);
+    };
   }
 
   // ===== DateTime with time =====
@@ -424,7 +431,7 @@ public final class TemporalArithmetic {
       @Nonnull final BigDecimal value,
       @Nonnull final Precision unitPrecision) {
     final LocalDateTime ldt = LocalDateTime.parse(temporal, FLEXIBLE_DATETIME);
-    final Precision temporalPrecision = detectDateTimePrecision(temporal);
+    final Precision temporalPrecision = detectTemporalPrecision(temporal);
 
     final LocalDateTime result;
     if (unitPrecision.ordinal() <= temporalPrecision.ordinal()) {
@@ -467,7 +474,7 @@ public final class TemporalArithmetic {
       return null;
     }
     final LocalTime time = LocalTime.parse(temporal, FLEXIBLE_TIME);
-    final Precision temporalPrecision = detectTimePrecision(temporal);
+    final Precision temporalPrecision = detectTemporalPrecision(temporal);
 
     final LocalTime result;
     if (unitPrecision.ordinal() <= temporalPrecision.ordinal()) {
@@ -497,20 +504,13 @@ public final class TemporalArithmetic {
 
   // ===== Precision detection =====
 
+  /**
+   * Detects the precision of a temporal string (DateTime or Time) by examining its format. Looks
+   * for fractional seconds (millisecond precision), two or more colons (second precision), or
+   * defaults to minute precision.
+   */
   @Nonnull
-  private static Precision detectDateTimePrecision(@Nonnull final String temporal) {
-    if (temporal.contains(".")) {
-      return Precision.MILLISECOND;
-    }
-    final long colonCount = temporal.chars().filter(c -> c == ':').count();
-    if (colonCount >= 2) {
-      return Precision.SECOND;
-    }
-    return Precision.MINUTE;
-  }
-
-  @Nonnull
-  private static Precision detectTimePrecision(@Nonnull final String temporal) {
+  private static Precision detectTemporalPrecision(@Nonnull final String temporal) {
     if (temporal.contains(".")) {
       return Precision.MILLISECOND;
     }
@@ -583,12 +583,10 @@ public final class TemporalArithmetic {
   private static BigDecimal toDaysFactor(@Nonnull final Precision from) {
     return switch (from) {
       case DAY -> BigDecimal.ONE;
-      case HOUR -> BigDecimal.ONE.divide(BigDecimal.valueOf(24), 20, RoundingMode.HALF_UP);
-      case MINUTE -> BigDecimal.ONE.divide(BigDecimal.valueOf(24 * 60), 20, RoundingMode.HALF_UP);
-      case SECOND ->
-          BigDecimal.ONE.divide(BigDecimal.valueOf(24L * 60 * 60), 20, RoundingMode.HALF_UP);
-      case MILLISECOND ->
-          BigDecimal.ONE.divide(BigDecimal.valueOf(24L * 60 * 60 * 1000), 20, RoundingMode.HALF_UP);
+      case HOUR -> BigDecimal.ONE.divide(HOURS_PER_DAY, 20, RoundingMode.HALF_UP);
+      case MINUTE -> BigDecimal.ONE.divide(MINUTES_PER_DAY, 20, RoundingMode.HALF_UP);
+      case SECOND -> BigDecimal.ONE.divide(SECONDS_PER_DAY, 20, RoundingMode.HALF_UP);
+      case MILLISECOND -> BigDecimal.ONE.divide(MILLIS_PER_DAY, 20, RoundingMode.HALF_UP);
       default -> throw new IllegalStateException("Unexpected precision for toDaysFactor: " + from);
     };
   }
@@ -625,43 +623,32 @@ public final class TemporalArithmetic {
   private static String formatDateTime(
       @Nonnull final LocalDateTime ldt, @Nonnull final Precision precision) {
     return switch (precision) {
-      case MINUTE -> DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm").format(ldt);
-      case SECOND -> DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").format(ldt);
-      case MILLISECOND -> formatDateTimeWithFraction(ldt);
+      case MINUTE -> DATETIME_MINUTE_FMT.format(ldt);
+      case SECOND -> DATETIME_SECOND_FMT.format(ldt);
+      case MILLISECOND -> appendFractionalSeconds(DATETIME_SECOND_FMT.format(ldt), ldt.getNano());
       default ->
           throw new IllegalStateException("Unexpected precision for formatDateTime: " + precision);
     };
   }
 
   @Nonnull
-  private static String formatDateTimeWithFraction(@Nonnull final LocalDateTime ldt) {
-    final String base = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").format(ldt);
-    final int nanos = ldt.getNano();
-    if (nanos == 0) {
-      return base + ".0";
-    }
-    // Format fractional seconds, trimming trailing zeros but keeping at least one digit
-    String frac = String.format("%09d", nanos);
-    frac = frac.replaceAll("0+$", "");
-    return base + "." + frac;
-  }
-
-  @Nonnull
   private static String formatTime(
       @Nonnull final LocalTime time, @Nonnull final Precision precision) {
     return switch (precision) {
-      case MINUTE -> DateTimeFormatter.ofPattern("HH:mm").format(time);
-      case SECOND -> DateTimeFormatter.ofPattern("HH:mm:ss").format(time);
-      case MILLISECOND -> formatTimeWithFraction(time);
+      case MINUTE -> TIME_MINUTE_FMT.format(time);
+      case SECOND -> TIME_SECOND_FMT.format(time);
+      case MILLISECOND -> appendFractionalSeconds(TIME_SECOND_FMT.format(time), time.getNano());
       default ->
           throw new IllegalStateException("Unexpected precision for formatTime: " + precision);
     };
   }
 
+  /**
+   * Appends fractional seconds to a base time string. Trailing zeros are trimmed, but at least one
+   * fractional digit is always present (e.g., {@code ".0"} for zero nanos).
+   */
   @Nonnull
-  private static String formatTimeWithFraction(@Nonnull final LocalTime time) {
-    final String base = DateTimeFormatter.ofPattern("HH:mm:ss").format(time);
-    final int nanos = time.getNano();
+  private static String appendFractionalSeconds(@Nonnull final String base, final int nanos) {
     if (nanos == 0) {
       return base + ".0";
     }

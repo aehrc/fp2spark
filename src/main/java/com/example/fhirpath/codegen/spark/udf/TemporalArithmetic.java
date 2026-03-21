@@ -38,7 +38,9 @@ import org.apache.spark.sql.types.DataTypes;
  * </ul>
  *
  * <p>Returns {@code null} (empty collection) when either argument is null, the quantity unit is not
- * a valid time-valued duration, or the unit is not applicable to the temporal type.
+ * a valid time-valued duration, or the unit is not applicable to the temporal type. The FHIRPath
+ * spec says invalid units should "signal an error", but this implementation returns null per the
+ * project's Spark-NULL-as-empty convention for UDFs.
  */
 public final class TemporalArithmetic {
 
@@ -179,41 +181,43 @@ public final class TemporalArithmetic {
       return null;
     }
 
-    final BigDecimal qValue = quantity.getDecimal(0);
-    final String qSystem = quantity.getString(2);
-    final String qCode = quantity.getString(3);
+    try {
+      final BigDecimal qValue = quantity.getDecimal(0);
+      final String qSystem = quantity.getString(2);
+      final String qCode = quantity.getString(3);
 
-    if (qValue == null || qSystem == null || qCode == null) {
+      if (qValue == null || qSystem == null || qCode == null) {
+        return null;
+      }
+
+      // Resolve the effective calendar duration code
+      final String durationCode = resolveDurationCode(qSystem, qCode);
+      if (durationCode == null) {
+        return null;
+      }
+
+      final boolean isAdd = OP_ADD.equals(op);
+      final BigDecimal effectiveValue = isAdd ? qValue : qValue.negate();
+
+      return applyArithmetic(temporal, effectiveValue, durationCode);
+    } catch (final ArithmeticException | java.time.DateTimeException e) {
+      // Overflow or invalid date arithmetic — return empty per project convention
       return null;
     }
-
-    // Resolve the effective calendar duration code
-    final String durationCode = resolveDurationCode(qSystem, qCode);
-    if (durationCode == null) {
-      return null;
-    }
-
-    final boolean isAdd = OP_ADD.equals(op);
-    final BigDecimal effectiveValue = isAdd ? qValue : qValue.negate();
-
-    return applyArithmetic(temporal, effectiveValue, durationCode);
   }
 
   /**
-   * Resolves a quantity's system+code to a calendar duration code. Calendar duration codes pass
-   * through directly. UCUM time codes are mapped to their calendar equivalents. Non-time units
-   * return null.
+   * Resolves a quantity's system+code to a duration code recognized by {@link #UNIT_PRECISION}.
+   * Returns null for non-time units or unrecognized systems.
    */
   @Nullable
   private static String resolveDurationCode(
       @Nonnull final String system, @Nonnull final String code) {
-    if (QuantityValue.CALENDAR_SYSTEM.equals(system)) {
-      return UNIT_PRECISION.containsKey(code) ? code : null;
+    if (!QuantityValue.CALENDAR_SYSTEM.equals(system)
+        && !QuantityValue.UCUM_SYSTEM.equals(system)) {
+      return null;
     }
-    if (QuantityValue.UCUM_SYSTEM.equals(system)) {
-      return UNIT_PRECISION.containsKey(code) ? code : null;
-    }
-    return null;
+    return UNIT_PRECISION.containsKey(code) ? code : null;
   }
 
   /**
@@ -242,7 +246,7 @@ public final class TemporalArithmetic {
     }
 
     // Try each temporal format in order
-    return tryDateFormats(temporal, effectiveValue, effectiveCode, unitPrecision);
+    return tryDateFormats(temporal, effectiveValue, unitPrecision);
   }
 
   /**
@@ -253,7 +257,6 @@ public final class TemporalArithmetic {
   private static String tryDateFormats(
       @Nonnull final String temporal,
       @Nonnull final BigDecimal value,
-      @Nonnull final String durationCode,
       @Nonnull final Precision unitPrecision) {
 
     Matcher m;
@@ -261,56 +264,56 @@ public final class TemporalArithmetic {
     // Year-only date: "2014"
     m = YEAR_ONLY.matcher(temporal);
     if (m.matches()) {
-      return addToYearOnly(temporal, value, durationCode, unitPrecision);
+      return addToYearOnly(temporal, value, unitPrecision);
     }
 
     // Year-month date: "2014-01"
     m = YEAR_MONTH.matcher(temporal);
     if (m.matches()) {
-      return addToYearMonth(temporal, value, durationCode, unitPrecision);
+      return addToYearMonth(temporal, value, unitPrecision);
     }
 
     // Full date: "2014-01-25"
     m = FULL_DATE.matcher(temporal);
     if (m.matches()) {
-      return addToFullDate(temporal, value, durationCode, unitPrecision);
+      return addToFullDate(temporal, value, unitPrecision);
     }
 
     // Year-only DateTime: "2014T"
     m = YEAR_DATETIME.matcher(temporal);
     if (m.matches()) {
-      return addToYearOnlyDateTime(m.group(1), value, durationCode, unitPrecision);
+      return addToYearOnlyDateTime(m.group(1), value, unitPrecision);
     }
 
     // Year-month DateTime: "2014-01T"
     m = YEAR_MONTH_DATETIME.matcher(temporal);
     if (m.matches()) {
-      return addToYearMonthDateTime(m.group(1), value, durationCode, unitPrecision);
+      return addToYearMonthDateTime(m.group(1), value, unitPrecision);
     }
 
     // Date-only DateTime: "2014-01-25T"
     m = DATE_DATETIME.matcher(temporal);
     if (m.matches()) {
-      return addToDateDateTime(m.group(1), value, durationCode, unitPrecision);
+      return addToDateDateTime(m.group(1), value, unitPrecision);
     }
 
     // DateTime with offset
     m = DATETIME_WITH_OFFSET.matcher(temporal);
     if (m.matches()) {
-      final String result = addToDateTime(m.group(1), value, durationCode, unitPrecision);
+      final String result = addToDateTime(m.group(1), value, unitPrecision);
       return result != null ? result + m.group(2) : null;
     }
 
     // DateTime with time (no offset)
     m = DATETIME_WITH_TIME.matcher(temporal);
     if (m.matches()) {
-      return addToDateTime(temporal, value, durationCode, unitPrecision);
+      return addToDateTime(temporal, value, unitPrecision);
     }
 
     // Time-only
     m = TIME_ONLY.matcher(temporal);
     if (m.matches()) {
-      return addToTime(temporal, value, durationCode, unitPrecision);
+      return addToTime(temporal, value, unitPrecision);
     }
 
     return null;
@@ -322,7 +325,6 @@ public final class TemporalArithmetic {
   private static String addToYearOnly(
       @Nonnull final String temporal,
       @Nonnull final BigDecimal value,
-      @Nonnull final String durationCode,
       @Nonnull final Precision unitPrecision) {
     // Date values only accept year, month, week, day
     if (unitPrecision.ordinal() > Precision.DAY.ordinal()) {
@@ -339,20 +341,12 @@ public final class TemporalArithmetic {
   private static String addToYearMonth(
       @Nonnull final String temporal,
       @Nonnull final BigDecimal value,
-      @Nonnull final String durationCode,
       @Nonnull final Precision unitPrecision) {
     if (unitPrecision.ordinal() > Precision.DAY.ordinal()) {
       return null;
     }
-    final YearMonth ym = YearMonth.parse(temporal);
-    if (unitPrecision.ordinal() <= Precision.MONTH.ordinal()) {
-      // Year or month: convert to months
-      final long months = convertToTargetPrecision(value, unitPrecision, Precision.MONTH);
-      return ym.plusMonths(months).toString();
-    }
-    // Day: convert to months
     final long months = convertToTargetPrecision(value, unitPrecision, Precision.MONTH);
-    return ym.plusMonths(months).toString();
+    return YearMonth.parse(temporal).plusMonths(months).toString();
   }
 
   // ===== Full date =====
@@ -361,7 +355,6 @@ public final class TemporalArithmetic {
   private static String addToFullDate(
       @Nonnull final String temporal,
       @Nonnull final BigDecimal value,
-      @Nonnull final String durationCode,
       @Nonnull final Precision unitPrecision) {
     if (unitPrecision.ordinal() > Precision.DAY.ordinal()) {
       return null; // Date doesn't accept hour/minute/second/millisecond
@@ -372,9 +365,11 @@ public final class TemporalArithmetic {
           case YEAR -> date.plusYears(truncate(value));
           case MONTH -> date.plusMonths(truncate(value));
           case DAY -> date.plusDays(truncate(value));
-          default -> null;
+          default ->
+              throw new IllegalStateException(
+                  "Unexpected unit precision for date: " + unitPrecision);
         };
-    return result != null ? result.toString() : null;
+    return result.toString();
   }
 
   // ===== DateTime partials (year-only, year-month, date-only with T suffix) =====
@@ -383,7 +378,6 @@ public final class TemporalArithmetic {
   private static String addToYearOnlyDateTime(
       @Nonnull final String datePart,
       @Nonnull final BigDecimal value,
-      @Nonnull final String durationCode,
       @Nonnull final Precision unitPrecision) {
     final long years = convertToTargetPrecision(value, unitPrecision, Precision.YEAR);
     final Year year = Year.parse(datePart);
@@ -394,13 +388,7 @@ public final class TemporalArithmetic {
   private static String addToYearMonthDateTime(
       @Nonnull final String datePart,
       @Nonnull final BigDecimal value,
-      @Nonnull final String durationCode,
       @Nonnull final Precision unitPrecision) {
-    if (unitPrecision.ordinal() <= Precision.MONTH.ordinal()) {
-      final long months = convertToTargetPrecision(value, unitPrecision, Precision.MONTH);
-      return YearMonth.parse(datePart).plusMonths(months) + "T";
-    }
-    // Finer than month: convert to months
     final long months = convertToTargetPrecision(value, unitPrecision, Precision.MONTH);
     return YearMonth.parse(datePart).plusMonths(months) + "T";
   }
@@ -409,7 +397,6 @@ public final class TemporalArithmetic {
   private static String addToDateDateTime(
       @Nonnull final String datePart,
       @Nonnull final BigDecimal value,
-      @Nonnull final String durationCode,
       @Nonnull final Precision unitPrecision) {
     final LocalDate date = LocalDate.parse(datePart);
     if (unitPrecision.ordinal() <= Precision.DAY.ordinal()) {
@@ -418,9 +405,11 @@ public final class TemporalArithmetic {
             case YEAR -> date.plusYears(truncate(value));
             case MONTH -> date.plusMonths(truncate(value));
             case DAY -> date.plusDays(truncate(value));
-            default -> null;
+            default ->
+                throw new IllegalStateException(
+                    "Unexpected unit precision for date: " + unitPrecision);
           };
-      return result != null ? result + "T" : null;
+      return result + "T";
     }
     // Finer than day: convert to days
     final long days = convertToTargetPrecision(value, unitPrecision, Precision.DAY);
@@ -433,7 +422,6 @@ public final class TemporalArithmetic {
   private static String addToDateTime(
       @Nonnull final String temporal,
       @Nonnull final BigDecimal value,
-      @Nonnull final String durationCode,
       @Nonnull final Precision unitPrecision) {
     final LocalDateTime ldt = LocalDateTime.parse(temporal, FLEXIBLE_DATETIME);
     final Precision temporalPrecision = detectDateTimePrecision(temporal);
@@ -448,10 +436,10 @@ public final class TemporalArithmetic {
       result = addToLocalDateTime(ldt, BigDecimal.valueOf(converted), temporalPrecision);
     }
 
-    return result != null ? formatDateTime(result, temporalPrecision) : null;
+    return formatDateTime(result, temporalPrecision);
   }
 
-  @Nullable
+  @Nonnull
   private static LocalDateTime addToLocalDateTime(
       @Nonnull final LocalDateTime ldt,
       @Nonnull final BigDecimal value,
@@ -473,7 +461,6 @@ public final class TemporalArithmetic {
   private static String addToTime(
       @Nonnull final String temporal,
       @Nonnull final BigDecimal value,
-      @Nonnull final String durationCode,
       @Nonnull final Precision unitPrecision) {
     // Time only accepts hour, minute, second, millisecond
     if (unitPrecision.ordinal() < Precision.HOUR.ordinal()) {
@@ -490,10 +477,10 @@ public final class TemporalArithmetic {
       result = addToLocalTime(time, BigDecimal.valueOf(converted), temporalPrecision);
     }
 
-    return result != null ? formatTime(result, temporalPrecision) : null;
+    return formatTime(result, temporalPrecision);
   }
 
-  @Nullable
+  @Nonnull
   private static LocalTime addToLocalTime(
       @Nonnull final LocalTime time,
       @Nonnull final BigDecimal value,
@@ -503,7 +490,8 @@ public final class TemporalArithmetic {
       case MINUTE -> time.plusMinutes(truncate(value));
       case SECOND -> time.plusSeconds(truncate(value));
       case MILLISECOND -> time.plusNanos(value.longValue() * 1_000_000L);
-      default -> null;
+      default ->
+          throw new IllegalStateException("Unexpected unit precision for time: " + precision);
     };
   }
 
@@ -518,10 +506,6 @@ public final class TemporalArithmetic {
     if (colonCount >= 2) {
       return Precision.SECOND;
     }
-    if (colonCount == 1) {
-      return Precision.MINUTE;
-    }
-    // Has T and hour:minute at minimum (this method is only called for DateTime with time)
     return Precision.MINUTE;
   }
 
@@ -605,7 +589,7 @@ public final class TemporalArithmetic {
           BigDecimal.ONE.divide(BigDecimal.valueOf(24L * 60 * 60), 20, RoundingMode.HALF_UP);
       case MILLISECOND ->
           BigDecimal.ONE.divide(BigDecimal.valueOf(24L * 60 * 60 * 1000), 20, RoundingMode.HALF_UP);
-      default -> BigDecimal.ONE; // Should not reach here
+      default -> throw new IllegalStateException("Unexpected precision for toDaysFactor: " + from);
     };
   }
 
@@ -630,7 +614,8 @@ public final class TemporalArithmetic {
       case MINUTE -> MS_PER_MINUTE;
       case SECOND -> MS_PER_SECOND;
       case MILLISECOND -> 1L;
-      default -> MS_PER_DAY; // Should not reach here for year/month
+      default ->
+          throw new IllegalStateException("Unexpected precision for millisPerUnit: " + precision);
     };
   }
 
@@ -643,7 +628,8 @@ public final class TemporalArithmetic {
       case MINUTE -> DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm").format(ldt);
       case SECOND -> DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss").format(ldt);
       case MILLISECOND -> formatDateTimeWithFraction(ldt);
-      default -> DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm").format(ldt);
+      default ->
+          throw new IllegalStateException("Unexpected precision for formatDateTime: " + precision);
     };
   }
 
@@ -667,7 +653,8 @@ public final class TemporalArithmetic {
       case MINUTE -> DateTimeFormatter.ofPattern("HH:mm").format(time);
       case SECOND -> DateTimeFormatter.ofPattern("HH:mm:ss").format(time);
       case MILLISECOND -> formatTimeWithFraction(time);
-      default -> DateTimeFormatter.ofPattern("HH:mm").format(time);
+      default ->
+          throw new IllegalStateException("Unexpected precision for formatTime: " + precision);
     };
   }
 
@@ -685,6 +672,6 @@ public final class TemporalArithmetic {
 
   /** Truncates a BigDecimal toward zero to a long value. */
   private static long truncate(@Nonnull final BigDecimal value) {
-    return value.setScale(0, RoundingMode.DOWN).longValueExact();
+    return value.setScale(0, RoundingMode.DOWN).longValue();
   }
 }

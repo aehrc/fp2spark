@@ -18,10 +18,11 @@ import org.junit.jupiter.api.TestFactory;
  *   <li>Partial date precision handling (spec examples for year-only, year-month)
  *   <li>DateTime + Quantity (hours, minutes, days)
  *   <li>Time + Quantity (hours, minutes)
- *   <li>Invalid unit for type (returns empty)
+ *   <li>DateTime - Quantity (hours, minutes)
+ *   <li>Time - Quantity (hours, minutes)
+ *   <li>Invalid unit for type (returns empty per Spark-NULL convention)
  *   <li>Calendar duration keyword variants (singular/plural)
  *   <li>Month overflow and leap year edge cases
- *   <li>Empty propagation
  * </ul>
  */
 public class TemporalArithmeticTest extends FhirPathTestBase {
@@ -105,7 +106,34 @@ public class TemporalArithmeticTest extends FhirPathTestBase {
         .build();
   }
 
-  // ===== Invalid unit for type (spec: signals error) =====
+  // ===== DateTime - Quantity =====
+
+  @TestFactory
+  Stream<DynamicTest> testDateTimeSubtraction() {
+    return builder()
+        .group("DateTime - hours")
+        .testTrue("@2014-01-25T16:00:00 - 2 hours = @2014-01-25T14:00:00", "DateTime - 2 hours")
+        .group("DateTime - minutes")
+        .testTrue(
+            "@2014-01-25T15:00 - 30 minutes = @2014-01-25T14:30",
+            "DateTime - 30 minutes crosses hour boundary")
+        .build();
+  }
+
+  // ===== Time - Quantity =====
+
+  @TestFactory
+  Stream<DynamicTest> testTimeSubtraction() {
+    return builder()
+        .group("Time - hours")
+        .testTrue("@T16:00 - 2 hours = @T14:00", "Time - 2 hours")
+        .group("Time - minutes")
+        .testTrue("@T15:00:00 - 30 minutes = @T14:30:00", "Time - 30 minutes crosses hour boundary")
+        .build();
+  }
+
+  // ===== Invalid unit for type (spec says "signal error"; returns empty per Spark convention)
+  // =====
 
   @TestFactory
   Stream<DynamicTest> testInvalidUnitForType() {

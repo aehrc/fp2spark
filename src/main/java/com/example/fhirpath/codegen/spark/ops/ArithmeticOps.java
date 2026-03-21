@@ -4,7 +4,6 @@ import static com.example.fhirpath.codegen.spark.SparkDefs.binary;
 import static com.example.fhirpath.codegen.spark.SparkDefs.byResultType;
 import static com.example.fhirpath.codegen.spark.SparkDefs.types;
 import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
-import static com.example.fhirpath.codegen.spark.SparkTypeMapper.DECIMAL_TYPE;
 import static com.example.fhirpath.typing.PrimitiveType.DATE;
 import static com.example.fhirpath.typing.PrimitiveType.DATE_TIME;
 import static com.example.fhirpath.typing.PrimitiveType.DECIMAL;
@@ -12,13 +11,7 @@ import static com.example.fhirpath.typing.PrimitiveType.INTEGER;
 import static com.example.fhirpath.typing.PrimitiveType.QUANTITY;
 import static com.example.fhirpath.typing.PrimitiveType.STRING;
 import static com.example.fhirpath.typing.PrimitiveType.TIME;
-import static org.apache.spark.sql.functions.abs;
-import static org.apache.spark.sql.functions.coalesce;
-import static org.apache.spark.sql.functions.concat;
-import static org.apache.spark.sql.functions.floor;
 import static org.apache.spark.sql.functions.lit;
-import static org.apache.spark.sql.functions.signum;
-import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOperationDef;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
@@ -26,7 +19,7 @@ import com.example.fhirpath.codegen.spark.udf.QuantityArithmetic;
 import com.example.fhirpath.codegen.spark.udf.TemporalArithmetic;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
-import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.functions;
 
 /**
  * Arithmetic operator registrations.
@@ -37,26 +30,6 @@ import org.apache.spark.sql.types.DataTypes;
 public final class ArithmeticOps {
 
   private ArithmeticOps() {}
-
-  /**
-   * Truncates a numeric value toward zero. Uses {@code signum(x) * floor(abs(x))} to avoid overflow
-   * that would occur with an integer cast for large decimal values.
-   */
-  @Nonnull
-  private static Column truncateTowardZero(@Nonnull final Column value) {
-    return signum(value).multiply(floor(abs(value)));
-  }
-
-  /**
-   * Wraps an expression with a division-by-zero guard. Returns null when the divisor is zero, per
-   * FHIRPath spec. Casts the divisor to DECIMAL for the comparison to handle both Integer and
-   * Decimal types uniformly.
-   */
-  @Nonnull
-  private static Column guardDivisionByZero(
-      @Nonnull final Column divisor, @Nonnull final Column result) {
-    return when(divisor.cast(DECIMAL_TYPE).notEqual(lit(0)), result).otherwise(lit(null));
-  }
 
   /**
    * Creates a quantity arithmetic dispatch that delegates to the {@link QuantityArithmetic} UDF.
@@ -84,7 +57,7 @@ public final class ArithmeticOps {
         "add",
         byResultType()
             .when(types(INTEGER, DECIMAL), binary(Column::plus))
-            .when(types(STRING), binary((l, r) -> concat(l, r)))
+            .when(types(STRING), binary(functions::concat))
             .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_ADD))
             .when(types(DATE, DATE_TIME, TIME), temporalOp(TemporalArithmetic.OP_ADD)));
 
@@ -101,49 +74,21 @@ public final class ArithmeticOps {
             .when(types(INTEGER, DECIMAL), binary(Column::multiply))
             .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_MUL)));
 
-    // Division: for numeric types, always returns DECIMAL per FHIRPath spec.
-    // Division by zero returns empty (null).
-    // For quantities, the UDF handles division and unit algebra.
     registry.register(
         "divide",
         byResultType()
-            .when(
-                types(INTEGER, DECIMAL),
-                ctx ->
-                    guardDivisionByZero(
-                        ctx.arg(1),
-                        ctx.arg(0).cast(DECIMAL_TYPE).divide(ctx.arg(1).cast(DECIMAL_TYPE))))
+            .when(types(INTEGER, DECIMAL), binary(NumericalSupport::division))
             .when(types(QUANTITY), quantityOp(QuantityArithmetic.OP_DIV)));
 
-    // Modulo: division by zero returns empty (null).
-    registry.register("mod", ctx -> guardDivisionByZero(ctx.arg(1), ctx.arg(0).mod(ctx.arg(1))));
+    registry.register("mod", binary(NumericalSupport::modulo));
 
-    // Integer division (truncated toward zero): division by zero returns empty (null).
-    // Uses integer cast which truncates toward zero per JVM/Spark semantics,
-    // matching the FHIRPath spec ("the division that ignores any remainder").
     registry.register(
         "div",
-        ctx ->
-            switch (ctx.primitiveResultType()) {
-              case INTEGER ->
-                  guardDivisionByZero(
-                      ctx.arg(1),
-                      truncateTowardZero(
-                              ctx.arg(0).cast(DECIMAL_TYPE).divide(ctx.arg(1).cast(DECIMAL_TYPE)))
-                          .cast(DataTypes.IntegerType));
-              case DECIMAL ->
-                  guardDivisionByZero(
-                      ctx.arg(1),
-                      truncateTowardZero(ctx.arg(0).divide(ctx.arg(1))).cast(DECIMAL_TYPE));
-              default ->
-                  throw new IllegalArgumentException(
-                      "Unsupported type for div: " + ctx.resultType());
-            });
+        byResultType()
+            .when(types(INTEGER), binary(NumericalSupport::integerDivision))
+            .when(types(DECIMAL), binary(NumericalSupport::decimalDivision)));
 
-    // String concatenation (&): treats null/empty as empty string.
-    registry.register(
-        "stringConcat",
-        ctx -> concat(coalesce(ctx.arg(0), lit("")), coalesce(ctx.arg(1), lit(""))));
+    registry.register("stringConcat", binary(StringSupport::stringConcat));
 
     // Unary plus: identity operation.
     registry.register("unaryPlus", unary(col -> col));

@@ -375,4 +375,22 @@ public class TypeConversionTest extends FhirPathTestBase {
         .testEmpty("{}.convertsToQuantity()", "Empty → empty")
         .build();
   }
+
+  // ========== Implicit Type Coercions (FHIRPath Spec 6.2) ==========
+
+  @TestFactory
+  Stream<DynamicTest> testImplicitCoercions() {
+    return builder()
+        .group("Implicit coercion: Integer → Decimal")
+        .testEquals(15.5, "5 + 10.5", "Integer + Decimal promotes to Decimal")
+        .testTrue("5 = 5.0", "Integer = Decimal comparison")
+        .group("Implicit coercion: Integer → Quantity")
+        .testTrue("5 + 10 '1' = 15 '1'", "Integer + Quantity (same unit '1')")
+        .group("Implicit coercion: Decimal → Quantity")
+        .testTrue("5.0 + 10 '1' = 15.0 '1'", "Decimal + Quantity (same unit '1')")
+        .group("Implicit coercion: Date → DateTime")
+        .testTrue("@2023-06-15 = @2023-06-15", "Date = Date (baseline)")
+        .testTrue("@2023-06-15 = @2023-06-15", "Date promoted to DateTime when needed")
+        .build();
+  }
 }

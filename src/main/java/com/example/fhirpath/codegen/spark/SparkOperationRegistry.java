@@ -5,6 +5,7 @@ import com.example.fhirpath.codegen.spark.ops.BooleanOps;
 import com.example.fhirpath.codegen.spark.ops.CollectionOps;
 import com.example.fhirpath.codegen.spark.ops.CombineOps;
 import com.example.fhirpath.codegen.spark.ops.ComparisonOps;
+import com.example.fhirpath.codegen.spark.ops.ConversionOps;
 import com.example.fhirpath.codegen.spark.ops.EqualityOps;
 import com.example.fhirpath.codegen.spark.ops.FhirOps;
 import com.example.fhirpath.codegen.spark.ops.FilteringOps;
@@ -62,6 +63,7 @@ public final class SparkOperationRegistry {
     FilteringOps.register(registry);
     FhirOps.register(registry);
     TypeOps.register(registry);
+    ConversionOps.register(registry);
     return registry;
   }
 }

@@ -8,10 +8,13 @@ import static com.example.fhirpath.typing.TypeSets.NUMERIC;
 import static com.example.fhirpath.typing.TypeSets.STRING_LIKE;
 import static com.example.fhirpath.typing.Types.ANY;
 import static com.example.fhirpath.typing.Types.BOOLEAN;
+import static com.example.fhirpath.typing.Types.DATE;
+import static com.example.fhirpath.typing.Types.DATE_TIME;
 import static com.example.fhirpath.typing.Types.INTEGER;
 import static com.example.fhirpath.typing.Types.NULL;
 import static com.example.fhirpath.typing.Types.QUANTITY;
 import static com.example.fhirpath.typing.Types.STRING;
+import static com.example.fhirpath.typing.Types.TIME;
 
 import com.example.fhirpath.operation.signature.SignatureDefinition;
 import com.example.fhirpath.operation.signature.Signatures;
@@ -47,9 +50,17 @@ public final class OperationRegistry {
         register(
             "add",
             forTypes(NUMERIC, STRING_LIKE).define(Signatures::binaryOp),
-            Signatures.binaryOp(QUANTITY)),
+            Signatures.binaryOp(QUANTITY),
+            Signatures.temporalArithmetic(DATE),
+            Signatures.temporalArithmetic(DATE_TIME),
+            Signatures.temporalArithmetic(TIME)),
         register(
-            "sub", forTypes(NUMERIC).define(Signatures::binaryOp), Signatures.binaryOp(QUANTITY)),
+            "sub",
+            forTypes(NUMERIC).define(Signatures::binaryOp),
+            Signatures.binaryOp(QUANTITY),
+            Signatures.temporalArithmetic(DATE),
+            Signatures.temporalArithmetic(DATE_TIME),
+            Signatures.temporalArithmetic(TIME)),
         register(
             "multiply",
             forTypes(NUMERIC).define(Signatures::binaryOp),

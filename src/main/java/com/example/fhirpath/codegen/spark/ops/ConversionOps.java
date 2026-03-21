@@ -76,11 +76,14 @@ public final class ConversionOps {
   @Nonnull
   private static SparkOperationDef conversion(@Nonnull final ConversionFunction conversionFn) {
     return ctx -> {
-      final Column input = ctx.arg(0);
       final PrimitiveType sourceType = ctx.primitiveArgType(0);
-      final PrimitiveType targetType = ctx.primitiveResultType();
+      // Empty input → empty result (FHIRPath spec: empty propagation)
+      if (sourceType == PrimitiveType.NULL) {
+        return lit(null);
+      }
+      final Column input = ctx.arg(0);
       // Identity: same type returns unchanged
-      if (sourceType == targetType) {
+      if (sourceType == ctx.primitiveResultType()) {
         return input;
       }
       return conversionFn.convert(sourceType, input);
@@ -117,17 +120,19 @@ public final class ConversionOps {
   // ========== Conversion Functions ==========
 
   /**
-   * Converts to Boolean. String: 'true'/'false'/'t'/'f'/'1'/'0'/'1.0'/'0.0'. Integer: 0→false,
-   * 1→true. Decimal: 0.0→false, 1.0→true.
+   * Converts to Boolean per FHIRPath spec (case-insensitive for strings). String:
+   * 'true'/'t'/'yes'/'y'/'1'/'1.0' → true; 'false'/'f'/'no'/'n'/'0'/'0.0' → false. Integer: 1→true,
+   * 0→false. Decimal: 1.0→true, 0.0→false.
    */
   @Nonnull
   private static Column convertToBoolean(
       @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
-      case STRING ->
-          when(value.equalTo(lit("1.0")), lit(true))
-              .when(value.equalTo(lit("0.0")), lit(false))
-              .otherwise(value.try_cast(DataTypes.BooleanType));
+      case STRING -> {
+        final Column lower = functions.lower(value);
+        yield when(lower.isin("true", "t", "yes", "y", "1", "1.0"), lit(true))
+            .when(lower.isin("false", "f", "no", "n", "0", "0.0"), lit(false));
+      }
       case INTEGER ->
           when(value.equalTo(lit(1)), lit(true)).when(value.equalTo(lit(0)), lit(false));
       case DECIMAL ->
@@ -152,7 +157,8 @@ public final class ConversionOps {
   private static Column convertToDecimal(
       @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
-      case BOOLEAN, INTEGER, STRING -> value.try_cast(SparkTypeMapper.DECIMAL_TYPE);
+      case BOOLEAN, INTEGER -> value.try_cast(SparkTypeMapper.DECIMAL_TYPE);
+      case STRING -> when(value.rlike(DECIMAL_REGEX), value.try_cast(SparkTypeMapper.DECIMAL_TYPE));
       default -> lit(null);
     };
   }
@@ -229,9 +235,12 @@ public final class ConversionOps {
     return switch (sourceType) {
       case BOOLEAN -> lit(true);
       case STRING -> {
-        final Column is10or00 = value.equalTo(lit("1.0")).or(value.equalTo(lit("0.0")));
-        final Column castSucceeds = value.try_cast(DataTypes.BooleanType).isNotNull();
-        yield value.isNotNull().and(is10or00.or(castSucceeds));
+        final Column lower = functions.lower(value);
+        yield value
+            .isNotNull()
+            .and(
+                lower.isin(
+                    "true", "t", "yes", "y", "1", "1.0", "false", "f", "no", "n", "0", "0.0"));
       }
       case INTEGER -> value.equalTo(lit(0)).or(value.equalTo(lit(1)));
       case DECIMAL -> value.equalTo(lit(0.0)).or(value.equalTo(lit(1.0)));
@@ -244,8 +253,7 @@ public final class ConversionOps {
   private static Column validateToInteger(
       @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
-      case INTEGER -> lit(true);
-      case BOOLEAN -> lit(true);
+      case INTEGER, BOOLEAN -> lit(true);
       case STRING -> value.rlike(INTEGER_REGEX);
       default -> lit(false);
     };
@@ -278,8 +286,7 @@ public final class ConversionOps {
   private static Column validateToDate(
       @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
-      case DATE -> lit(true);
-      case DATE_TIME -> lit(true);
+      case DATE, DATE_TIME -> lit(true);
       case STRING -> value.rlike(DATE_REGEX);
       default -> lit(false);
     };
@@ -290,8 +297,7 @@ public final class ConversionOps {
   private static Column validateToDateTime(
       @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
-      case DATE_TIME -> lit(true);
-      case DATE -> lit(true);
+      case DATE_TIME, DATE -> lit(true);
       case STRING -> value.rlike(DATETIME_REGEX);
       default -> lit(false);
     };

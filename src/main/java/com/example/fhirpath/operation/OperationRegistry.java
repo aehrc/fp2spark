@@ -285,6 +285,7 @@ public final class OperationRegistry {
         register("toDate", Signatures.unaryFunc(ANY, DATE)),
         register("toDateTime", Signatures.unaryFunc(ANY, DATE_TIME)),
         register("toTime", Signatures.unaryFunc(ANY, TIME)),
+        // Note: spec also defines toQuantity([unit: String]) — optional unit arg not yet supported
         register("toQuantity", Signatures.unaryFunc(ANY, QUANTITY)),
 
         // CONVERSION VALIDATION FUNCTIONS (FHIRPath Spec 5.7.2)

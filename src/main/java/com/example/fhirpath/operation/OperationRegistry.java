@@ -17,6 +17,7 @@ import static com.example.fhirpath.typing.Types.QUANTITY;
 import static com.example.fhirpath.typing.Types.STRING;
 import static com.example.fhirpath.typing.Types.TIME;
 
+import com.example.fhirpath.operation.signature.ResultTypeSpec;
 import com.example.fhirpath.operation.signature.SignatureDefinition;
 import com.example.fhirpath.operation.signature.Signatures;
 import com.example.fhirpath.operation.signature.TypeGroup;
@@ -285,8 +286,11 @@ public final class OperationRegistry {
         register("toDate", Signatures.unaryFunc(ANY, DATE)),
         register("toDateTime", Signatures.unaryFunc(ANY, DATE_TIME)),
         register("toTime", Signatures.unaryFunc(ANY, TIME)),
-        // Note: spec also defines toQuantity([unit: String]) — optional unit arg not yet supported
-        register("toQuantity", Signatures.unaryFunc(ANY, QUANTITY)),
+        // toQuantity([unit: String]) — optional unit arg for UCUM unit conversion
+        register(
+            "toQuantity",
+            Signatures.variadic(
+                List.of(single(ANY), single(STRING)), ResultTypeSpec.single(QUANTITY), 1)),
 
         // CONVERSION VALIDATION FUNCTIONS (FHIRPath Spec 5.7.2)
         // Each: ?ANY → ?BOOLEAN
@@ -298,7 +302,11 @@ public final class OperationRegistry {
         register("convertsToDate", Signatures.unaryFunc(ANY, BOOLEAN)),
         register("convertsToDateTime", Signatures.unaryFunc(ANY, BOOLEAN)),
         register("convertsToTime", Signatures.unaryFunc(ANY, BOOLEAN)),
-        register("convertsToQuantity", Signatures.unaryFunc(ANY, BOOLEAN)));
+        // convertsToQuantity([unit: String]) — optional unit arg for UCUM unit conversion
+        register(
+            "convertsToQuantity",
+            Signatures.variadic(
+                List.of(single(ANY), single(STRING)), ResultTypeSpec.single(BOOLEAN), 1)));
   }
 
   /**

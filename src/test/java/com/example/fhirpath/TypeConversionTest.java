@@ -209,6 +209,33 @@ public class TypeConversionTest extends FhirPathTestBase {
         .build();
   }
 
+  // ========== toQuantity(unit) ==========
+
+  @TestFactory
+  Stream<DynamicTest> testToQuantityWithUnit() {
+    return builder()
+        .group("toQuantity(unit) - UCUM conversion")
+        .testTrue("1000 'g'.toQuantity('kg') = 1 'kg'", "Grams to kilograms")
+        .testTrue("1 'kg'.toQuantity('g') = 1000 'g'", "Kilograms to grams")
+        .testTrue("100 'cm'.toQuantity('m') = 1 'm'", "Centimeters to meters")
+        .group("toQuantity(unit) - same unit identity")
+        .testTrue("10 'mg'.toQuantity('mg') = 10 'mg'", "Same unit returns unchanged")
+        .group("toQuantity(unit) - incompatible units")
+        .testEmpty("10 'kg'.toQuantity('m')", "Mass → length: incompatible → empty")
+        .group("toQuantity(unit) - calendar duration conversion")
+        .testTrue("1 year.toQuantity('month') = 12 month", "Year to months")
+        .testTrue("1 day.toQuantity('hour') = 24 hour", "Day to hours")
+        .testTrue("60 minute.toQuantity('hour') = 1 hour", "Minutes to hours")
+        .testTrue("1 hour.toQuantity('minute') = 60 minute", "Hours to minutes")
+        .group("toQuantity(unit) - from non-Quantity input with unit")
+        .testEmpty(
+            "1000.toQuantity('g')",
+            "Integer → Quantity('1') then convert '1' to 'g' → incompatible → empty")
+        .group("toQuantity(unit) - empty propagation")
+        .testEmpty("{}.toQuantity('kg')", "Empty → empty")
+        .build();
+  }
+
   // ========== convertsToBoolean() ==========
 
   @TestFactory
@@ -373,6 +400,30 @@ public class TypeConversionTest extends FhirPathTestBase {
         .testFalse("@2023-06-15.convertsToQuantity()")
         .group("convertsToQuantity - empty propagation")
         .testEmpty("{}.convertsToQuantity()", "Empty → empty")
+        .build();
+  }
+
+  // ========== convertsToQuantity(unit) ==========
+
+  @TestFactory
+  Stream<DynamicTest> testConvertsToQuantityWithUnit() {
+    return builder()
+        .group("convertsToQuantity(unit) - compatible UCUM units")
+        .testTrue("1000 'g'.convertsToQuantity('kg')", "Grams to kilograms")
+        .testTrue("100 'cm'.convertsToQuantity('m')", "Centimeters to meters")
+        .group("convertsToQuantity(unit) - same unit")
+        .testTrue("10 'mg'.convertsToQuantity('mg')", "Same unit → true")
+        .group("convertsToQuantity(unit) - incompatible units")
+        .testFalse("10 'kg'.convertsToQuantity('m')", "Mass → length → false")
+        .group("convertsToQuantity(unit) - calendar duration")
+        .testTrue("1 year.convertsToQuantity('month')", "Year to months")
+        .testTrue("1 day.convertsToQuantity('hour')", "Day to hours")
+        .group("convertsToQuantity(unit) - non-convertible input type")
+        .testFalse("@2023-06-15.convertsToQuantity('kg')", "Date → false")
+        .group("convertsToQuantity(unit) - non-quantity input with unit")
+        .testFalse("42.convertsToQuantity('kg')", "Integer → '1' → incompatible with 'kg'")
+        .group("convertsToQuantity(unit) - empty propagation")
+        .testEmpty("{}.convertsToQuantity('kg')", "Empty → empty")
         .build();
   }
 

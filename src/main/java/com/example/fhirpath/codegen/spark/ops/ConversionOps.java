@@ -6,6 +6,8 @@ import static org.apache.spark.sql.functions.when;
 import com.example.fhirpath.codegen.spark.SparkOperationDef;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
+import com.example.fhirpath.codegen.spark.udf.QuantityConvertToUnit;
+import com.example.fhirpath.ir.Literal;
 import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.QuantityValue;
 import jakarta.annotation.Nonnull;
@@ -56,7 +58,7 @@ public final class ConversionOps {
     registry.register("toDate", conversion(ConversionOps::convertToDate));
     registry.register("toDateTime", conversion(ConversionOps::convertToDateTime));
     registry.register("toTime", conversion(ConversionOps::convertToTime));
-    registry.register("toQuantity", conversion(ConversionOps::convertToQuantity));
+    registry.register("toQuantity", toQuantityWithUnit());
 
     // Validation functions
     registry.register("convertsToBoolean", validation(ConversionOps::validateToBoolean));
@@ -66,7 +68,7 @@ public final class ConversionOps {
     registry.register("convertsToDate", validation(ConversionOps::validateToDate));
     registry.register("convertsToDateTime", validation(ConversionOps::validateToDateTime));
     registry.register("convertsToTime", validation(ConversionOps::validateToTime));
-    registry.register("convertsToQuantity", validation(ConversionOps::validateToQuantity));
+    registry.register("convertsToQuantity", convertsToQuantityWithUnit());
   }
 
   /**
@@ -104,6 +106,64 @@ public final class ConversionOps {
       }
       final Column input = ctx.arg(0);
       return validationFn.validate(sourceType, input);
+    };
+  }
+
+  /**
+   * toQuantity with optional unit argument. First converts to quantity, then if a unit argument is
+   * provided, converts the quantity to the target unit via {@link QuantityConvertToUnit}.
+   */
+  @Nonnull
+  private static SparkOperationDef toQuantityWithUnit() {
+    return ctx -> {
+      final PrimitiveType sourceType = ctx.primitiveArgType(0);
+      if (sourceType == PrimitiveType.NULL) {
+        return lit(null);
+      }
+      final Column input = ctx.arg(0);
+
+      // Step 1: Convert to quantity (identity if already QUANTITY)
+      final Column quantity =
+          (sourceType == PrimitiveType.QUANTITY) ? input : convertToQuantity(sourceType, input);
+
+      // Step 2: If unit argument provided, convert to target unit
+      final boolean hasUnitArg =
+          ctx.args().size() > 1 && ctx.argNode(1) instanceof Literal lit && lit.value() != null;
+      if (hasUnitArg) {
+        return QuantityConvertToUnit.UDF.apply(quantity, ctx.arg(1));
+      }
+      return quantity;
+    };
+  }
+
+  /**
+   * convertsToQuantity with optional unit argument. First validates conversion to quantity, then if
+   * a unit argument is provided, also checks if the quantity is convertible to the target unit.
+   */
+  @Nonnull
+  private static SparkOperationDef convertsToQuantityWithUnit() {
+    return ctx -> {
+      final PrimitiveType sourceType = ctx.primitiveArgType(0);
+      if (sourceType == PrimitiveType.NULL) {
+        return lit(null);
+      }
+      final Column input = ctx.arg(0);
+      final Column canConvert = validateToQuantity(sourceType, input);
+
+      // If no unit argument, just return the base validation result
+      final boolean hasUnitArg =
+          ctx.args().size() > 1 && ctx.argNode(1) instanceof Literal lit && lit.value() != null;
+      if (!hasUnitArg) {
+        return canConvert;
+      }
+
+      // With unit arg: also check if the converted quantity can be converted to the target unit
+      final Column quantity =
+          (sourceType == PrimitiveType.QUANTITY) ? input : convertToQuantity(sourceType, input);
+      final Column converted = QuantityConvertToUnit.UDF.apply(quantity, ctx.arg(1));
+
+      // convertsToQuantity(unit) is true iff: convertsToQuantity() AND conversion succeeds
+      return when(canConvert, converted.isNotNull()).otherwise(lit(false));
     };
   }
 

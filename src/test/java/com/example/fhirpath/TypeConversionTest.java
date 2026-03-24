@@ -227,6 +227,10 @@ public class TypeConversionTest extends FhirPathTestBase {
         .testTrue("1 day.toQuantity('hour') = 24 hour", "Day to hours")
         .testTrue("60 minute.toQuantity('hour') = 1 hour", "Minutes to hours")
         .testTrue("1 hour.toQuantity('minute') = 60 minute", "Hours to minutes")
+        .group("toQuantity(unit) - string with plural calendar unit")
+        .testTrue(
+            "'10 years'.toQuantity('month') = 120 month",
+            "Plural 'years' normalized to singular before conversion")
         .group("toQuantity(unit) - from non-Quantity input with unit")
         .testEmpty(
             "1000.toQuantity('g')",

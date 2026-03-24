@@ -460,12 +460,15 @@ public final class ConversionOps {
             "(?i)(years?|months?|weeks?|days?|hours?|minutes?|seconds?|milliseconds?)\\s*$",
             1);
 
+    // Normalize calendar unit to singular form (e.g. "years" → "year")
+    final Column normalizedCalendarUnit = functions.regexp_replace(calendarUnit, "s$", "");
+
     // Determine the effective unit code
     final Column hasQuotedUnit = quotedUnit.notEqual(lit(""));
     final Column hasCalendarUnit = calendarUnit.notEqual(lit(""));
     final Column unitCode =
         when(hasQuotedUnit, quotedUnit)
-            .when(hasCalendarUnit, calendarUnit)
+            .when(hasCalendarUnit, normalizedCalendarUnit)
             .otherwise(lit(QuantityValue.DEFAULT_UNIT));
 
     // Determine the system URI

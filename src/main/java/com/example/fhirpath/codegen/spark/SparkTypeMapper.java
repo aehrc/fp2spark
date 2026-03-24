@@ -24,6 +24,13 @@ public final class SparkTypeMapper {
             DataTypes.createStructField("code", DataTypes.StringType, true),
           });
 
+  /** Field indices for the quantity struct: {@code (value, unit, system, code)}. */
+  public static final int Q_VALUE = 0;
+
+  public static final int Q_UNIT = 1;
+  public static final int Q_SYSTEM = 2;
+  public static final int Q_CODE = 3;
+
   private SparkTypeMapper() {}
 
   /**

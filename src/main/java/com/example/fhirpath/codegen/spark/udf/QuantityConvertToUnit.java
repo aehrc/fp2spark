@@ -70,9 +70,9 @@ public final class QuantityConvertToUnit {
       return null;
     }
 
-    final BigDecimal value = quantityRow.getDecimal(0);
-    final String system = quantityRow.getString(2);
-    final String code = quantityRow.getString(3);
+    final BigDecimal value = quantityRow.getDecimal(SparkTypeMapper.Q_VALUE);
+    final String system = quantityRow.getString(SparkTypeMapper.Q_SYSTEM);
+    final String code = quantityRow.getString(SparkTypeMapper.Q_CODE);
 
     if (value == null || system == null || code == null) {
       return null;

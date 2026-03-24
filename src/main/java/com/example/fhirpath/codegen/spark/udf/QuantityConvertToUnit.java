@@ -50,6 +50,7 @@ public final class QuantityConvertToUnit {
           "millisecond", BigDecimal.ONE);
 
   private static final BigDecimal MONTHS_IN_YEAR = new BigDecimal(12);
+  private static final BigDecimal MILLIS_PER_SECOND = BigDecimal.valueOf(1000);
 
   /**
    * Incompatible calendar conversions: week has no clean relationship to year or month (a month
@@ -187,8 +188,7 @@ public final class QuantityConvertToUnit {
     }
 
     // Convert seconds to target calendar unit via milliseconds
-    final BigDecimal secondsFactorMs = CALENDAR_FACTORS_MS.get("second");
-    final BigDecimal valueInMs = valueInSeconds.multiply(secondsFactorMs);
+    final BigDecimal valueInMs = valueInSeconds.multiply(MILLIS_PER_SECOND);
     final BigDecimal converted = valueInMs.divide(targetFactorMs, MathContext.DECIMAL128);
     return buildQuantityRow(converted, calendarTarget, QuantityValue.CALENDAR_SYSTEM);
   }

@@ -125,9 +125,7 @@ public final class ConversionOps {
       final Column input = ctx.arg(0);
       final Column unitArg = ctx.arg(1);
 
-      // Convert to quantity (identity if already QUANTITY)
-      final Column quantity =
-          (sourceType == PrimitiveType.QUANTITY) ? input : convertToQuantity(sourceType, input);
+      final Column quantity = asQuantity(sourceType, input);
 
       // When unit arg is null (absent), return quantity unchanged;
       // when present, apply unit conversion (UDF returns null on failure → empty per spec)
@@ -155,23 +153,19 @@ public final class ConversionOps {
 
       // When unit arg is null (absent), just return base validation result;
       // when present, also check that unit conversion succeeds
+      final Column converted =
+          QuantityConvertToUnit.UDF.apply(asQuantity(sourceType, input), unitArg);
       return when(
-              unitArg.isNotNull(),
-              when(canConvert, unitConversionSucceeds(sourceType, input, unitArg))
-                  .otherwise(lit(false)))
+              unitArg.isNotNull(), when(canConvert, converted.isNotNull()).otherwise(lit(false)))
           .otherwise(canConvert);
     };
   }
 
-  /** Checks whether converting the input to a quantity in the target unit succeeds. */
+  /** Converts input to quantity, returning identity if already QUANTITY. */
   @Nonnull
-  private static Column unitConversionSucceeds(
-      @Nonnull final PrimitiveType sourceType,
-      @Nonnull final Column input,
-      @Nonnull final Column unitArg) {
-    final Column quantity =
-        (sourceType == PrimitiveType.QUANTITY) ? input : convertToQuantity(sourceType, input);
-    return QuantityConvertToUnit.UDF.apply(quantity, unitArg).isNotNull();
+  private static Column asQuantity(
+      @Nonnull final PrimitiveType sourceType, @Nonnull final Column input) {
+    return (sourceType == PrimitiveType.QUANTITY) ? input : convertToQuantity(sourceType, input);
   }
 
   @FunctionalInterface
@@ -399,13 +393,10 @@ public final class ConversionOps {
    */
   @Nonnull
   private static Column decimalToString(@Nonnull final Column value) {
-    // Cast to string, then trim trailing zeros after decimal point
-    // Spark's cast to string for Decimal includes trailing zeros (e.g., "1.000000")
-    // We use regexp_replace to clean up: remove trailing zeros, and trailing dot
+    // Spark's cast to string for Decimal includes trailing zeros (e.g., "1.000000").
+    // Single regex strips trailing zeros and any resulting trailing dot.
     final Column str = value.cast(DataTypes.StringType);
-    return when(
-            str.contains(lit(".")),
-            functions.regexp_replace(functions.regexp_replace(str, "0+$", ""), "\\.$", ""))
+    return when(str.contains(lit(".")), functions.regexp_replace(str, "\\.?0+$", ""))
         .otherwise(str);
   }
 

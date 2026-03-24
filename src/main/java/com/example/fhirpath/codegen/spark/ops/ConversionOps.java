@@ -7,7 +7,6 @@ import com.example.fhirpath.codegen.spark.SparkOperationDef;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
 import com.example.fhirpath.codegen.spark.udf.QuantityConvertToUnit;
-import com.example.fhirpath.ir.Literal;
 import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.QuantityValue;
 import jakarta.annotation.Nonnull;
@@ -112,6 +111,9 @@ public final class ConversionOps {
   /**
    * toQuantity with optional unit argument. First converts to quantity, then if a unit argument is
    * provided, converts the quantity to the target unit via {@link QuantityConvertToUnit}.
+   *
+   * <p>The unit arg column is null when absent (variadic padding). When present but conversion
+   * fails (incompatible units), the UDF returns null → empty per spec.
    */
   @Nonnull
   private static SparkOperationDef toQuantityWithUnit() {
@@ -121,24 +123,24 @@ public final class ConversionOps {
         return lit(null);
       }
       final Column input = ctx.arg(0);
+      final Column unitArg = ctx.arg(1);
 
-      // Step 1: Convert to quantity (identity if already QUANTITY)
+      // Convert to quantity (identity if already QUANTITY)
       final Column quantity =
           (sourceType == PrimitiveType.QUANTITY) ? input : convertToQuantity(sourceType, input);
 
-      // Step 2: If unit argument provided, convert to target unit
-      final boolean hasUnitArg =
-          ctx.args().size() > 1 && ctx.argNode(1) instanceof Literal lit && lit.value() != null;
-      if (hasUnitArg) {
-        return QuantityConvertToUnit.UDF.apply(quantity, ctx.arg(1));
-      }
-      return quantity;
+      // When unit arg is null (absent), return quantity unchanged;
+      // when present, apply unit conversion (UDF returns null on failure → empty per spec)
+      return when(unitArg.isNotNull(), QuantityConvertToUnit.UDF.apply(quantity, unitArg))
+          .otherwise(quantity);
     };
   }
 
   /**
    * convertsToQuantity with optional unit argument. First validates conversion to quantity, then if
    * a unit argument is provided, also checks if the quantity is convertible to the target unit.
+   *
+   * <p>The unit arg column is null when absent (variadic padding).
    */
   @Nonnull
   private static SparkOperationDef convertsToQuantityWithUnit() {
@@ -148,23 +150,28 @@ public final class ConversionOps {
         return lit(null);
       }
       final Column input = ctx.arg(0);
+      final Column unitArg = ctx.arg(1);
       final Column canConvert = validateToQuantity(sourceType, input);
 
-      // If no unit argument, just return the base validation result
-      final boolean hasUnitArg =
-          ctx.args().size() > 1 && ctx.argNode(1) instanceof Literal lit && lit.value() != null;
-      if (!hasUnitArg) {
-        return canConvert;
-      }
-
-      // With unit arg: also check if the converted quantity can be converted to the target unit
-      final Column quantity =
-          (sourceType == PrimitiveType.QUANTITY) ? input : convertToQuantity(sourceType, input);
-      final Column converted = QuantityConvertToUnit.UDF.apply(quantity, ctx.arg(1));
-
-      // convertsToQuantity(unit) is true iff: convertsToQuantity() AND conversion succeeds
-      return when(canConvert, converted.isNotNull()).otherwise(lit(false));
+      // When unit arg is null (absent), just return base validation result;
+      // when present, also check that unit conversion succeeds
+      return when(
+              unitArg.isNotNull(),
+              when(canConvert, unitConversionSucceeds(sourceType, input, unitArg))
+                  .otherwise(lit(false)))
+          .otherwise(canConvert);
     };
+  }
+
+  /** Checks whether converting the input to a quantity in the target unit succeeds. */
+  @Nonnull
+  private static Column unitConversionSucceeds(
+      @Nonnull final PrimitiveType sourceType,
+      @Nonnull final Column input,
+      @Nonnull final Column unitArg) {
+    final Column quantity =
+        (sourceType == PrimitiveType.QUANTITY) ? input : convertToQuantity(sourceType, input);
+    return QuantityConvertToUnit.UDF.apply(quantity, unitArg).isNotNull();
   }
 
   @FunctionalInterface

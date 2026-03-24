@@ -388,8 +388,8 @@ public final class ConversionOps {
   // ========== Helper Methods ==========
 
   /**
-   * Converts a decimal value to string, stripping trailing zeros. Uses Spark's format_number with
-   * trim to remove trailing zeros while preserving at least one decimal digit.
+   * Converts a decimal value to string, stripping trailing zeros and any resulting trailing dot.
+   * For example, {@code 1.500000} becomes {@code "1.5"} and {@code 1.000000} becomes {@code "1"}.
    */
   @Nonnull
   private static Column decimalToString(@Nonnull final Column value) {

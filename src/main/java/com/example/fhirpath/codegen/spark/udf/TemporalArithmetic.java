@@ -1,5 +1,6 @@
 package com.example.fhirpath.codegen.spark.udf;
 
+import com.example.fhirpath.codegen.spark.SparkTypeMapper;
 import com.example.fhirpath.typing.QuantityValue;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -192,9 +193,9 @@ public final class TemporalArithmetic {
     }
 
     try {
-      final BigDecimal qValue = quantity.getDecimal(0);
-      final String qSystem = quantity.getString(2);
-      final String qCode = quantity.getString(3);
+      final BigDecimal qValue = quantity.getDecimal(SparkTypeMapper.Q_VALUE);
+      final String qSystem = quantity.getString(SparkTypeMapper.Q_SYSTEM);
+      final String qCode = quantity.getString(SparkTypeMapper.Q_CODE);
 
       if (qValue == null || qSystem == null || qCode == null) {
         return null;

@@ -2,6 +2,7 @@ package com.example.fhirpath.codegen.spark.udf;
 
 import static com.example.fhirpath.codegen.spark.SparkTypeMapper.QUANTITY_TYPE;
 
+import com.example.fhirpath.codegen.spark.SparkTypeMapper;
 import com.example.fhirpath.typing.QuantityValue;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -52,15 +53,16 @@ public final class QuantityArithmetic {
       return null;
     }
 
-    final BigDecimal leftValue = left.getDecimal(0);
-    final String leftUnit = left.getString(1); // display unit, used in same-code add/sub result
-    final String leftSystem = left.getString(2);
-    final String leftCode = left.getString(3);
+    final BigDecimal leftValue = left.getDecimal(SparkTypeMapper.Q_VALUE);
+    final String leftUnit =
+        left.getString(SparkTypeMapper.Q_UNIT); // display unit, used in same-code add/sub result
+    final String leftSystem = left.getString(SparkTypeMapper.Q_SYSTEM);
+    final String leftCode = left.getString(SparkTypeMapper.Q_CODE);
 
-    final BigDecimal rightValue = right.getDecimal(0);
+    final BigDecimal rightValue = right.getDecimal(SparkTypeMapper.Q_VALUE);
     // rightUnit not needed — result uses left's unit (same-code) or granular UCUM code (cross-unit)
-    final String rightSystem = right.getString(2);
-    final String rightCode = right.getString(3);
+    final String rightSystem = right.getString(SparkTypeMapper.Q_SYSTEM);
+    final String rightCode = right.getString(SparkTypeMapper.Q_CODE);
 
     if (leftValue == null
         || leftCode == null

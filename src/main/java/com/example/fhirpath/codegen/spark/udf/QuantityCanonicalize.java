@@ -53,9 +53,9 @@ public final class QuantityCanonicalize {
       return null;
     }
 
-    final BigDecimal value = row.getDecimal(0);
-    final String system = row.getString(2);
-    final String code = row.getString(3);
+    final BigDecimal value = row.getDecimal(SparkTypeMapper.Q_VALUE);
+    final String system = row.getString(SparkTypeMapper.Q_SYSTEM);
+    final String code = row.getString(SparkTypeMapper.Q_CODE);
 
     if (value == null || system == null || code == null) {
       return null;

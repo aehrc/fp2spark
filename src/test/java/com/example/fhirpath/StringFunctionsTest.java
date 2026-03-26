@@ -252,6 +252,9 @@ public class StringFunctionsTest extends FhirPathTestBase {
             List.of("ABC"), "'ABC'.split(',')", "No match returns single-element collection")
         .testEquals(
             List.of("A", "", "C"), "'A,,C'.split(',')", "Adjacent separators yield empty strings")
+        .group("split() literal separator (not regex)")
+        .testEquals(List.of("a", "b", "c"), "'a.b.c'.split('.')", "Dot is literal, not regex")
+        .testEquals(List.of("a", "b"), "'a+b'.split('+')", "Plus is literal, not regex")
         .group("split() empty propagation")
         .testEmpty("{}.split(',')", "Empty input returns empty")
         .build();

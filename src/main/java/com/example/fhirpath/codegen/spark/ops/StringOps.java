@@ -55,7 +55,11 @@ public final class StringOps {
     registry.register("replaceMatches", ctx -> regexp_replace(ctx.arg(0), ctx.arg(1), ctx.arg(2)));
 
     // split(separator): returns *STRING
-    registry.register("split", ctx -> functions.split(ctx.arg(0), ctx.arg(1)));
+    // FHIRPath spec treats separator as a literal string, not a regex.
+    // Spark's split() interprets the pattern as a regex, so we quote it with \Q...\E.
+    registry.register(
+        "split",
+        ctx -> functions.split(ctx.arg(0), functions.concat(lit("\\Q"), ctx.arg(1), lit("\\E"))));
 
     // join([separator]): *STRING → ?STRING
     registry.register("join", StringOps::generateJoin);

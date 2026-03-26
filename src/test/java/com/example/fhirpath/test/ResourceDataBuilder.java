@@ -1,5 +1,6 @@
 package com.example.fhirpath.test;
 
+import com.example.fhirpath.parser.StringEscapeUtils;
 import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
@@ -380,7 +381,7 @@ public class ResourceDataBuilder {
   private static String unquote(@Nonnull final String s) {
     final String trimmed = s.trim();
     if (trimmed.length() >= 2 && trimmed.startsWith("'") && trimmed.endsWith("'")) {
-      return trimmed.substring(1, trimmed.length() - 1);
+      return StringEscapeUtils.unescapeFhirPathString(trimmed.substring(1, trimmed.length() - 1));
     }
     return trimmed;
   }

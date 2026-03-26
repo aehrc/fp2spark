@@ -425,19 +425,24 @@ public final class ConversionOps {
     final Column display = value.getField("display");
     final Column userSelected = value.getField("userSelected");
 
-    // Build from the inside out, omitting trailing null components
+    // Build incrementally, inserting empty segments for null intermediate fields.
+    // Format: system|code[|version[|display[|userSelected]]]
     final Column base = functions.concat(system, lit("|"), code);
+    final Column versionOrEmpty = functions.coalesce(version, lit(""));
+    final Column displayOrEmpty = functions.coalesce(display, lit(""));
+
+    // system|code|version
     final Column withVersion = functions.concat(base, lit("|"), version);
-    final Column withDisplay =
-        functions.concat(
-            when(version.isNull(), functions.concat(base, lit("|"))).otherwise(withVersion),
-            lit("|"),
-            display);
+    // system|code|<version>|display  (version may be empty)
+    final Column withDisplay = functions.concat(base, lit("|"), versionOrEmpty, lit("|"), display);
+    // system|code|<version>|<display>|userSelected  (version/display may be empty)
     final Column withUserSelected =
         functions.concat(
-            when(display.isNull(), functions.concat(base, lit("||")))
-                .when(version.isNull(), functions.concat(base, lit("||"), display))
-                .otherwise(withDisplay),
+            base,
+            lit("|"),
+            versionOrEmpty,
+            lit("|"),
+            displayOrEmpty,
             lit("|"),
             userSelected.cast(DataTypes.StringType));
 

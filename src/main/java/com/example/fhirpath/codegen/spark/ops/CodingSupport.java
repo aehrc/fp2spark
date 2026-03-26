@@ -22,7 +22,7 @@ final class CodingSupport {
     final Column l = left.cast(SparkTypeMapper.CODING_TYPE);
     final Column r = right.cast(SparkTypeMapper.CODING_TYPE);
     return l.getField("system")
-        .eqNullSafe(r.getField("system"))
-        .and(l.getField("code").eqNullSafe(r.getField("code")));
+        .equalTo(r.getField("system"))
+        .and(l.getField("code").equalTo(r.getField("code")));
   }
 }

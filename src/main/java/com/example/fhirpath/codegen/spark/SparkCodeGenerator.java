@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
 import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.DataTypes;
 
 /**
  * Generates Spark Column expressions from FHIRPath IR trees.
@@ -266,8 +267,8 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     return functions.struct(
         lit(cv.system()).as("system"),
         lit(cv.code()).as("code"),
-        lit(cv.version()).as("version"),
-        lit(cv.display()).as("display"),
-        lit(cv.userSelected()).as("userSelected"));
+        lit(cv.version()).cast(DataTypes.StringType).as("version"),
+        lit(cv.display()).cast(DataTypes.StringType).as("display"),
+        lit(cv.userSelected()).cast(DataTypes.BooleanType).as("userSelected"));
   }
 }

@@ -26,6 +26,11 @@ public record EqualsAssertion(@Nullable Object expected) implements Assertion {
     Object adaptedExpected = TYPE_ADAPTER.adaptToActualType(expected, actual);
     Object adaptedActual = TYPE_ADAPTER.convertScalaToJava(actual);
 
+    // Normalize single-element collections to scalars.
+    // In FHIRPath a collection of one IS a singular value, so [x] == x.
+    adaptedExpected = unwrapSingleton(adaptedExpected);
+    adaptedActual = unwrapSingleton(adaptedActual);
+
     // Compare adapted values
     if (adaptedExpected instanceof List<?> expectedList
         && adaptedActual instanceof List<?> actualList) {
@@ -34,6 +39,18 @@ public record EqualsAssertion(@Nullable Object expected) implements Assertion {
       assertEquals(
           adaptedExpected, adaptedActual, "Expression result does not match expected value");
     }
+  }
+
+  /**
+   * Unwraps a single-element list to its scalar value. In FHIRPath, a collection containing exactly
+   * one element is equivalent to a singular value.
+   */
+  @Nullable
+  private static Object unwrapSingleton(@Nullable final Object value) {
+    if (value instanceof List<?> list && list.size() == 1) {
+      return list.getFirst();
+    }
+    return value;
   }
 
   /**

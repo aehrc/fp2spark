@@ -17,13 +17,13 @@ import org.slf4j.LoggerFactory;
  * Executes individual FHIRPath test cases by compiling expressions, running Spark queries,
  * extracting results, and verifying outcomes against assertions.
  */
-class FhirPathTestExecutor {
+public class FhirPathTestExecutor {
 
   private static final Logger log = LoggerFactory.getLogger(FhirPathTestExecutor.class);
 
   private final SparkSession spark;
 
-  FhirPathTestExecutor(@Nonnull final SparkSession spark) {
+  public FhirPathTestExecutor(@Nonnull final SparkSession spark) {
     this.spark = spark;
   }
 

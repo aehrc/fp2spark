@@ -195,8 +195,31 @@
                         --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
                         -Djava.security.manager=allow
                     </argLine>
+                    <excludes>
+                        <exclude>com/example/fhirpath/compat/**</exclude>
+                    </excludes>
                 </configuration>
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>compat</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludes combine.self="override"/>
+                            <includes>
+                                <include>com/example/fhirpath/compat/**</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -1,9 +1,14 @@
 package com.example.fhirpath.test;
 
+import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.ResourceType;
+import com.example.fhirpath.typing.TemporalValue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -65,8 +70,9 @@ class ResourceDatasetConverter {
           SCHEMA_CONVERTER.toStructType(
               (com.example.fhirpath.typing.InlineComplexType) resourceType);
 
-      // Step 3: Convert Map data to JSON string (flat schema — no outer wrapping)
-      final String jsonData = JSON_MAPPER.writeValueAsString(resource.getData());
+      // Step 3: Convert wrapper types to JSON-friendly forms, then serialize to JSON
+      final Map<String, Object> jsonFriendlyData = toJsonFriendly(resource.getData());
+      final String jsonData = JSON_MAPPER.writeValueAsString(jsonFriendlyData);
 
       // Step 4: Create single-element JSON list
       final String jsonArray = "[" + jsonData + "]";
@@ -80,5 +86,39 @@ class ResourceDatasetConverter {
       throw new RuntimeException(
           "Failed to convert ResourceTestData to Dataset: " + e.getMessage(), e);
     }
+  }
+
+  /**
+   * Converts a Map containing wrapper types to a JSON-friendly Map.
+   *
+   * <p>Wrapper types are converted as follows:
+   *
+   * <ul>
+   *   <li>{@link TemporalValue} (DateValue, TimeValue, DateTimeValue) → plain string
+   *   <li>{@link QuantityValue} → Map with {value, unit, system, code} fields
+   *   <li>Nested Maps and Lists are processed recursively
+   * </ul>
+   */
+  @Nonnull
+  private static Map<String, Object> toJsonFriendly(@Nonnull final Map<String, Object> data) {
+    final Map<String, Object> result = new HashMap<>();
+    for (final Map.Entry<String, Object> entry : data.entrySet()) {
+      result.put(entry.getKey(), convertValue(entry.getValue()));
+    }
+    return result;
+  }
+
+  @Nullable
+  @SuppressWarnings("unchecked")
+  private static Object convertValue(@Nullable final Object value) {
+    return switch (value) {
+      case null -> null;
+      case TemporalValue tv -> tv.value();
+      case QuantityValue qv ->
+          Map.of("value", qv.value(), "unit", qv.unit(), "system", qv.system(), "code", qv.code());
+      case List<?> list -> list.stream().map(ResourceDatasetConverter::convertValue).toList();
+      case Map<?, ?> map -> toJsonFriendly((Map<String, Object>) map);
+      default -> value;
+    };
   }
 }

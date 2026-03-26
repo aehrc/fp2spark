@@ -129,6 +129,20 @@ public class FhirPathTestBuilder {
   }
 
   /**
+   * Set the current resource test data from a pre-built Map.
+   *
+   * @param resourceTypeName The name of the resource type (e.g., "Patient")
+   * @param data The pre-built resource data map
+   * @return This builder for method chaining
+   */
+  @Nonnull
+  public FhirPathTestBuilder withSubject(
+      @Nonnull final String resourceTypeName, @Nonnull final java.util.Map<String, Object> data) {
+    this.currentSubject = new MapTestSubject(ResourceTestData.of(resourceTypeName, data));
+    return this;
+  }
+
+  /**
    * Set the current resource test data with an explicit ResourceType.
    *
    * @param resourceType The explicit resource type definition

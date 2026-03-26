@@ -56,7 +56,7 @@ public final class StringOps {
    */
   @Nonnull
   private static Column generateJoin(@Nonnull final SparkOpContext ctx) {
-    final Column sep = functions.coalesce(ctx.arg(1), lit("")); // default to empty string
+    final Column sep = functions.coalesce(ctx.arg(1), lit(""));
     return ctx.collectionArg(0).apply(c -> call_function("array_join", c, sep), c -> c);
   }
 }

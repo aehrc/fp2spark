@@ -9,8 +9,7 @@ import org.junit.jupiter.api.TestFactory;
 /**
  * Tests for FHIRPath string manipulation functions.
  *
- * <p>Based on FHIRPath specification sections 5.7 (String Manipulation) and 5.7.1 (Additional
- * String Functions).
+ * <p>Based on FHIRPath specification section 5.7 (String Manipulation).
  *
  * <p>Covers:
  *

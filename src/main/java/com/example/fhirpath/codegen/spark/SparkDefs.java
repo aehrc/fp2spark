@@ -14,9 +14,9 @@ import org.apache.spark.sql.Column;
 /**
  * Factory methods and type-dispatch builder for {@link SparkOperationDef} instances.
  *
- * <p>Provides reusable factories for common operation patterns ({@link #binary}, {@link #unary},
- * {@link #collectionUnary}) and a declarative type-dispatch builder ({@link #byArgType}, {@link
- * #byResultType}) that selects a delegate based on argument or result type.
+ * <p>Provides reusable factories for common operation patterns ({@link #unary}, {@link #binary},
+ * {@link #ternary}, {@link #collectionUnary}) and a declarative type-dispatch builder ({@link
+ * #byArgType}, {@link #byResultType}) that selects a delegate based on argument or result type.
  *
  * <p>Usage:
  *

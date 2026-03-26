@@ -277,7 +277,7 @@ public final class OperationRegistry {
         register("getResourceKey", Signatures.unaryFunc(ANY, STRING)),
         register("getReferenceKey", Signatures.unaryFunc(ANY, STRING)),
 
-        // STRING FUNCTIONS (FHIRPath Spec 5.7.3)
+        // STRING FUNCTIONS (FHIRPath Spec 5.7)
 
         register("length", Signatures.unaryFunc(STRING, INTEGER)),
         register("upper", Signatures.unaryOp(STRING)),

@@ -1,5 +1,6 @@
 package com.example.fhirpath.operation;
 
+import static com.example.fhirpath.operation.signature.ParamSpec.many;
 import static com.example.fhirpath.operation.signature.ParamSpec.single;
 import static com.example.fhirpath.operation.signature.TypeGroups.forTypes;
 import static com.example.fhirpath.typing.TypeSets.COMPARABLE;
@@ -275,6 +276,38 @@ public final class OperationRegistry {
         // the operation name. Spark code generation is registered separately in FhirOps.
         register("getResourceKey", Signatures.unaryFunc(ANY, STRING)),
         register("getReferenceKey", Signatures.unaryFunc(ANY, STRING)),
+
+        // STRING FUNCTIONS (FHIRPath Spec 5.7)
+
+        register("length", Signatures.unaryFunc(STRING, INTEGER)),
+        register("upper", Signatures.unaryOp(STRING)),
+        register("lower", Signatures.unaryOp(STRING)),
+        register("trim", Signatures.unaryOp(STRING)),
+        register("startsWith", Signatures.binaryFunc(STRING, STRING, BOOLEAN)),
+        register("endsWith", Signatures.binaryFunc(STRING, STRING, BOOLEAN)),
+        // String contains() function (not the 'contains' membership operator, which is
+        // normalized to 'memberContains' by OperatorNormalizer)
+        register("contains", Signatures.binaryFunc(STRING, STRING, BOOLEAN)),
+        register("indexOf", Signatures.binaryFunc(STRING, STRING, INTEGER)),
+        // substring(start, [length]) — variadic, minArity=2
+        register(
+            "substring",
+            Signatures.variadic(
+                List.of(single(STRING), single(INTEGER), single(INTEGER)),
+                ResultTypeSpec.single(STRING),
+                2)),
+        register("replace", Signatures.ternaryFunc(STRING, STRING, STRING, STRING)),
+        register("matches", Signatures.binaryFunc(STRING, STRING, BOOLEAN)),
+        register("replaceMatches", Signatures.ternaryFunc(STRING, STRING, STRING, STRING)),
+        // split(separator) → *STRING
+        register("split", Signatures.collectionPreserver(STRING, single(STRING))),
+        // join([separator]) → ?STRING — input is *STRING
+        register(
+            "join",
+            Signatures.variadic(
+                List.of(many(STRING), single(STRING)), ResultTypeSpec.single(STRING), 1)),
+        // toChars() → *STRING
+        register("toChars", Signatures.collectionPreserver(STRING)),
 
         // TYPE CONVERSION FUNCTIONS (FHIRPath Spec 5.7.1)
         // Each: ?ANY → ?TargetType (returns empty on failure)

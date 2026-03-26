@@ -11,6 +11,7 @@ import com.example.fhirpath.codegen.spark.ops.FhirOps;
 import com.example.fhirpath.codegen.spark.ops.FilteringOps;
 import com.example.fhirpath.codegen.spark.ops.MembershipOps;
 import com.example.fhirpath.codegen.spark.ops.SetOps;
+import com.example.fhirpath.codegen.spark.ops.StringOps;
 import com.example.fhirpath.codegen.spark.ops.TypeOps;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -63,6 +64,7 @@ public final class SparkOperationRegistry {
     FilteringOps.register(registry);
     FhirOps.register(registry);
     TypeOps.register(registry);
+    StringOps.register(registry);
     ConversionOps.register(registry);
     return registry;
   }

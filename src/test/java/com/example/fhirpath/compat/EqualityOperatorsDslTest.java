@@ -341,7 +341,6 @@ public class EqualityOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Requires coding equality support")
   @FhirPathTest
   public Stream<DynamicTest> testCodingEquality() {
     return builder()

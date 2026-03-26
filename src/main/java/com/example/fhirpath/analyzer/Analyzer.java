@@ -25,6 +25,7 @@ import com.example.fhirpath.operation.OverloadResolver;
 import com.example.fhirpath.operation.signature.ResolvedSignature;
 import com.example.fhirpath.operation.signature.SignatureDefinition;
 import com.example.fhirpath.typing.ChoiceType;
+import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
 import com.example.fhirpath.typing.FhirPrimitiveType;
@@ -549,16 +550,14 @@ public class Analyzer {
         null);
   }
 
-  /**
-   * Strips FHIR namespace prefix (e.g., "FHIR.Quantity" → "Quantity").
-   *
-   * <p>Note: {@code System.} namespace qualifiers (e.g., {@code System.String}) are not yet
-   * supported. These are uncommon in practice and can be added when needed.
-   */
+  /** Strips namespace prefix (e.g., "FHIR.Quantity" → "Quantity", "System.Coding" → "Coding"). */
   @Nonnull
   private static String stripNamespace(@Nonnull final String typeSpec) {
     if (typeSpec.startsWith("FHIR.")) {
       return typeSpec.substring("FHIR.".length());
+    }
+    if (typeSpec.startsWith("System.")) {
+      return typeSpec.substring("System.".length());
     }
     return typeSpec;
   }
@@ -719,6 +718,7 @@ public class Analyzer {
       case DateTimeValue ignored -> Types.DATE_TIME;
       case TimeValue ignored -> Types.TIME;
       case QuantityValue ignored -> Types.QUANTITY;
+      case CodingValue ignored -> Types.CODING;
       default ->
           throw new InvalidExpressionException(
               "Unsupported literal value type: " + value.getClass().getSimpleName(), null);

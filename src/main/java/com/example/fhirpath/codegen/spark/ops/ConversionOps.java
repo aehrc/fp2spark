@@ -236,6 +236,7 @@ public final class ConversionOps {
       case BOOLEAN, INTEGER, DATE, DATE_TIME, TIME -> value.try_cast(DataTypes.StringType);
       case DECIMAL -> decimalToString(value);
       case QUANTITY -> quantityToString(value);
+      case CODING -> codingToString(value);
       default -> lit(null);
     };
   }
@@ -336,7 +337,7 @@ public final class ConversionOps {
   private static Column validateToString(
       @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
-      case STRING, BOOLEAN, INTEGER, DECIMAL, DATE, DATE_TIME, TIME, QUANTITY -> lit(true);
+      case STRING, BOOLEAN, INTEGER, DECIMAL, DATE, DATE_TIME, TIME, QUANTITY, CODING -> lit(true);
       default -> lit(false);
     };
   }
@@ -410,6 +411,40 @@ public final class ConversionOps {
     final Column code = value.getField("code");
     return when(code.equalTo(lit(QuantityValue.DEFAULT_UNIT)), qValue)
         .otherwise(functions.concat(qValue, lit(" '"), code, lit("'")));
+  }
+
+  /**
+   * Converts a Coding struct to its FHIRPath literal string representation. Format: {@code
+   * system|code[|version[|display[|userSelected]]]}, omitting trailing null components.
+   */
+  @Nonnull
+  private static Column codingToString(@Nonnull final Column value) {
+    final Column system = functions.coalesce(value.getField("system"), lit(""));
+    final Column code = functions.coalesce(value.getField("code"), lit(""));
+    final Column version = value.getField("version");
+    final Column display = value.getField("display");
+    final Column userSelected = value.getField("userSelected");
+
+    // Build from the inside out, omitting trailing null components
+    final Column base = functions.concat(system, lit("|"), code);
+    final Column withVersion = functions.concat(base, lit("|"), version);
+    final Column withDisplay =
+        functions.concat(
+            when(version.isNull(), functions.concat(base, lit("|"))).otherwise(withVersion),
+            lit("|"),
+            display);
+    final Column withUserSelected =
+        functions.concat(
+            when(display.isNull(), functions.concat(base, lit("||")))
+                .when(version.isNull(), functions.concat(base, lit("||"), display))
+                .otherwise(withDisplay),
+            lit("|"),
+            userSelected.cast(DataTypes.StringType));
+
+    return when(userSelected.isNotNull(), withUserSelected)
+        .when(display.isNotNull(), withDisplay)
+        .when(version.isNotNull(), withVersion)
+        .otherwise(base);
   }
 
   /** Builds a Quantity struct column with the given field expressions. */

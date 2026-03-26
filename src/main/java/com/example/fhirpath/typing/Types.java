@@ -10,6 +10,7 @@ public final class Types {
   public static final Type DATE_TIME = PrimitiveType.DATE_TIME;
   public static final Type TIME = PrimitiveType.TIME;
   public static final Type QUANTITY = PrimitiveType.QUANTITY;
+  public static final Type CODING = PrimitiveType.CODING;
   public static final Type NULL = PrimitiveType.NULL;
   public static final Type ANY = PrimitiveType.ANY;
 

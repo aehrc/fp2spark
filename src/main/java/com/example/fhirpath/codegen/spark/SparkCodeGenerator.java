@@ -12,6 +12,7 @@ import com.example.fhirpath.ir.Operation;
 import com.example.fhirpath.ir.Resource;
 import com.example.fhirpath.ir.ThisReference;
 import com.example.fhirpath.ir.Traversal;
+import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.FhirPrimitiveType;
 import com.example.fhirpath.typing.InlineResourceType;
 import com.example.fhirpath.typing.QuantityValue;
@@ -135,6 +136,9 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
       return quantityStruct(
           lit(qv.value()).cast(SparkTypeMapper.DECIMAL_TYPE), qv.unit(), qv.system(), qv.code());
     }
+    if (lit.value() instanceof CodingValue cv) {
+      return codingStruct(cv);
+    }
     final Object rawValue = lit.value() instanceof TemporalValue tv ? tv.value() : lit.value();
     final DataType sparkType = toSparkDataType(lit.getShape());
     return lit(rawValue).cast(sparkType);
@@ -254,5 +258,16 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
       @Nonnull final String code) {
     return functions.struct(
         value.as("value"), lit(unit).as("unit"), lit(system).as("system"), lit(code).as("code"));
+  }
+
+  /** Builds a Coding struct column with named fields matching {@code CODING_TYPE} schema. */
+  @Nonnull
+  private static Column codingStruct(@Nonnull final CodingValue cv) {
+    return functions.struct(
+        lit(cv.system()).as("system"),
+        lit(cv.code()).as("code"),
+        lit(cv.version()).as("version"),
+        lit(cv.display()).as("display"),
+        lit(cv.userSelected()).as("userSelected"));
   }
 }

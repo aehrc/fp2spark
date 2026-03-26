@@ -24,7 +24,6 @@ import org.junit.jupiter.api.DynamicTest;
 
 public class MembershipOperatorsDslTest extends CompatTestBase {
 
-  @Disabled("Requires coding equality support")
   @FhirPathTest
   public Stream<DynamicTest> testCodingMembership() {
     return builder()

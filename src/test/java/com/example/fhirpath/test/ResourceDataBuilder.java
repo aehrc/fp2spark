@@ -1,5 +1,6 @@
 package com.example.fhirpath.test;
 
+import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
 import com.example.fhirpath.typing.QuantityValue;
@@ -10,7 +11,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -298,7 +298,7 @@ public class ResourceDataBuilder {
     return this;
   }
 
-  // --- Coding type (stored as Maps) ---
+  // --- Coding type (stored as CodingValue) ---
 
   /**
    * Add a coding field from a pipe-delimited literal.
@@ -311,7 +311,7 @@ public class ResourceDataBuilder {
    */
   @Nonnull
   public ResourceDataBuilder coding(@Nonnull final String name, @Nullable final String literal) {
-    data.put(name, literal != null ? parseCoding(literal) : null);
+    data.put(name, literal != null ? parseCodingValue(literal) : null);
     return this;
   }
 
@@ -325,7 +325,7 @@ public class ResourceDataBuilder {
   @Nonnull
   public ResourceDataBuilder codingArray(
       @Nonnull final String name, @Nonnull final String... literals) {
-    data.put(name, Arrays.stream(literals).map(ResourceDataBuilder::parseCoding).toList());
+    data.put(name, Arrays.stream(literals).map(ResourceDataBuilder::parseCodingValue).toList());
     return this;
   }
 
@@ -355,31 +355,38 @@ public class ResourceDataBuilder {
   }
 
   /**
-   * Parses a pipe-delimited coding literal like {@code "system|code|version|display|userSelected"}.
+   * Parses a pipe-delimited coding literal into a {@link CodingValue}.
+   *
+   * <p>Format: {@code "system|code[|version[|display[|userSelected]]]"}. Components may be
+   * single-quoted (quotes are stripped).
    *
    * @param literal the pipe-delimited coding string
-   * @return a Map with coding fields
+   * @return the parsed CodingValue
    */
   @Nonnull
-  public static Map<String, Object> parseCoding(@Nonnull final String literal) {
+  public static CodingValue parseCodingValue(@Nonnull final String literal) {
     final String[] parts = literal.split("\\|", -1);
-    final Map<String, Object> coding = new LinkedHashMap<>();
-    if (parts.length > 0 && !parts[0].isEmpty()) {
-      coding.put("system", parts[0]);
+    final String system = parts.length > 0 ? unquote(parts[0]) : "";
+    final String code = parts.length > 1 ? unquote(parts[1]) : "";
+    final String version = parts.length > 2 ? nullIfEmpty(unquote(parts[2])) : null;
+    final String display = parts.length > 3 ? nullIfEmpty(unquote(parts[3])) : null;
+    final Boolean userSelected =
+        parts.length > 4 && !parts[4].trim().isEmpty()
+            ? Boolean.parseBoolean(unquote(parts[4]))
+            : null;
+    return new CodingValue(system, code, version, display, userSelected);
+  }
+
+  private static String unquote(@Nonnull final String s) {
+    final String trimmed = s.trim();
+    if (trimmed.length() >= 2 && trimmed.startsWith("'") && trimmed.endsWith("'")) {
+      return trimmed.substring(1, trimmed.length() - 1);
     }
-    if (parts.length > 1 && !parts[1].isEmpty()) {
-      coding.put("code", parts[1]);
-    }
-    if (parts.length > 2 && !parts[2].isEmpty()) {
-      coding.put("version", parts[2]);
-    }
-    if (parts.length > 3 && !parts[3].isEmpty()) {
-      coding.put("display", parts[3]);
-    }
-    if (parts.length > 4 && !parts[4].isEmpty()) {
-      coding.put("userSelected", Boolean.parseBoolean(parts[4]));
-    }
-    return coding;
+    return trimmed;
+  }
+
+  private static String nullIfEmpty(@Nonnull final String s) {
+    return s.isEmpty() ? null : s;
   }
 
   /**

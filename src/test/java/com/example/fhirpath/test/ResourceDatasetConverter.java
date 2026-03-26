@@ -1,5 +1,6 @@
 package com.example.fhirpath.test;
 
+import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.TemporalValue;
@@ -116,9 +117,21 @@ class ResourceDatasetConverter {
       case TemporalValue tv -> tv.value();
       case QuantityValue qv ->
           Map.of("value", qv.value(), "unit", qv.unit(), "system", qv.system(), "code", qv.code());
+      case CodingValue cv -> codingValueToMap(cv);
       case List<?> list -> list.stream().map(ResourceDatasetConverter::convertValue).toList();
       case Map<?, ?> map -> toJsonFriendly((Map<String, Object>) map);
       default -> value;
     };
+  }
+
+  @Nonnull
+  private static Map<String, Object> codingValueToMap(@Nonnull final CodingValue cv) {
+    final Map<String, Object> map = new HashMap<>();
+    map.put("system", cv.system());
+    map.put("code", cv.code());
+    map.put("version", cv.version());
+    map.put("display", cv.display());
+    map.put("userSelected", cv.userSelected());
+    return map;
   }
 }

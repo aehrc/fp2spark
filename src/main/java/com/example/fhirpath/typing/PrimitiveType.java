@@ -1,5 +1,7 @@
 package com.example.fhirpath.typing;
 
+import java.util.Optional;
+
 /**
  * Enumeration of FHIRPath primitive types.
  *
@@ -18,6 +20,7 @@ public enum PrimitiveType implements Type {
   DATE_TIME("dateTime"),
   TIME("time"),
   QUANTITY("quantity"),
+  CODING("Coding"),
   NULL("null"),
   ANY("unknown");
 
@@ -40,5 +43,13 @@ public enum PrimitiveType implements Type {
   @Override
   public boolean isComplex() {
     return false;
+  }
+
+  @Override
+  public Optional<FieldSpec> resolveField(final String fieldName) {
+    if (this == CODING) {
+      return CodingValue.resolveField(fieldName);
+    }
+    return Optional.empty();
   }
 }

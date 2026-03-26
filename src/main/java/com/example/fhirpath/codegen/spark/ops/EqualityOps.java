@@ -153,6 +153,9 @@ public final class EqualityOps {
     if (type == Types.QUANTITY) {
       return QuantitySupport::quantityEquals;
     }
+    if (type == Types.CODING) {
+      return CodingSupport::codingEquals;
+    }
     if (TemporalSupport.isTemporalType(type)) {
       return TemporalSupport::temporalEquals;
     }
@@ -169,6 +172,6 @@ public final class EqualityOps {
    * @return true if Spark's built-in array functions use correct equality for this type
    */
   static boolean usesDefaultEquality(@Nonnull final Type type) {
-    return type != Types.QUANTITY && !TemporalSupport.isTemporalType(type);
+    return type != Types.QUANTITY && type != Types.CODING && !TemporalSupport.isTemporalType(type);
   }
 }

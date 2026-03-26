@@ -108,14 +108,8 @@ public final class StringOps {
    */
   @Nonnull
   private static Column generateJoin(@Nonnull final SparkOpContext ctx) {
-    final Column sep = ctx.arg(1); // null when omitted
-    return ctx.collectionArg(0)
-        .apply(
-            c ->
-                when(sep.isNull(), call_function("array_join", c, lit("")))
-                    .otherwise(call_function("array_join", c, sep)),
-            // Singular string: join is identity
-            c -> c);
+    final Column sep = functions.coalesce(ctx.arg(1), lit("")); // default to empty string
+    return ctx.collectionArg(0).apply(c -> call_function("array_join", c, sep), c -> c);
   }
 
   /**

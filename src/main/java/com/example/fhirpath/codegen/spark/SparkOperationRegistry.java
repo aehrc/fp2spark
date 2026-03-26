@@ -64,8 +64,8 @@ public final class SparkOperationRegistry {
     FilteringOps.register(registry);
     FhirOps.register(registry);
     TypeOps.register(registry);
-    ConversionOps.register(registry);
     StringOps.register(registry);
+    ConversionOps.register(registry);
     return registry;
   }
 }

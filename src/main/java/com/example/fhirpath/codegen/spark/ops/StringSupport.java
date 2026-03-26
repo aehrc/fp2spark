@@ -20,4 +20,13 @@ final class StringSupport {
   static Column stringConcat(@Nonnull final Column left, @Nonnull final Column right) {
     return concat(coalesce(left, lit("")), coalesce(right, lit("")));
   }
+
+  /**
+   * Wraps a column value with {@code \Q...\E} to quote regex metacharacters, making it safe to use
+   * as a literal pattern in Spark regex functions like {@code split()}.
+   */
+  @Nonnull
+  static Column quoteLiteral(@Nonnull final Column pattern) {
+    return concat(lit("\\Q"), pattern, lit("\\E"));
+  }
 }

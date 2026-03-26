@@ -84,16 +84,33 @@ public final class SparkDefs {
     return Set.of(types);
   }
 
+  /** Creates a unary operation definition from a {@link UnaryOperator} on columns. */
+  @Nonnull
+  public static SparkOperationDef unary(@Nonnull final UnaryOperator<Column> op) {
+    return ctx -> op.apply(ctx.arg(0));
+  }
+
   /** Creates a binary operation definition from a {@link BinaryOperator} on columns. */
   @Nonnull
   public static SparkOperationDef binary(@Nonnull final BinaryOperator<Column> op) {
     return ctx -> op.apply(ctx.arg(0), ctx.arg(1));
   }
 
-  /** Creates a unary operation definition from a {@link UnaryOperator} on columns. */
+  /** Creates a ternary operation definition from a {@link TernaryOperator} on columns. */
   @Nonnull
-  public static SparkOperationDef unary(@Nonnull final UnaryOperator<Column> op) {
-    return ctx -> op.apply(ctx.arg(0));
+  public static SparkOperationDef ternary(@Nonnull final TernaryOperator<Column> op) {
+    return ctx -> op.apply(ctx.arg(0), ctx.arg(1), ctx.arg(2));
+  }
+
+  /**
+   * A function that accepts three arguments of the same type and produces a result.
+   *
+   * @param <T> the type of the operands and result
+   */
+  @FunctionalInterface
+  public interface TernaryOperator<T> {
+    /** Applies this operator to the given operands. */
+    T apply(T a, T b, T c);
   }
 
   /**

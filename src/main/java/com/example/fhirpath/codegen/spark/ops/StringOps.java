@@ -1,10 +1,11 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static com.example.fhirpath.codegen.spark.SparkDefs.binary;
+import static com.example.fhirpath.codegen.spark.SparkDefs.ternary;
 import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
 import static org.apache.spark.sql.functions.call_function;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.regexp_replace;
-import static org.apache.spark.sql.functions.rlike;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOpContext;
@@ -30,9 +31,9 @@ public final class StringOps {
     registry.register("trim", unary(functions::trim));
 
     // Binary functions returning Boolean
-    registry.register("startsWith", ctx -> ctx.arg(0).startsWith(ctx.arg(1)));
-    registry.register("endsWith", ctx -> ctx.arg(0).endsWith(ctx.arg(1)));
-    registry.register("contains", ctx -> ctx.arg(0).contains(ctx.arg(1)));
+    registry.register("startsWith", binary(Column::startsWith));
+    registry.register("endsWith", binary(Column::endsWith));
+    registry.register("contains", binary(Column::contains));
 
     // indexOf: 0-based; Spark locate() is 1-based and returns 0 for not-found
     registry.register(
@@ -49,17 +50,16 @@ public final class StringOps {
     registry.register("replace", StringOps::generateReplace);
 
     // matches(regex): partial match using rlike
-    registry.register("matches", ctx -> rlike(ctx.arg(0), ctx.arg(1)));
+    registry.register("matches", binary(functions::rlike));
 
     // replaceMatches(regex, substitution): regex replacement
-    registry.register("replaceMatches", ctx -> regexp_replace(ctx.arg(0), ctx.arg(1), ctx.arg(2)));
+    registry.register("replaceMatches", ternary(functions::regexp_replace));
 
     // split(separator): returns *STRING
     // FHIRPath spec treats separator as a literal string, not a regex.
     // Spark's split() interprets the pattern as a regex, so we quote it with \Q...\E.
     registry.register(
-        "split",
-        ctx -> functions.split(ctx.arg(0), functions.concat(lit("\\Q"), ctx.arg(1), lit("\\E"))));
+        "split", ctx -> functions.split(ctx.arg(0), StringSupport.quoteLiteral(ctx.arg(1))));
 
     // join([separator]): *STRING → ?STRING
     registry.register("join", StringOps::generateJoin);

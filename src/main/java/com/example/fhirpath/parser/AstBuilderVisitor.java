@@ -300,33 +300,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
   @Override
   public AstNode visitCodingLiteral(final FhirPathParser.CodingLiteralContext ctx) {
-    final String text = ctx.CODING().getText();
-    // Split on '|' but preserve all trailing empty segments
-    final String[] parts = text.split("\\|", -1);
-
-    final String system = unquoteCodingComponent(parts[0]);
-    final String code = parts.length > 1 ? unquoteCodingComponent(parts[1]) : "";
-    final String version = parts.length > 2 ? nullIfEmpty(unquoteCodingComponent(parts[2])) : null;
-    final String display = parts.length > 3 ? nullIfEmpty(unquoteCodingComponent(parts[3])) : null;
-    final Boolean userSelected =
-        parts.length > 4 && !parts[4].trim().isEmpty()
-            ? Boolean.parseBoolean(unquoteCodingComponent(parts[4]))
-            : null;
-
-    return new AstLiteral(new CodingValue(system, code, version, display, userSelected));
-  }
-
-  /** Strips surrounding single quotes from a coding component if present. */
-  private static String unquoteCodingComponent(final String component) {
-    final String trimmed = component.trim();
-    if (trimmed.length() >= 2 && trimmed.startsWith("'") && trimmed.endsWith("'")) {
-      return StringEscapeUtils.unescapeFhirPathString(trimmed.substring(1, trimmed.length() - 1));
-    }
-    return trimmed;
-  }
-
-  private static String nullIfEmpty(final String value) {
-    return value == null || value.isEmpty() ? null : value;
+    return new AstLiteral(CodingValue.parse(ctx.CODING().getText()));
   }
 
   // Special invocations

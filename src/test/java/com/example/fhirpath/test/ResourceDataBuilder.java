@@ -1,6 +1,5 @@
 package com.example.fhirpath.test;
 
-import com.example.fhirpath.parser.StringEscapeUtils;
 import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
@@ -355,39 +354,10 @@ public class ResourceDataBuilder {
     return QuantityValue.ofCalendar(value, unitPart);
   }
 
-  /**
-   * Parses a pipe-delimited coding literal into a {@link CodingValue}.
-   *
-   * <p>Format: {@code "system|code[|version[|display[|userSelected]]]"}. Components may be
-   * single-quoted (quotes are stripped).
-   *
-   * @param literal the pipe-delimited coding string
-   * @return the parsed CodingValue
-   */
+  /** Delegates to {@link CodingValue#parse(String)}. */
   @Nonnull
   public static CodingValue parseCodingValue(@Nonnull final String literal) {
-    final String[] parts = literal.split("\\|", -1);
-    final String system = parts.length > 0 ? unquote(parts[0]) : "";
-    final String code = parts.length > 1 ? unquote(parts[1]) : "";
-    final String version = parts.length > 2 ? nullIfEmpty(unquote(parts[2])) : null;
-    final String display = parts.length > 3 ? nullIfEmpty(unquote(parts[3])) : null;
-    final Boolean userSelected =
-        parts.length > 4 && !parts[4].trim().isEmpty()
-            ? Boolean.parseBoolean(unquote(parts[4]))
-            : null;
-    return new CodingValue(system, code, version, display, userSelected);
-  }
-
-  private static String unquote(@Nonnull final String s) {
-    final String trimmed = s.trim();
-    if (trimmed.length() >= 2 && trimmed.startsWith("'") && trimmed.endsWith("'")) {
-      return StringEscapeUtils.unescapeFhirPathString(trimmed.substring(1, trimmed.length() - 1));
-    }
-    return trimmed;
-  }
-
-  private static String nullIfEmpty(@Nonnull final String s) {
-    return s.isEmpty() ? null : s;
+    return CodingValue.parse(literal);
   }
 
   /**

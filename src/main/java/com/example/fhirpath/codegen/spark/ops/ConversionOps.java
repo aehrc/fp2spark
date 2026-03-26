@@ -431,11 +431,8 @@ public final class ConversionOps {
     final Column versionOrEmpty = functions.coalesce(version, lit(""));
     final Column displayOrEmpty = functions.coalesce(display, lit(""));
 
-    // system|code|version
     final Column withVersion = functions.concat(base, lit("|"), version);
-    // system|code|<version>|display  (version may be empty)
     final Column withDisplay = functions.concat(base, lit("|"), versionOrEmpty, lit("|"), display);
-    // system|code|<version>|<display>|userSelected  (version/display may be empty)
     final Column withUserSelected =
         functions.concat(
             base,

@@ -1,5 +1,6 @@
 package com.example.fhirpath.typing;
 
+import com.example.fhirpath.parser.StringEscapeUtils;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Map;
@@ -10,16 +11,6 @@ import java.util.Optional;
  *
  * <p>A Coding is a representation of a defined concept using a symbol from a defined code system.
  * The literal syntax is: {@code system|code[|version][|display[|userSelected]]}
- *
- * <p>Fields follow the FHIR Coding structure:
- *
- * <ul>
- *   <li>{@code system} — the code system URI
- *   <li>{@code code} — the code value
- *   <li>{@code version} — the code system version (nullable)
- *   <li>{@code display} — the human-readable display text (nullable)
- *   <li>{@code userSelected} — whether the coding was chosen by the user (nullable)
- * </ul>
  *
  * @param system the code system URI
  * @param code the code value
@@ -43,6 +34,27 @@ public record CodingValue(
           "userSelected", new FieldSpec("userSelected", Shape.single(PrimitiveType.BOOLEAN)));
 
   /**
+   * Parses a pipe-delimited Coding literal string. Components may be single-quoted (quotes are
+   * stripped and escape sequences are processed).
+   *
+   * @param literal the pipe-delimited string (e.g. {@code "http://loinc.org|1234||'Display'"})
+   * @return the parsed CodingValue
+   */
+  @Nonnull
+  public static CodingValue parse(@Nonnull final String literal) {
+    final String[] parts = literal.split("\\|", -1);
+    final String system = parts.length > 0 ? unquote(parts[0]) : "";
+    final String code = parts.length > 1 ? unquote(parts[1]) : "";
+    final String version = parts.length > 2 ? nullIfEmpty(unquote(parts[2])) : null;
+    final String display = parts.length > 3 ? nullIfEmpty(unquote(parts[3])) : null;
+    final Boolean userSelected =
+        parts.length > 4 && !parts[4].trim().isEmpty()
+            ? Boolean.parseBoolean(unquote(parts[4]))
+            : null;
+    return new CodingValue(system, code, version, display, userSelected);
+  }
+
+  /**
    * Resolves a Coding field by name.
    *
    * @param fieldName the field name to resolve
@@ -51,5 +63,18 @@ public record CodingValue(
   @Nonnull
   public static Optional<FieldSpec> resolveField(@Nonnull final String fieldName) {
     return Optional.ofNullable(FIELDS.get(fieldName));
+  }
+
+  /** Strips surrounding single quotes and processes FHIRPath escape sequences. */
+  private static String unquote(@Nonnull final String s) {
+    final String trimmed = s.trim();
+    if (trimmed.length() >= 2 && trimmed.startsWith("'") && trimmed.endsWith("'")) {
+      return StringEscapeUtils.unescapeFhirPathString(trimmed.substring(1, trimmed.length() - 1));
+    }
+    return trimmed;
+  }
+
+  private static String nullIfEmpty(@Nonnull final String s) {
+    return s.isEmpty() ? null : s;
   }
 }

@@ -141,14 +141,56 @@ class ResourceTypeInference {
     // Use first element to determine type
     final Object firstElement = list.get(0);
     if (firstElement instanceof Map<?, ?> map) {
-      // List of complex types
-      final ComplexType elementType = inferComplexType(map, depth + 1);
+      // List of complex types - merge field specs across all elements
+      // to capture types that are null in the first element but present in others
+      final ComplexType elementType = mergeComplexTypes(list, depth + 1);
       return Shape.many(elementType);
     } else {
       // List of primitives
       final Type elementType = inferPrimitiveType(firstElement);
       return Shape.many(elementType);
     }
+  }
+
+  /**
+   * Merge field specs from all Map elements in a list to produce a complete ComplexType.
+   *
+   * <p>This handles the case where a field is null in some elements but has a concrete type in
+   * others. The merged type uses the first non-null type found for each field.
+   *
+   * @param list The list of Map elements
+   * @param depth Current recursion depth
+   * @return A ComplexType with merged field specs
+   */
+  @Nonnull
+  private static ComplexType mergeComplexTypes(@Nonnull final List<?> list, final int depth) {
+    final Map<String, Shape> mergedFields = new java.util.LinkedHashMap<>();
+
+    for (final Object element : list) {
+      if (!(element instanceof Map<?, ?> map)) {
+        continue;
+      }
+      for (final Map.Entry<?, ?> entry : map.entrySet()) {
+        final String fieldName = (String) entry.getKey();
+        final Shape shape = inferShape(entry.getValue(), depth);
+        mergedFields.merge(fieldName, shape, ResourceTypeInference::mergeShapes);
+      }
+    }
+
+    final List<FieldSpec> fieldSpecs =
+        mergedFields.entrySet().stream().map(e -> new FieldSpec(e.getKey(), e.getValue())).toList();
+    return new InlineComplexType(fieldSpecs);
+  }
+
+  /**
+   * Merge two shapes, preferring the non-null type. If both are non-null, the existing shape wins.
+   */
+  @Nonnull
+  private static Shape mergeShapes(@Nonnull final Shape existing, @Nonnull final Shape incoming) {
+    if (existing.elementType() == PrimitiveType.NULL) {
+      return incoming;
+    }
+    return existing;
   }
 
   /**

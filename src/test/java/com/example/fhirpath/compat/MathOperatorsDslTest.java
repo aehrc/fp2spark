@@ -67,7 +67,7 @@ public class MathOperatorsDslTest extends CompatTestBase {
         .group("Decimal math operations")
 
         // Decimal negation
-        .testEquals(-5.5, "-int1", "Decimal negation with variables")
+        .testEquals(-5.5, "-dec1", "Decimal negation with variables")
         .testEquals(-2.5, "-2.5", "Decimal negation with literals")
         .testEquals(7.3, "--7.3", "Double decimal negation")
 

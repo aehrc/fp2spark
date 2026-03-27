@@ -111,6 +111,10 @@ class ResourceTypeInference {
       return Shape.single(PrimitiveType.NULL);
     }
 
+    if (value instanceof TypedNull typedNull) {
+      return Shape.single(typedNull.type());
+    }
+
     if (value instanceof List<?> list) {
       return inferListShape(list, depth);
     }

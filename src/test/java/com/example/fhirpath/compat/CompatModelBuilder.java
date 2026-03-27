@@ -1,8 +1,10 @@
 package com.example.fhirpath.compat;
 
 import com.example.fhirpath.test.ResourceDataBuilder;
+import com.example.fhirpath.test.TypedNull;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
+import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.TimeValue;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -46,7 +48,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder stringEmpty(@Nonnull final String name) {
-    model.put(name, null);
+    model.put(name, new TypedNull(PrimitiveType.STRING));
     return this;
   }
 
@@ -66,7 +68,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder integerEmpty(@Nonnull final String name) {
-    model.put(name, null);
+    model.put(name, new TypedNull(PrimitiveType.INTEGER));
     return this;
   }
 
@@ -91,7 +93,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder decimalEmpty(@Nonnull final String name) {
-    model.put(name, null);
+    model.put(name, new TypedNull(PrimitiveType.DECIMAL));
     return this;
   }
 
@@ -117,7 +119,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder boolEmpty(@Nonnull final String name) {
-    model.put(name, null);
+    model.put(name, new TypedNull(PrimitiveType.BOOLEAN));
     return this;
   }
 
@@ -143,7 +145,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder timeEmpty(@Nonnull final String name) {
-    model.put(name, null);
+    model.put(name, new TypedNull(PrimitiveType.TIME));
     return this;
   }
 
@@ -161,7 +163,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder dateEmpty(@Nonnull final String name) {
-    model.put(name, null);
+    model.put(name, new TypedNull(PrimitiveType.DATE));
     return this;
   }
 
@@ -179,7 +181,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder dateTimeEmpty(@Nonnull final String name) {
-    model.put(name, null);
+    model.put(name, new TypedNull(PrimitiveType.DATE_TIME));
     return this;
   }
 
@@ -200,7 +202,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder quantityEmpty(@Nonnull final String name) {
-    model.put(name, null);
+    model.put(name, new TypedNull(PrimitiveType.QUANTITY));
     return this;
   }
 
@@ -221,7 +223,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder codingEmpty(@Nonnull final String name) {
-    model.put(name, null);
+    model.put(name, new TypedNull(PrimitiveType.CODING));
     return this;
   }
 

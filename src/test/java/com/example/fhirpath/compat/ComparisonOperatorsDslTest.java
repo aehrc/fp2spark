@@ -129,7 +129,7 @@ public class ComparisonOperatorsDslTest extends CompatTestBase {
         .testTrue("str1 < str2", "String less than with variables")
         .testEmpty("str1 >= {}", "Empty greater than or equal with variable")
         .testEmpty("strEmpty <= str2", "Empty less than or equal with variable")
-        .testEmpty("str1s < boolEmpty", "String less than with empty boolean")
+        .testEmpty("str1 < boolEmpty", "String less than with empty boolean")
         .testError("strArray <= str2", "String less than or equal with array")
         .testError("str1 >= dec", "String greater than or equal with decimal")
         .build();

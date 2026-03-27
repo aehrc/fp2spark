@@ -17,6 +17,9 @@ import jakarta.annotation.Nonnull;
 public sealed interface CardinalitySpec
     permits CardinalitySpec.Explicit, CardinalitySpec.Preserved {
 
+  /** Singleton instance for cardinality preservation. */
+  CardinalitySpec PRESERVED = new Preserved();
+
   /**
    * Resolve the result cardinality given the input's cardinality.
    *

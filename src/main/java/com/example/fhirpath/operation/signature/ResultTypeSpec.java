@@ -21,7 +21,7 @@ import java.util.List;
  *
  * <ul>
  *   <li>Static: {@code add(?INTEGER, ?INTEGER) → ?INTEGER}
- *   <li>Dynamic: {@code where(*T, Lambda) → *T} (preserves input type)
+ *   <li>Dynamic: {@code where(α T, Lambda) → α T} (preserves input type and cardinality)
  *   <li>Lambda body: {@code iif(*T, ?Lambda(?BOOL), ?Lambda(?R)) → ?R} (extracts from lambda body)
  * </ul>
  *
@@ -79,7 +79,7 @@ public sealed interface ResultTypeSpec
    */
   @Nonnull
   static ResultTypeSpec inputType() {
-    return new InputType(new CardinalitySpec.Preserved());
+    return new InputType(CardinalitySpec.PRESERVED);
   }
 
   /**
@@ -107,7 +107,7 @@ public sealed interface ResultTypeSpec
    */
   @Nonnull
   static ResultTypeSpec effectiveInputType() {
-    return new EffectiveInputType(new CardinalitySpec.Preserved());
+    return new EffectiveInputType(CardinalitySpec.PRESERVED);
   }
 
   /**

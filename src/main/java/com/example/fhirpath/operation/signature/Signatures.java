@@ -193,9 +193,11 @@ public final class Signatures {
   }
 
   /**
-   * Collection preserver: (*T, ...) → *T. Preserves MANY cardinality.
+   * Collection preserver: (*T, ...) → *T. Always produces MANY cardinality regardless of input.
    *
-   * <p>Example: *T.where(Lambda) → *T
+   * <p>Use this for operations that inherently produce collections (e.g., {@code split}, {@code
+   * toChars}). For operations that should preserve the input's cardinality (the {@code α}
+   * variable), use {@link #collectionSubsetter} instead.
    */
   @Nonnull
   public static SignatureDefinition collectionPreserver(

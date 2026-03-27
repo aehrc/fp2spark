@@ -149,15 +149,15 @@ public final class OperationRegistry {
         register("last", Signatures.elementExtractor(ANY)),
 
         // tail() returns all but the first element
-        // *T → *T (preserves element type, MANY cardinality)
+        // α T → α T (preserves element type and input cardinality)
         register("tail", Signatures.collectionSubsetter(ANY)),
 
         // skip(num) skips first num elements
-        // (*T, ?INTEGER) → *T
+        // (α T, ?INTEGER) → α T
         register("skip", Signatures.collectionSubsetter(ANY, single(INTEGER))),
 
         // take(num) takes first num elements
-        // (*T, ?INTEGER) → *T
+        // (α T, ?INTEGER) → α T
         register("take", Signatures.collectionSubsetter(ANY, single(INTEGER))),
 
         // single() returns the value if exactly one element, empty otherwise
@@ -214,7 +214,7 @@ public final class OperationRegistry {
 
         // SET OPERATIONS (FHIRPath Spec 5.6.3 / 5.6.4)
 
-        // distinct(): *T → *T (removes duplicates)
+        // distinct(): α T → α T (removes duplicates, preserves input cardinality)
         register("distinct", Signatures.collectionSubsetter(ANY)),
 
         // isDistinct(): *T → ?BOOLEAN (true if all items distinct; empty → true)

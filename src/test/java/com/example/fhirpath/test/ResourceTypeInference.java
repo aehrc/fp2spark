@@ -17,6 +17,7 @@ import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +35,9 @@ import java.util.Map;
  *   <li>Double values → {@link PrimitiveType#DECIMAL}
  *   <li>Boolean values → {@link PrimitiveType#BOOLEAN}
  *   <li>null values → {@link PrimitiveType#NULL}
- *   <li>List values → {@link Cardinality#MANY} with element type from first item
+ *   <li>{@link TypedNull} values → the wrapped {@link PrimitiveType} with {@link
+ *       Cardinality#SINGLE}
+ *   <li>List values → {@link Cardinality#MANY} with element type merged across all items
  *   <li>Map values → {@link ComplexType} with recursive inference
  * </ul>
  *
@@ -111,6 +114,10 @@ class ResourceTypeInference {
       return Shape.single(PrimitiveType.NULL);
     }
 
+    if (value instanceof TypedNull typedNull) {
+      return Shape.single(typedNull.type());
+    }
+
     if (value instanceof List<?> list) {
       return inferListShape(list, depth);
     }
@@ -141,14 +148,77 @@ class ResourceTypeInference {
     // Use first element to determine type
     final Object firstElement = list.get(0);
     if (firstElement instanceof Map<?, ?> map) {
-      // List of complex types
-      final ComplexType elementType = inferComplexType(map, depth + 1);
+      // List of complex types - merge field specs across all elements
+      // to capture types that are null in the first element but present in others
+      final ComplexType elementType = mergeComplexTypes(list, depth + 1);
       return Shape.many(elementType);
     } else {
       // List of primitives
       final Type elementType = inferPrimitiveType(firstElement);
       return Shape.many(elementType);
     }
+  }
+
+  /**
+   * Merge field specs from all Map elements in a list to produce a complete ComplexType.
+   *
+   * <p>This handles the case where a field is null in some elements but has a concrete type in
+   * others. The merged type uses the first non-null type found for each field.
+   *
+   * @param list The list of Map elements
+   * @param depth Current recursion depth
+   * @return A ComplexType with merged field specs
+   */
+  @Nonnull
+  private static ComplexType mergeComplexTypes(@Nonnull final List<?> list, final int depth) {
+    final Map<String, Shape> mergedFields = new LinkedHashMap<>();
+
+    for (final Object element : list) {
+      if (!(element instanceof Map<?, ?> map)) {
+        throw new IllegalArgumentException(
+            "Expected Map element in complex type list, found: " + element.getClass().getName());
+      }
+      for (final Map.Entry<?, ?> entry : map.entrySet()) {
+        final String fieldName = (String) entry.getKey();
+        final Shape shape = inferShape(entry.getValue(), depth);
+        mergedFields.merge(fieldName, shape, ResourceTypeInference::mergeShapes);
+      }
+    }
+
+    final List<FieldSpec> fieldSpecs =
+        mergedFields.entrySet().stream().map(e -> new FieldSpec(e.getKey(), e.getValue())).toList();
+    return new InlineComplexType(fieldSpecs);
+  }
+
+  /**
+   * Merge two shapes, preferring the non-null type. If both are non-null, the existing shape wins.
+   *
+   * <p>Only single-cardinality fields are expected inside list elements. A cardinality conflict
+   * indicates a malformed test data structure.
+   *
+   * @param existing the shape already recorded for this field
+   * @param incoming the shape from the current list element
+   * @return the merged shape
+   * @throws IllegalStateException if types or cardinalities conflict between two non-null types
+   */
+  @Nonnull
+  private static Shape mergeShapes(@Nonnull final Shape existing, @Nonnull final Shape incoming) {
+    if (existing.elementType() == PrimitiveType.NULL) {
+      return incoming;
+    }
+    if (incoming.elementType() != PrimitiveType.NULL) {
+      if (existing.elementType() instanceof PrimitiveType
+          && incoming.elementType() instanceof PrimitiveType
+          && existing.elementType() != incoming.elementType()) {
+        throw new IllegalStateException(
+            "Type conflict for field: existing=" + existing + ", incoming=" + incoming);
+      }
+      if (existing.cardinality() != incoming.cardinality()) {
+        throw new IllegalStateException(
+            "Cardinality conflict for field: existing=" + existing + ", incoming=" + incoming);
+      }
+    }
+    return existing;
   }
 
   /**

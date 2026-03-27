@@ -114,6 +114,7 @@ class ResourceDatasetConverter {
   private static Object convertValue(@Nullable final Object value) {
     return switch (value) {
       case null -> null;
+      case TypedNull ignored -> null;
       case TemporalValue tv -> tv.value();
       case QuantityValue qv ->
           Map.of("value", qv.value(), "unit", qv.unit(), "system", qv.system(), "code", qv.code());

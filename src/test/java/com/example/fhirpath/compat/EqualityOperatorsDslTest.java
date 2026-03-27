@@ -341,7 +341,6 @@ public class EqualityOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Requires coding equality support")
   @FhirPathTest
   public Stream<DynamicTest> testCodingEquality() {
     return builder()
@@ -398,7 +397,7 @@ public class EqualityOperatorsDslTest extends CompatTestBase {
         .testTrue("manyCoding = manyCoding", "coding array equals itself")
         .testTrue(
             "manyCoding != manyCoding1",
-            "coding array not equals different array (different vaules)")
+            "coding array not equals different array (different values)")
         .build();
   }
 

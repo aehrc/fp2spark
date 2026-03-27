@@ -7,6 +7,7 @@ import com.example.fhirpath.ast.AstLiteral;
 import com.example.fhirpath.ast.AstNode;
 import com.example.fhirpath.ast.AstTraversal;
 import com.example.fhirpath.ast.AstVariable;
+import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
 import com.example.fhirpath.typing.QuantityValue;
@@ -299,7 +300,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
   @Override
   public AstNode visitCodingLiteral(final FhirPathParser.CodingLiteralContext ctx) {
-    throw new UnsupportedOperationException("Coding literals are not yet supported");
+    return new AstLiteral(CodingValue.parse(ctx.CODING().getText()));
   }
 
   // Special invocations

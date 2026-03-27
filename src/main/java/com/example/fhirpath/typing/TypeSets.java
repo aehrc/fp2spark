@@ -1,6 +1,7 @@
 package com.example.fhirpath.typing;
 
 import static com.example.fhirpath.typing.Types.BOOLEAN;
+import static com.example.fhirpath.typing.Types.CODING;
 import static com.example.fhirpath.typing.Types.DATE;
 import static com.example.fhirpath.typing.Types.DATE_TIME;
 import static com.example.fhirpath.typing.Types.DECIMAL;
@@ -39,7 +40,7 @@ public final class TypeSets {
 
   /** Equatable types that support equality operations. Used for: equals, notEquals */
   public static final List<Type> EQUATABLE =
-      List.of(INTEGER, DECIMAL, STRING, BOOLEAN, QUANTITY, DATE, DATE_TIME, TIME);
+      List.of(INTEGER, DECIMAL, STRING, BOOLEAN, QUANTITY, CODING, DATE, DATE_TIME, TIME);
 
   /**
    * Temporal types: Date, DateTime, and Time. Used for: precision-aware equality and comparison.

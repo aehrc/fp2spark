@@ -31,6 +31,16 @@ public final class SparkTypeMapper {
   public static final int Q_SYSTEM = 2;
   public static final int Q_CODE = 3;
 
+  public static final StructType CODING_TYPE =
+      DataTypes.createStructType(
+          new StructField[] {
+            DataTypes.createStructField("system", DataTypes.StringType, true),
+            DataTypes.createStructField("code", DataTypes.StringType, true),
+            DataTypes.createStructField("version", DataTypes.StringType, true),
+            DataTypes.createStructField("display", DataTypes.StringType, true),
+            DataTypes.createStructField("userSelected", DataTypes.BooleanType, true),
+          });
+
   private SparkTypeMapper() {}
 
   /**
@@ -54,6 +64,7 @@ public final class SparkTypeMapper {
         case STRING -> DataTypes.StringType;
         case DATE, DATE_TIME, TIME -> DataTypes.StringType;
         case QUANTITY -> QUANTITY_TYPE;
+        case CODING -> CODING_TYPE;
         case NULL -> DataTypes.NullType;
         default -> throw new IllegalArgumentException("Unknown primitive type " + t);
       };

@@ -215,7 +215,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder coding(@Nonnull final String name, @Nullable final String value) {
-    model.put(name, value != null ? ResourceDataBuilder.parseCoding(value) : null);
+    model.put(name, value != null ? ResourceDataBuilder.parseCodingValue(value) : null);
     return this;
   }
 
@@ -228,7 +228,7 @@ public class CompatModelBuilder {
   @Nonnull
   public CompatModelBuilder codingArray(
       @Nonnull final String name, @Nonnull final String... values) {
-    model.put(name, Arrays.stream(values).map(ResourceDataBuilder::parseCoding).toList());
+    model.put(name, Arrays.stream(values).map(ResourceDataBuilder::parseCodingValue).toList());
     return this;
   }
 

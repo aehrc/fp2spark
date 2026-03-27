@@ -1,6 +1,7 @@
 package com.example.fhirpath.test;
 
 import com.example.fhirpath.typing.Cardinality;
+import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.ComplexType;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
@@ -223,6 +224,7 @@ class ResourceTypeInference {
       case DateTimeValue dtv -> PrimitiveType.DATE_TIME;
       case TimeValue tv -> PrimitiveType.TIME;
       case QuantityValue qv -> PrimitiveType.QUANTITY;
+      case CodingValue cv -> PrimitiveType.CODING;
       case null -> PrimitiveType.NULL;
       default ->
           throw new IllegalArgumentException(

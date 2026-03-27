@@ -69,8 +69,15 @@ public final class SetOps {
 
   @Nonnull
   private static Column generateDistinct(@Nonnull final SparkOpContext ctx) {
+    final CollectionValue input = ctx.collectionArg(0);
+
+    // Singular value is already distinct — return as-is
+    if (input.isSingular()) {
+      return input.column();
+    }
+
     final Type type = ctx.argType(0);
-    final Column arr = ctx.collectionArg(0).asArray();
+    final Column arr = input.column();
 
     if (type == Types.NULL || EqualityOps.usesDefaultEquality(type)) {
       return CollectionValue.nullIfEmpty(array_distinct(arr));

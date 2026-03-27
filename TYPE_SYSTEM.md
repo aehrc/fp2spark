@@ -137,7 +137,7 @@ The sections below mirror the organization of the FHIRPath specification. Unless
 ∀ T, α. single(α T) → ?T
 ∀ T, α. first(α T) → ?T
 ∀ T, α. last(α T) → ?T
-∀ T, α. tail(α T) → *T
+∀ T, α. tail(α T) → α T
 ∀ T, α. skip(α T, ?INTEGER) → α T
 ∀ T, α. take(α T, ?INTEGER) → α T
 

@@ -193,9 +193,11 @@ public final class Signatures {
   }
 
   /**
-   * Collection preserver: (*T, ...) → *T. Preserves MANY cardinality.
+   * Collection preserver: (*T, ...) → *T. Always produces MANY cardinality regardless of input.
    *
-   * <p>Example: *T.where(Lambda) → *T
+   * <p>Use this for operations that inherently produce collections (e.g., {@code split}, {@code
+   * toChars}). For operations that should preserve the input's cardinality (the {@code α}
+   * variable), use {@link #collectionSubsetter} instead.
    */
   @Nonnull
   public static SignatureDefinition collectionPreserver(
@@ -204,18 +206,18 @@ public final class Signatures {
   }
 
   /**
-   * Collection subsetter: (*T, ...) → *T. Returns a sub-collection preserving element type.
+   * Collection subsetter: (α T, ...) → α T. Returns a sub-collection preserving element type and
+   * input cardinality.
    *
-   * <p>Uses dynamic result type resolution to preserve the actual element type from the input
-   * collection, with MANY cardinality.
+   * <p>Uses dynamic result type resolution to preserve both the actual element type and cardinality
+   * from the input collection (the {@code α} variable in TYPE_SYSTEM.md).
    *
-   * <p>Examples: *T.tail() → *T, *T.skip(?INTEGER) → *T
+   * <p>Examples: α T.tail() → α T, α T.skip(?INTEGER) → α T
    */
   @Nonnull
   public static SignatureDefinition collectionSubsetter(
       @Nonnull final Type elementType, @Nonnull final ParamSpec... additionalParams) {
-    return collectionOperation(
-        ResultTypeSpec.effectiveInputType(Cardinality.MANY), elementType, additionalParams);
+    return collectionOperation(ResultTypeSpec.effectiveInputType(), elementType, additionalParams);
   }
 
   /** Common builder for collection operations that take *T input and optional extra params. */
@@ -309,11 +311,10 @@ public final class Signatures {
     // Lambda expects single BOOLEAN result
     final LambdaType lambdaType = new LambdaType(Shape.single(Types.BOOLEAN));
 
-    // Use dynamic result resolution to preserve input type
+    // Use dynamic result resolution to preserve input type and cardinality (α variable)
     return new SignatureDefinition(
         List.of(many(elementType), single(lambdaType)),
-        ResultTypeSpec.inputType(
-            Cardinality.MANY), // Dynamic: preserve input type with MANY cardinality
+        ResultTypeSpec.inputType(), // Dynamic: preserve input type and cardinality
         2, // minArity
         LambdaBindingStrategy.ELEMENT_WISE // $this = element
         );

@@ -21,7 +21,8 @@ import java.util.function.Consumer;
  * <p>Delegates to {@link ResourceDataBuilder} for supported types and adds:
  *
  * <ul>
- *   <li>Empty helpers: {@code stringEmpty()}, {@code integerEmpty()}, etc. (map to null)
+ *   <li>Empty helpers: {@code stringEmpty()}, {@code integerEmpty()}, etc. (store a {@link
+ *       TypedNull} to preserve type information)
  *   <li>Primitive varargs: {@code integerArray(String, int...)}, etc. (boxes to wrapper types)
  *   <li>Temporal/quantity/coding methods via {@link ResourceDataBuilder}
  * </ul>
@@ -245,6 +246,8 @@ public class CompatModelBuilder {
     return this;
   }
 
+  // Uses plain null (not TypedNull) because complex types have no PrimitiveType equivalent.
+  // ResourceTypeInference infers PrimitiveType.NULL, which is acceptable for empty complex fields.
   @Nonnull
   public CompatModelBuilder elementEmpty(@Nonnull final String name) {
     model.put(name, null);

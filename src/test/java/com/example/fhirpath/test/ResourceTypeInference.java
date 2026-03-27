@@ -17,6 +17,7 @@ import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,7 +35,9 @@ import java.util.Map;
  *   <li>Double values → {@link PrimitiveType#DECIMAL}
  *   <li>Boolean values → {@link PrimitiveType#BOOLEAN}
  *   <li>null values → {@link PrimitiveType#NULL}
- *   <li>List values → {@link Cardinality#MANY} with element type from first item
+ *   <li>{@link TypedNull} values → the wrapped {@link PrimitiveType} with {@link
+ *       Cardinality#SINGLE}
+ *   <li>List values → {@link Cardinality#MANY} with element type merged across all items
  *   <li>Map values → {@link ComplexType} with recursive inference
  * </ul>
  *
@@ -168,12 +171,14 @@ class ResourceTypeInference {
    */
   @Nonnull
   private static ComplexType mergeComplexTypes(@Nonnull final List<?> list, final int depth) {
-    final Map<String, Shape> mergedFields = new java.util.LinkedHashMap<>();
+    final Map<String, Shape> mergedFields = new LinkedHashMap<>();
 
     for (final Object element : list) {
-      if (!(element instanceof Map<?, ?> map)) {
-        continue;
+      if (!(element instanceof Map<?, ?>)) {
+        throw new IllegalArgumentException(
+            "Expected Map element in complex type list, found: " + element.getClass().getName());
       }
+      final Map<?, ?> map = (Map<?, ?>) element;
       for (final Map.Entry<?, ?> entry : map.entrySet()) {
         final String fieldName = (String) entry.getKey();
         final Shape shape = inferShape(entry.getValue(), depth);
@@ -188,11 +193,24 @@ class ResourceTypeInference {
 
   /**
    * Merge two shapes, preferring the non-null type. If both are non-null, the existing shape wins.
+   *
+   * <p>Only single-cardinality fields are expected inside list elements. A cardinality conflict
+   * indicates a malformed test data structure.
+   *
+   * @param existing the shape already recorded for this field
+   * @param incoming the shape from the current list element
+   * @return the merged shape
+   * @throws IllegalStateException if cardinalities conflict between two non-null types
    */
   @Nonnull
   private static Shape mergeShapes(@Nonnull final Shape existing, @Nonnull final Shape incoming) {
     if (existing.elementType() == PrimitiveType.NULL) {
       return incoming;
+    }
+    if (incoming.elementType() != PrimitiveType.NULL
+        && existing.cardinality() != incoming.cardinality()) {
+      throw new IllegalStateException(
+          "Cardinality conflict for field: existing=" + existing + ", incoming=" + incoming);
     }
     return existing;
   }

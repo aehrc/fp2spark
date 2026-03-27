@@ -74,7 +74,7 @@ public final class CollectionOps {
             c ->
                 when(n.leq(lit(0)), c)
                     .otherwise(functions.slice(c, n.plus(lit(1)), functions.size(c))),
-            c -> when(c.isNull().or(n.gt(lit(0))), lit(null)).otherwise(functions.array(c)));
+            c -> when(c.isNull().or(n.gt(lit(0))), lit(null)).otherwise(c));
   }
 
   /** take(n): array → first n elements, singular → n>=1 returns as array, else empty. */
@@ -85,7 +85,7 @@ public final class CollectionOps {
         .apply(
             // Guard: Spark slice() requires length >= 0; when n<=0 return empty.
             c -> when(n.leq(lit(0)), lit(null)).otherwise(functions.slice(c, lit(1), n)),
-            c -> when(c.isNull().or(n.leq(lit(0))), lit(null)).otherwise(functions.array(c)));
+            c -> when(c.isNull().or(n.leq(lit(0))), lit(null)).otherwise(c));
   }
 
   /** indexer ([]): collection → element at index, singular → only index 0 returns value. */

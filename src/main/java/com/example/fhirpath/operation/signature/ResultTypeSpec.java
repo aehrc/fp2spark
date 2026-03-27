@@ -56,8 +56,8 @@ public sealed interface ResultTypeSpec
   }
 
   /**
-   * Creates a dynamic result spec that preserves input element type. Result type = first argument's
-   * type.
+   * Creates a dynamic result spec that preserves input element type with explicit cardinality.
+   * Result type = first argument's type.
    *
    * <p>Used for operations like {@code where()} that preserve input type.
    *
@@ -66,12 +66,25 @@ public sealed interface ResultTypeSpec
    */
   @Nonnull
   static ResultTypeSpec inputType(@Nonnull Cardinality cardinality) {
-    return new InputType(cardinality);
+    return new InputType(new CardinalitySpec.Explicit(cardinality));
   }
 
   /**
-   * Creates a dynamic result spec that extracts element type from input. Result type = element type
-   * of first argument.
+   * Creates a dynamic result spec that preserves both input element type and input cardinality.
+   *
+   * <p>Used for operations with the {@code α} cardinality variable in TYPE_SYSTEM.md, e.g. {@code ∀
+   * T, α. where(α T, ...) → α T}.
+   *
+   * @return dynamic result spec that preserves input cardinality
+   */
+  @Nonnull
+  static ResultTypeSpec inputType() {
+    return new InputType(new CardinalitySpec.Preserved());
+  }
+
+  /**
+   * Creates a dynamic result spec that extracts element type from input with explicit cardinality.
+   * Result type = element type of first argument.
    *
    * <p>Used for operations like {@code first()} that extract elements.
    *
@@ -80,7 +93,21 @@ public sealed interface ResultTypeSpec
    */
   @Nonnull
   static ResultTypeSpec effectiveInputType(@Nonnull Cardinality cardinality) {
-    return new EffectiveInputType(cardinality);
+    return new EffectiveInputType(new CardinalitySpec.Explicit(cardinality));
+  }
+
+  /**
+   * Creates a dynamic result spec that extracts element type from input and preserves input
+   * cardinality.
+   *
+   * <p>Used for operations with the {@code α} cardinality variable, e.g. {@code ∀ T, α. skip(α T,
+   * ?INTEGER) → α T}.
+   *
+   * @return dynamic result spec that preserves input cardinality
+   */
+  @Nonnull
+  static ResultTypeSpec effectiveInputType() {
+    return new EffectiveInputType(new CardinalitySpec.Preserved());
   }
 
   /**
@@ -143,13 +170,14 @@ public sealed interface ResultTypeSpec
   /**
    * Dynamic result type - preserves input element type.
    *
-   * <p>Result type = first argument's type (element type).
+   * <p>Result type = first argument's type (element type). Result cardinality is determined by the
+   * {@link CardinalitySpec}: either explicit (fixed) or preserved from input.
    *
-   * <p>Example: {@code where(*ComplexType, Lambda) → *ComplexType}
+   * <p>Example: {@code where(α ComplexType, Lambda) → α ComplexType}
    *
-   * @param cardinality the cardinality of the result
+   * @param cardinalitySpec how to determine the result cardinality
    */
-  record InputType(@Nonnull Cardinality cardinality) implements ResultTypeSpec {
+  record InputType(@Nonnull CardinalitySpec cardinalitySpec) implements ResultTypeSpec {
     @Override
     @Nonnull
     public Shape resolve(@Nonnull final List<IRNode> resolvedArgs) {
@@ -158,28 +186,30 @@ public sealed interface ResultTypeSpec
       }
       // Get element type from first argument
       final Type inputType = resolvedArgs.get(0).getType();
-      return Shape.of(inputType, cardinality);
+      final Cardinality resolved = cardinalitySpec.resolve(resolvedArgs.get(0).getCardinality());
+      return Shape.of(inputType, resolved);
     }
 
     @Override
     public String toString() {
-      return (cardinality == Cardinality.SINGLE ? "?" : "*") + "T (input type)";
+      return cardinalitySpec + "T (input type)";
     }
   }
 
   /**
    * Dynamic result type - extracts element type from input collection.
    *
-   * <p>Result type = element type of first argument's type.
+   * <p>Result type = element type of first argument's type. Result cardinality is determined by the
+   * {@link CardinalitySpec}: either explicit (fixed) or preserved from input.
    *
    * <p>In Phase 1 (no collection wrapper types), this behaves the same as InputType. In Phase 2,
    * this would unwrap collection types.
    *
-   * <p>Example: {@code first(*T) → ?T}
+   * <p>Example: {@code first(*T) → ?T}, {@code skip(α T, ?INTEGER) → α T}
    *
-   * @param cardinality the cardinality of the result (usually SINGLE)
+   * @param cardinalitySpec how to determine the result cardinality
    */
-  record EffectiveInputType(@Nonnull Cardinality cardinality) implements ResultTypeSpec {
+  record EffectiveInputType(@Nonnull CardinalitySpec cardinalitySpec) implements ResultTypeSpec {
     @Override
     @Nonnull
     public Shape resolve(@Nonnull final List<IRNode> resolvedArgs) {
@@ -188,12 +218,13 @@ public sealed interface ResultTypeSpec
       }
       // In Phase 1: Type is always the element type (no unwrapping needed)
       final Type elementType = resolvedArgs.get(0).getType();
-      return Shape.of(elementType, cardinality);
+      final Cardinality resolved = cardinalitySpec.resolve(resolvedArgs.get(0).getCardinality());
+      return Shape.of(elementType, resolved);
     }
 
     @Override
     public String toString() {
-      return (cardinality == Cardinality.SINGLE ? "?" : "*") + "T (effective type)";
+      return cardinalitySpec + "T (effective type)";
     }
   }
 

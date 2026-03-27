@@ -174,11 +174,10 @@ class ResourceTypeInference {
     final Map<String, Shape> mergedFields = new LinkedHashMap<>();
 
     for (final Object element : list) {
-      if (!(element instanceof Map<?, ?>)) {
+      if (!(element instanceof Map<?, ?> map)) {
         throw new IllegalArgumentException(
             "Expected Map element in complex type list, found: " + element.getClass().getName());
       }
-      final Map<?, ?> map = (Map<?, ?>) element;
       for (final Map.Entry<?, ?> entry : map.entrySet()) {
         final String fieldName = (String) entry.getKey();
         final Shape shape = inferShape(entry.getValue(), depth);
@@ -200,17 +199,24 @@ class ResourceTypeInference {
    * @param existing the shape already recorded for this field
    * @param incoming the shape from the current list element
    * @return the merged shape
-   * @throws IllegalStateException if cardinalities conflict between two non-null types
+   * @throws IllegalStateException if types or cardinalities conflict between two non-null types
    */
   @Nonnull
   private static Shape mergeShapes(@Nonnull final Shape existing, @Nonnull final Shape incoming) {
     if (existing.elementType() == PrimitiveType.NULL) {
       return incoming;
     }
-    if (incoming.elementType() != PrimitiveType.NULL
-        && existing.cardinality() != incoming.cardinality()) {
-      throw new IllegalStateException(
-          "Cardinality conflict for field: existing=" + existing + ", incoming=" + incoming);
+    if (incoming.elementType() != PrimitiveType.NULL) {
+      if (existing.elementType() instanceof PrimitiveType
+          && incoming.elementType() instanceof PrimitiveType
+          && existing.elementType() != incoming.elementType()) {
+        throw new IllegalStateException(
+            "Type conflict for field: existing=" + existing + ", incoming=" + incoming);
+      }
+      if (existing.cardinality() != incoming.cardinality()) {
+        throw new IllegalStateException(
+            "Cardinality conflict for field: existing=" + existing + ", incoming=" + incoming);
+      }
     }
     return existing;
   }

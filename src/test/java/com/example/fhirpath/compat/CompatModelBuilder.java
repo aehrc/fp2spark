@@ -4,7 +4,6 @@ import com.example.fhirpath.test.ResourceDataBuilder;
 import com.example.fhirpath.test.TypedNull;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
-import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.TimeValue;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -39,6 +38,13 @@ public class CompatModelBuilder {
     return model;
   }
 
+  @Nonnull
+  private CompatModelBuilder typedEmpty(
+      @Nonnull final String name, @Nonnull final TypedNull value) {
+    model.put(name, value);
+    return this;
+  }
+
   // --- String ---
 
   @Nonnull
@@ -49,8 +55,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder stringEmpty(@Nonnull final String name) {
-    model.put(name, new TypedNull(PrimitiveType.STRING));
-    return this;
+    return typedEmpty(name, TypedNull.STRING);
   }
 
   @Nonnull
@@ -69,8 +74,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder integerEmpty(@Nonnull final String name) {
-    model.put(name, new TypedNull(PrimitiveType.INTEGER));
-    return this;
+    return typedEmpty(name, TypedNull.INTEGER);
   }
 
   /** Accepts primitive {@code int...} to match Pathling's API. */
@@ -94,8 +98,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder decimalEmpty(@Nonnull final String name) {
-    model.put(name, new TypedNull(PrimitiveType.DECIMAL));
-    return this;
+    return typedEmpty(name, TypedNull.DECIMAL);
   }
 
   /** Accepts primitive {@code double...} to match Pathling's API. */
@@ -120,8 +123,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder boolEmpty(@Nonnull final String name) {
-    model.put(name, new TypedNull(PrimitiveType.BOOLEAN));
-    return this;
+    return typedEmpty(name, TypedNull.BOOLEAN);
   }
 
   /** Accepts primitive {@code boolean...} to match Pathling's API. */
@@ -146,8 +148,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder timeEmpty(@Nonnull final String name) {
-    model.put(name, new TypedNull(PrimitiveType.TIME));
-    return this;
+    return typedEmpty(name, TypedNull.TIME);
   }
 
   @Nonnull
@@ -164,8 +165,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder dateEmpty(@Nonnull final String name) {
-    model.put(name, new TypedNull(PrimitiveType.DATE));
-    return this;
+    return typedEmpty(name, TypedNull.DATE);
   }
 
   @Nonnull
@@ -182,8 +182,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder dateTimeEmpty(@Nonnull final String name) {
-    model.put(name, new TypedNull(PrimitiveType.DATE_TIME));
-    return this;
+    return typedEmpty(name, TypedNull.DATE_TIME);
   }
 
   @Nonnull
@@ -203,8 +202,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder quantityEmpty(@Nonnull final String name) {
-    model.put(name, new TypedNull(PrimitiveType.QUANTITY));
-    return this;
+    return typedEmpty(name, TypedNull.QUANTITY);
   }
 
   @Nonnull
@@ -224,8 +222,7 @@ public class CompatModelBuilder {
 
   @Nonnull
   public CompatModelBuilder codingEmpty(@Nonnull final String name) {
-    model.put(name, new TypedNull(PrimitiveType.CODING));
-    return this;
+    return typedEmpty(name, TypedNull.CODING);
   }
 
   @Nonnull
@@ -246,8 +243,10 @@ public class CompatModelBuilder {
     return this;
   }
 
-  // Uses plain null (not TypedNull) because complex types have no PrimitiveType equivalent.
-  // ResourceTypeInference infers PrimitiveType.NULL, which is acceptable for empty complex fields.
+  // Uses plain null because TypedNull only holds PrimitiveType and complex types have no
+  // equivalent. This is safe: empty complex fields resolve to PrimitiveType.NULL in the type
+  // system, which correctly propagates emptiness without risking false overload matches (unlike
+  // empty primitives, complex types are never operands to math/comparison operators).
   @Nonnull
   public CompatModelBuilder elementEmpty(@Nonnull final String name) {
     model.put(name, null);

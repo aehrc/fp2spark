@@ -10,7 +10,6 @@ import static org.apache.spark.sql.functions.abs;
 import static org.apache.spark.sql.functions.call_function;
 import static org.apache.spark.sql.functions.ceil;
 import static org.apache.spark.sql.functions.coalesce;
-import static org.apache.spark.sql.functions.exp;
 import static org.apache.spark.sql.functions.floor;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.log;
@@ -23,6 +22,7 @@ import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
+import org.apache.spark.sql.functions;
 import org.apache.spark.sql.types.DataTypes;
 
 /**
@@ -35,15 +35,19 @@ public final class MathOps {
 
   private MathOps() {}
 
-  /** Registers all math functions into the given registry. */
+  /**
+   * Registers all math functions into the given registry.
+   *
+   * @param registry the registry to register operations into
+   */
   public static void register(@Nonnull final SparkOperationRegistry registry) {
-    registry.register("abs", unary(col -> abs(col)));
+    registry.register("abs", unary(functions::abs));
     registry.register("ceiling", unary(col -> ceil(col).cast(DataTypes.IntegerType)));
     registry.register("floor", unary(col -> floor(col).cast(DataTypes.IntegerType)));
     registry.register("truncate", unary(MathOps::truncateTowardZero));
     registry.register("round", MathOps::generateRound);
-    registry.register("exp", unary(col -> exp(col)));
-    registry.register("ln", unary(col -> log(col)));
+    registry.register("exp", unary(functions::exp));
+    registry.register("ln", unary(MathOps::generateLn));
     registry.register("log", MathOps::generateLog);
     registry.register(
         "power",
@@ -75,12 +79,21 @@ public final class MathOps {
   }
 
   /**
+   * ln(): returns the natural logarithm. Returns empty for non-positive inputs (result cannot be
+   * represented), since Spark's log() returns NaN for negative values and -Infinity for zero.
+   */
+  @Nonnull
+  private static Column generateLn(@Nonnull final Column value) {
+    return nanToNull(log(value));
+  }
+
+  /**
    * log(base): computes logarithm using change-of-base formula ln(value)/ln(base), since Spark's
-   * log() function requires a double base, not a Column.
+   * log() function requires a double base, not a Column. Returns empty for invalid inputs.
    */
   @Nonnull
   private static Column generateLog(@Nonnull final SparkOpContext ctx) {
-    return log(ctx.arg(0)).divide(log(ctx.arg(1)));
+    return nanToNull(log(ctx.arg(0)).divide(log(ctx.arg(1))));
   }
 
   /**
@@ -101,7 +114,7 @@ public final class MathOps {
   @Nonnull
   private static Column generateDecimalPower(@Nonnull final SparkOpContext ctx) {
     final Column result = pow(ctx.arg(0), ctx.arg(1));
-    return when(result.isNaN(), lit(null).cast(DECIMAL_TYPE)).otherwise(result);
+    return nanToNull(result);
   }
 
   /**
@@ -110,9 +123,12 @@ public final class MathOps {
    */
   @Nonnull
   private static Column generateSqrt(@Nonnull final Column value) {
-    final Column result = sqrt(value);
-    // sqrt() returns NaN for negative inputs
-    // FHIRPath spec says to return empty ({}) in this case
-    return when(result.isNaN(), lit(null).cast(DECIMAL_TYPE)).otherwise(result);
+    return nanToNull(sqrt(value));
+  }
+
+  /** Converts NaN results to null (empty collection) per FHIRPath spec. */
+  @Nonnull
+  private static Column nanToNull(@Nonnull final Column value) {
+    return when(value.isNaN(), lit(null).cast(DECIMAL_TYPE)).otherwise(value);
   }
 }

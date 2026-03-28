@@ -150,6 +150,8 @@ public class MathFunctionsTest extends FhirPathTestBase {
         .testEquals(0.0, "1.0.ln()")
         .group("ln() core semantics")
         .testTrue("2.ln() > 0.693 and 2.ln() < 0.694", "ln(2) ≈ 0.693")
+        .group("ln() edge cases")
+        .testEmpty("(-1).ln()", "Negative input → empty")
         .group("ln() empty propagation")
         .testEmpty("{}.ln()")
         .build();
@@ -168,8 +170,11 @@ public class MathFunctionsTest extends FhirPathTestBase {
         .group("log() core semantics")
         .testEquals(3.0, "8.log(2)", "2^3 = 8")
         .testEquals(1.0, "10.log(10)", "log base 10 of 10")
+        .group("log() edge cases")
+        .testEmpty("(-1).log(10)", "Negative input → empty")
         .group("log() empty propagation")
         .testEmpty("{}.log(2)")
+        .testEmpty("16.log({})", "Empty base → empty")
         .build();
   }
 

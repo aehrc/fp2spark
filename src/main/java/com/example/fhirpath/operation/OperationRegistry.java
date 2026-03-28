@@ -344,6 +344,7 @@ public final class OperationRegistry {
         // MATH FUNCTIONS (FHIRPath Spec 5.7.3)
 
         // abs(): preserves input type (INTEGER → INTEGER, DECIMAL → DECIMAL)
+        // Note: spec also defines abs() for Quantity, not yet supported.
         register("abs", forTypes(NUMERIC).define(Signatures::unaryOp)),
         // ceiling(), floor(), truncate(): always return INTEGER
         register("ceiling", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, INTEGER))),
@@ -360,7 +361,9 @@ public final class OperationRegistry {
         register("exp", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, DECIMAL))),
         register("ln", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, DECIMAL))),
         register("sqrt", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, DECIMAL))),
-        // log(base): always returns DECIMAL
+        // log(base): always returns DECIMAL.
+        // Explicit (INTEGER, INTEGER) avoids a Cast node for the common 16.log(2) case.
+        // (DECIMAL, INTEGER) is covered by INTEGER→DECIMAL widening into (DECIMAL, DECIMAL).
         register(
             "log",
             forTypes(NUMERIC).define(t -> Signatures.binaryFunc(t, DECIMAL, DECIMAL)),

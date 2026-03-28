@@ -19,7 +19,6 @@ package com.example.fhirpath.compat;
 
 import java.util.stream.Stream;
 import org.hl7.fhir.r4.model.Enumerations.FHIRDefinedType;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 public class MembershipOperatorsDslTest extends CompatTestBase {
@@ -151,7 +150,6 @@ public class MembershipOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Requires fhirType support")
   @FhirPathTest
   public Stream<DynamicTest> complexTypeMembership() {
     return builder()
@@ -166,7 +164,6 @@ public class MembershipOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Requires fhirType support")
   @FhirPathTest
   public Stream<DynamicTest> testCrossTypeMembership() {
     return builder()

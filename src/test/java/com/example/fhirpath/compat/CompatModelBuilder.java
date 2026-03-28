@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.hl7.fhir.r4.model.Enumerations.FHIRDefinedType;
 
 /**
  * Adapter that provides Pathling's {@code FhirPathModelBuilder} API for building test subject data.
@@ -24,12 +25,17 @@ import java.util.function.Consumer;
  *       TypedNull} to preserve type information)
  *   <li>Primitive varargs: {@code integerArray(String, int...)}, etc. (boxes to wrapper types)
  *   <li>Temporal/quantity/coding methods via {@link ResourceDataBuilder}
+ *   <li>Type annotations: {@code choice()}, {@code fhirType()}, {@code fhirReference()} store
+ *       metadata keys that {@code ResourceTypeInference} interprets
  * </ul>
- *
- * <p>Unsupported methods ({@code choice()}, {@code fhirType()}, {@code fhirReference()}) throw
- * {@link UnsupportedOperationException}. Tests using these should be {@code @Disabled}.
  */
 public class CompatModelBuilder {
+
+  /** Annotation key marking a choice element; value is the base element name. */
+  public static final String CHOICE_ANNOTATION = "__CHOICE__";
+
+  /** Annotation key setting an explicit FHIR type; value is the type code (e.g., "Reference"). */
+  public static final String FHIR_TYPE_ANNOTATION = "__FHIR_TYPE__";
 
   private final Map<String, Object> model = new HashMap<>();
 
@@ -267,20 +273,44 @@ public class CompatModelBuilder {
     return this;
   }
 
-  // --- Unsupported Pathling-specific methods ---
+  // --- Type annotation methods ---
 
+  /**
+   * Marks the sibling fields as variants of a choice element with the given base name.
+   *
+   * <p>Stores a {@value #CHOICE_ANNOTATION} annotation in the model map. {@code
+   * ResourceTypeInference} interprets this to create an {@code InlineChoiceType}.
+   *
+   * @param name the base element name (e.g., "value" for value[x])
+   */
   @Nonnull
   public CompatModelBuilder choice(@Nonnull final String name) {
-    throw new UnsupportedOperationException("choice() is not supported in compat tests");
+    model.put(CHOICE_ANNOTATION, name);
+    return this;
   }
 
+  /**
+   * Sets an explicit FHIR type on this element.
+   *
+   * <p>Stores a {@value #FHIR_TYPE_ANNOTATION} annotation in the model map. {@code
+   * ResourceTypeInference} interprets this to create a named complex type.
+   *
+   * @param fhirType the FHIR type (e.g., {@code FHIRDefinedType.REFERENCE})
+   */
   @Nonnull
-  public CompatModelBuilder fhirType(@Nonnull final Object fhirType) {
-    throw new UnsupportedOperationException("fhirType() is not supported in compat tests");
+  public CompatModelBuilder fhirType(@Nonnull final FHIRDefinedType fhirType) {
+    model.put(FHIR_TYPE_ANNOTATION, fhirType.toCode());
+    return this;
   }
 
+  /**
+   * Convenience method that sets fhirType to REFERENCE and adds empty reference/type fields.
+   *
+   * <p>Equivalent to {@code fhirType(FHIRDefinedType.REFERENCE).stringEmpty("reference")
+   * .stringEmpty("type")}.
+   */
   @Nonnull
   public CompatModelBuilder fhirReference() {
-    throw new UnsupportedOperationException("fhirReference() is not supported in compat tests");
+    return fhirType(FHIRDefinedType.REFERENCE).stringEmpty("reference").stringEmpty("type");
   }
 }

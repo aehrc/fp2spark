@@ -45,7 +45,7 @@ import org.junit.jupiter.api.DynamicTest;
  * the default maxNestingLevel of 3, the schema supports items nested 4 levels deep (root item plus
  * 3 additional levels).
  */
-@Disabled("Requires Spring context and FHIR encoders")
+@Disabled("Requires repeatAll() function")
 public class RepeatAllFunctionDslTest extends CompatTestBase {
 
   /**

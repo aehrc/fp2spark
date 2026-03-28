@@ -18,7 +18,6 @@
 package com.example.fhirpath.compat;
 
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 /**
@@ -27,7 +26,6 @@ import org.junit.jupiter.api.DynamicTest;
  */
 public class BooleanLogicFunctionsDslTest extends CompatTestBase {
 
-  @Disabled("Requires choice type support")
   @FhirPathTest
   public Stream<DynamicTest> testNot() {
     return builder()

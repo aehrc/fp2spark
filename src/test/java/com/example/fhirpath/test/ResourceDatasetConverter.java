@@ -104,7 +104,12 @@ class ResourceDatasetConverter {
   private static Map<String, Object> toJsonFriendly(@Nonnull final Map<String, Object> data) {
     final Map<String, Object> result = new HashMap<>();
     for (final Map.Entry<String, Object> entry : data.entrySet()) {
-      result.put(entry.getKey(), convertValue(entry.getValue()));
+      // Skip metadata annotations (e.g., __CHOICE__, __FHIR_TYPE__)
+      final String key = entry.getKey();
+      if (key.startsWith("__") && key.endsWith("__")) {
+        continue;
+      }
+      result.put(key, convertValue(entry.getValue()));
     }
     return result;
   }

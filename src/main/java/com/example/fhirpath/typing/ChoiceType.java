@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  * <p>Direct field traversal on a choice type is disallowed; users must first narrow to a specific
  * variant.
  */
-public final class ChoiceType implements Type {
+public final class ChoiceType implements ChoiceTypeLike {
 
   private static final Logger LOG = LoggerFactory.getLogger(ChoiceType.class);
 

@@ -23,7 +23,6 @@ import org.hl7.fhir.r4.model.Appointment;
 import org.hl7.fhir.r4.model.Appointment.AppointmentParticipantComponent;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Reference;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 /**
@@ -45,7 +44,6 @@ import org.junit.jupiter.api.DynamicTest;
  * @author Piotr Szul
  * @see <a href="https://github.com/aehrc/pathling/issues/2522">Issue #2522</a>
  */
-@Disabled("Requires FhirPathTestCaseBuilder and fhirReference support")
 public class ResolveFunctionDslTest extends CompatTestBase {
 
   @FhirPathTest

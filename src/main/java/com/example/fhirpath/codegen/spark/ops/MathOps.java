@@ -6,6 +6,7 @@ import static com.example.fhirpath.codegen.spark.SparkDefs.types;
 import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
 import static com.example.fhirpath.typing.PrimitiveType.DECIMAL;
 import static com.example.fhirpath.typing.PrimitiveType.INTEGER;
+import static com.example.fhirpath.typing.PrimitiveType.QUANTITY;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import jakarta.annotation.Nonnull;
@@ -26,7 +27,11 @@ public final class MathOps {
    * @param registry the registry to register operations into
    */
   public static void register(@Nonnull final SparkOperationRegistry registry) {
-    registry.register("abs", unary(functions::abs));
+    registry.register(
+        "abs",
+        byResultType()
+            .when(types(INTEGER, DECIMAL), unary(functions::abs))
+            .when(types(QUANTITY), unary(MathSupport::quantityAbs)));
     registry.register("ceiling", unary(MathSupport::ceiling));
     registry.register("floor", unary(MathSupport::floor));
     registry.register("truncate", unary(MathSupport::truncate));

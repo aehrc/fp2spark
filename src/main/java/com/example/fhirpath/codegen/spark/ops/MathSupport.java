@@ -1,6 +1,7 @@
 package com.example.fhirpath.codegen.spark.ops;
 
 import static com.example.fhirpath.codegen.spark.SparkTypeMapper.DECIMAL_TYPE;
+import static org.apache.spark.sql.functions.abs;
 import static org.apache.spark.sql.functions.call_function;
 import static org.apache.spark.sql.functions.ceil;
 import static org.apache.spark.sql.functions.coalesce;
@@ -10,12 +11,26 @@ import static org.apache.spark.sql.functions.pow;
 
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
+import org.apache.spark.sql.functions;
 import org.apache.spark.sql.types.DataTypes;
 
 /** Spark column expression helpers for FHIRPath math functions. */
 final class MathSupport {
 
   private MathSupport() {}
+
+  /**
+   * abs() for Quantity: applies abs to the value field, preserving unit, system, and code. Per
+   * FHIRPath spec: {@code (-5.5 'mg').abs() // 5.5 'mg'}.
+   */
+  @Nonnull
+  static Column quantityAbs(@Nonnull final Column quantity) {
+    return functions.struct(
+        abs(quantity.getField("value")).as("value"),
+        quantity.getField("unit").as("unit"),
+        quantity.getField("system").as("system"),
+        quantity.getField("code").as("code"));
+  }
 
   /** ceiling(): returns the first integer greater than or equal to the input. */
   @Nonnull

@@ -343,9 +343,9 @@ public final class OperationRegistry {
 
         // MATH FUNCTIONS (FHIRPath Spec 5.7.3)
 
-        // abs(): preserves input type (INTEGER → INTEGER, DECIMAL → DECIMAL)
-        // Note: spec also defines abs() for Quantity, not yet supported.
-        register("abs", forTypes(NUMERIC).define(Signatures::unaryOp)),
+        // abs(): preserves input type (INTEGER → INTEGER, DECIMAL → DECIMAL, QUANTITY → QUANTITY)
+        register(
+            "abs", forTypes(NUMERIC).define(Signatures::unaryOp), Signatures.unaryOp(QUANTITY)),
         // ceiling(), floor(), truncate(): always return INTEGER
         register("ceiling", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, INTEGER))),
         register("floor", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, INTEGER))),

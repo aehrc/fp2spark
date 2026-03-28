@@ -36,6 +36,10 @@ public class MathFunctionsTest extends FhirPathTestBase {
         .testEquals(0, "0.abs()", "Zero unchanged")
         .testEquals(5.5, "5.5.abs()", "Positive decimal unchanged")
         .testEquals(0.0, "0.0.abs()", "Decimal zero unchanged")
+        .group("abs() Quantity")
+        .testTrue(
+            "(0 'mg' - 5.5 'mg').abs() = 5.5 'mg'", "Quantity: negative value, unit preserved")
+        .testTrue("5.5 'mg'.abs() = 5.5 'mg'", "Quantity: positive unchanged")
         .group("abs() empty propagation")
         .testEmpty("{}.abs()")
         .build();

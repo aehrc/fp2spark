@@ -20,16 +20,12 @@ final class MathSupport {
   private MathSupport() {}
 
   /**
-   * abs() for Quantity: applies abs to the value field, preserving unit, system, and code. Per
-   * FHIRPath spec: {@code (-5.5 'mg').abs() // 5.5 'mg'}.
+   * abs() for Quantity: applies abs to the value field, preserving unit, system, and code. Uses
+   * {@code withField} so the implementation is resilient to Quantity schema changes.
    */
   @Nonnull
   static Column quantityAbs(@Nonnull final Column quantity) {
-    return functions.struct(
-        abs(quantity.getField("value")).as("value"),
-        quantity.getField("unit").as("unit"),
-        quantity.getField("system").as("system"),
-        quantity.getField("code").as("code"));
+    return quantity.withField("value", abs(quantity.getField("value")));
   }
 
   /** ceiling(): returns the first integer greater than or equal to the input. */
@@ -41,7 +37,7 @@ final class MathSupport {
   /** floor(): returns the first integer less than or equal to the input. */
   @Nonnull
   static Column floor(@Nonnull final Column value) {
-    return org.apache.spark.sql.functions.floor(value).cast(DataTypes.IntegerType);
+    return functions.floor(value).cast(DataTypes.IntegerType);
   }
 
   /** truncate(): returns the integer portion of the input (truncation toward zero). */
@@ -99,6 +95,6 @@ final class MathSupport {
   /** sqrt(): returns empty for negative inputs (result cannot be represented). */
   @Nonnull
   static Column sqrt(@Nonnull final Column value) {
-    return NumericalSupport.nanToNull(org.apache.spark.sql.functions.sqrt(value), DECIMAL_TYPE);
+    return NumericalSupport.nanToNull(functions.sqrt(value), DECIMAL_TYPE);
   }
 }

@@ -9,14 +9,15 @@ import static org.apache.spark.sql.functions.when;
 
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
+import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;
 
 /**
- * Spark column expression helpers for numeric division operations.
+ * Spark column expression helpers for numeric operations.
  *
- * <p>Provides division-by-zero guarding and truncation-toward-zero for the FHIRPath {@code /},
- * {@code div}, and {@code mod} operators. All operations return {@code null} (empty) on division by
- * zero per the FHIRPath spec.
+ * <p>Provides division-by-zero guarding, truncation-toward-zero, and NaN-to-null conversion for
+ * FHIRPath numeric operators and math functions. All operations return {@code null} (empty) on
+ * division by zero or unrepresentable results per the FHIRPath spec.
  */
 final class NumericalSupport {
 
@@ -63,8 +64,20 @@ final class NumericalSupport {
    * that would occur with an integer cast for large decimal values.
    */
   @Nonnull
-  private static Column truncateTowardZero(@Nonnull final Column value) {
+  static Column truncateTowardZero(@Nonnull final Column value) {
     return signum(value).multiply(floor(abs(value)));
+  }
+
+  /**
+   * Converts NaN results to null (empty collection) per FHIRPath spec. Used by math functions that
+   * can produce NaN for invalid inputs (e.g., sqrt of negative, log of negative).
+   *
+   * @param value the column expression to guard
+   * @param nullType the data type to cast the null literal to
+   */
+  @Nonnull
+  static Column nanToNull(@Nonnull final Column value, @Nonnull final DataType nullType) {
+    return when(value.isNaN(), lit(null).cast(nullType)).otherwise(value);
   }
 
   /**

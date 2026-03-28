@@ -9,6 +9,7 @@ import com.example.fhirpath.codegen.spark.ops.ConversionOps;
 import com.example.fhirpath.codegen.spark.ops.EqualityOps;
 import com.example.fhirpath.codegen.spark.ops.FhirOps;
 import com.example.fhirpath.codegen.spark.ops.FilteringOps;
+import com.example.fhirpath.codegen.spark.ops.MathOps;
 import com.example.fhirpath.codegen.spark.ops.MembershipOps;
 import com.example.fhirpath.codegen.spark.ops.SetOps;
 import com.example.fhirpath.codegen.spark.ops.StringOps;
@@ -65,6 +66,7 @@ public final class SparkOperationRegistry {
     FhirOps.register(registry);
     TypeOps.register(registry);
     StringOps.register(registry);
+    MathOps.register(registry);
     ConversionOps.register(registry);
     return registry;
   }

@@ -339,7 +339,39 @@ public final class OperationRegistry {
         register(
             "convertsToQuantity",
             Signatures.variadic(
-                List.of(single(ANY), single(STRING)), ResultTypeSpec.single(BOOLEAN), 1)));
+                List.of(single(ANY), single(STRING)), ResultTypeSpec.single(BOOLEAN), 1)),
+
+        // MATH FUNCTIONS (FHIRPath Spec 5.7.3)
+
+        // abs(): preserves input type (INTEGER → INTEGER, DECIMAL → DECIMAL)
+        register("abs", forTypes(NUMERIC).define(Signatures::unaryOp)),
+        // ceiling(), floor(), truncate(): always return INTEGER
+        register("ceiling", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, INTEGER))),
+        register("floor", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, INTEGER))),
+        register("truncate", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, INTEGER))),
+        // round([precision]): always returns DECIMAL
+        register(
+            "round",
+            Signatures.variadic(
+                List.of(single(INTEGER), single(INTEGER)), ResultTypeSpec.single(DECIMAL), 1),
+            Signatures.variadic(
+                List.of(single(DECIMAL), single(INTEGER)), ResultTypeSpec.single(DECIMAL), 1)),
+        // exp(), ln(), sqrt(): always return DECIMAL
+        register("exp", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, DECIMAL))),
+        register("ln", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, DECIMAL))),
+        register("sqrt", forTypes(NUMERIC).define(t -> Signatures.unaryFunc(t, DECIMAL))),
+        // log(base): always returns DECIMAL
+        register(
+            "log",
+            forTypes(NUMERIC).define(t -> Signatures.binaryFunc(t, DECIMAL, DECIMAL)),
+            Signatures.binaryFunc(INTEGER, INTEGER, DECIMAL)),
+        // power(exponent): INTEGER^INTEGER → INTEGER, otherwise DECIMAL
+        register(
+            "power",
+            Signatures.binaryOp(INTEGER),
+            Signatures.binaryFunc(DECIMAL, DECIMAL, DECIMAL),
+            Signatures.binaryFunc(INTEGER, DECIMAL, DECIMAL),
+            Signatures.binaryFunc(DECIMAL, INTEGER, DECIMAL)));
   }
 
   /**

@@ -120,19 +120,24 @@ class TypeAdapter {
   @Nonnull
   private static Map<String, Object> quantityValueToMap(@Nonnull final QuantityValue qv) {
     final Map<String, Object> map = new HashMap<>();
-    map.put("value", qv.value().doubleValue());
+    map.put("value", qv.value().stripTrailingZeros());
     map.put("unit", qv.unit());
     map.put("system", qv.system());
     map.put("code", qv.code());
     return map;
   }
 
-  /** Converts a Spark Row to a Map for comparison. */
+  /** Converts a Spark Row to a Map for comparison, normalizing BigDecimal values. */
   @Nonnull
   private static Map<String, Object> rowToMap(@Nonnull final Row row) {
     final Map<String, Object> map = new HashMap<>();
     for (final String field : row.schema().fieldNames()) {
-      map.put(field, row.getAs(field));
+      Object value = row.getAs(field);
+      // Normalize BigDecimal values (e.g., Spark DECIMAL(38,6) → stripped trailing zeros)
+      if (value instanceof BigDecimal bd) {
+        value = bd.stripTrailingZeros();
+      }
+      map.put(field, value);
     }
     return map;
   }

@@ -72,9 +72,7 @@ public final class ChoiceType implements ChoiceTypeLike {
    */
   @Nonnull
   public Optional<FieldSpec> resolveVariant(@Nonnull final String typeName) {
-    // Build the column name: elementName + capitalize(typeName)
-    final String columnName =
-        elementName + typeName.substring(0, 1).toUpperCase() + typeName.substring(1);
+    final String columnName = ChoiceTypeLike.variantColumnName(elementName, typeName);
 
     // Check if this is a valid variant.
     // HAPI throws AssertionError (not IllegalArgumentException) for invalid child names

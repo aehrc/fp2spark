@@ -57,8 +57,7 @@ public final class InlineChoiceType implements ChoiceTypeLike {
   @Override
   @Nonnull
   public Optional<FieldSpec> resolveVariant(@Nonnull final String typeName) {
-    final String columnName =
-        elementName + typeName.substring(0, 1).toUpperCase() + typeName.substring(1);
+    final String columnName = ChoiceTypeLike.variantColumnName(elementName, typeName);
     return Optional.ofNullable(variants.get(columnName));
   }
 

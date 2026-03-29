@@ -60,13 +60,11 @@ class TypeAdapter {
           .toList();
     }
 
-    // Adapt CodingValue to Map when actual is a Row (converted to Map)
-    if (expected instanceof CodingValue cv) {
+    // Adapt CodingValue/QuantityValue to Map only when actual is also a Map (from Row conversion)
+    if (expected instanceof CodingValue cv && convertedActual instanceof Map) {
       return codingValueToMap(cv);
     }
-
-    // Adapt QuantityValue to Map when actual is a Row (converted to Map)
-    if (expected instanceof QuantityValue qv) {
+    if (expected instanceof QuantityValue qv && convertedActual instanceof Map) {
       return quantityValueToMap(qv);
     }
 

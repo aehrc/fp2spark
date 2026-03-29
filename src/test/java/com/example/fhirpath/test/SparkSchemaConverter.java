@@ -62,8 +62,6 @@ class SparkSchemaConverter {
     final List<StructField> fields = new ArrayList<>();
 
     for (final FieldSpec fieldSpec : inlineType.getFields()) {
-      // Skip InlineChoiceType fields — they are not materialized in Spark; variant columns
-      // are already present as sibling fields.
       if (fieldSpec.getShape().elementType() instanceof InlineChoiceType) {
         continue;
       }

@@ -22,4 +22,19 @@ public interface ChoiceTypeLike extends Type {
    */
   @Nonnull
   Optional<FieldSpec> resolveVariant(@Nonnull String typeName);
+
+  /**
+   * Builds the variant column name from the base element name and FHIR type name.
+   *
+   * <p>Example: {@code variantColumnName("value", "Quantity")} → {@code "valueQuantity"}.
+   *
+   * @param elementName the base element name (e.g., "value")
+   * @param typeName the FHIR type name (e.g., "Quantity", "string")
+   * @return the column name (e.g., "valueQuantity", "valueString")
+   */
+  @Nonnull
+  static String variantColumnName(
+      @Nonnull final String elementName, @Nonnull final String typeName) {
+    return elementName + typeName.substring(0, 1).toUpperCase() + typeName.substring(1);
+  }
 }

@@ -46,7 +46,7 @@ import org.junit.jupiter.api.DynamicTest;
  * <p>Focuses on the differences from repeatAll(): equality-based deduplication and handling of
  * self-referential primitive traversal.
  */
-@Disabled("Requires Spring context and FHIR encoders")
+@Disabled("Requires repeat() function")
 public class RepeatFunctionDslTest extends CompatTestBase {
 
   /**

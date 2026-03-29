@@ -18,13 +18,11 @@
 package com.example.fhirpath.compat;
 
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 /** Tests for FHIRPath 'is' type-checking operator. */
 public class IsOperatorDslTest extends CompatTestBase {
 
-  @Disabled("Requires choice type support")
   @FhirPathTest
   public Stream<DynamicTest> testIsOperator() {
     return builder()

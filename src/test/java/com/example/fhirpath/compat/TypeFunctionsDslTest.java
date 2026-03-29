@@ -17,6 +17,8 @@
 
 package com.example.fhirpath.compat;
 
+import static com.example.fhirpath.compat.CompatLiterals.toQuantity;
+
 import java.math.BigDecimal;
 import java.util.stream.Stream;
 import org.hl7.fhir.r4.model.Address;
@@ -29,11 +31,9 @@ import org.hl7.fhir.r4.model.Observation.ObservationComponentComponent;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.StringType;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 /** Tests for FHIRPath type functions. */
-@Disabled("Requires Pathling FhirTypedLiteral support")
 public class TypeFunctionsDslTest extends CompatTestBase {
 
   @FhirPathTest
@@ -144,9 +144,7 @@ public class TypeFunctionsDslTest extends CompatTestBase {
         .group("as() function - complex types")
         // Complex type matching
         .testEquals(
-            "PLACEHOLDER" /* toQuantity("11.5 'mg'") */,
-            "quantityValue.as(Quantity)",
-            "as() returns Quantity value")
+            toQuantity("11.5 'mg'"), "quantityValue.as(Quantity)", "as() returns Quantity value")
         .testEquals(
             "mg",
             "quantityValue.as(FHIR.Quantity).unit",
@@ -174,16 +172,16 @@ public class TypeFunctionsDslTest extends CompatTestBase {
         .group("as() function - namespace variations")
         // Test namespace handling
         .testEquals(
-            "PLACEHOLDER" /* toQuantity("11 'mg'") */,
+            toQuantity("11 'mg'"),
             "(11 'mg').as(Quantity)",
             "as() works with unqualified type name")
         .testEquals(
-            "PLACEHOLDER" /* toQuantity("12 'cm'") */,
+            toQuantity("12 'cm'"),
             "(12 'cm').as(System.Quantity)",
             "as() works with System namespace for Quantity")
         // THIS IS A SPECIAL CASE: FHIR.Quantity is the same as System.Quantity in our model
         .testEquals(
-            "PLACEHOLDER" /* toQuantity("13 'mg'") */,
+            toQuantity("13 'mg'"),
             "(13 'mg').as(FHIR.Quantity)",
             "as() returns works for System.Quantity with FHIR namespace")
         .group("as() function - edge cases")

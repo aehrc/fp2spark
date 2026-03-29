@@ -24,7 +24,7 @@ import com.example.fhirpath.operation.OverloadResolutionException;
 import com.example.fhirpath.operation.OverloadResolver;
 import com.example.fhirpath.operation.signature.ResolvedSignature;
 import com.example.fhirpath.operation.signature.SignatureDefinition;
-import com.example.fhirpath.typing.ChoiceType;
+import com.example.fhirpath.typing.ChoiceTypeLike;
 import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
@@ -515,7 +515,7 @@ public class Analyzer {
     final String typeSpec = extractTypeSpecifier(call);
     final Type targetType = targetIr.getType();
 
-    if (targetType instanceof ChoiceType choiceType) {
+    if (targetType instanceof ChoiceTypeLike choiceType) {
       return Optional.of(resolveChoiceTypeOperation(name, choiceType, targetIr, typeSpec));
     }
 
@@ -573,7 +573,7 @@ public class Analyzer {
   @Nonnull
   private IRNode resolveChoiceTypeOperation(
       @Nonnull final String operation,
-      @Nonnull final ChoiceType choiceType,
+      @Nonnull final ChoiceTypeLike choiceType,
       @Nonnull final IRNode targetIr,
       @Nonnull final String typeSpec) {
     final Optional<FieldSpec> variant = choiceType.resolveVariant(typeSpec);

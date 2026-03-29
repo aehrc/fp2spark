@@ -3,6 +3,7 @@ package com.example.fhirpath.test;
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
 import com.example.fhirpath.typing.FhirPrimitiveType;
 import com.example.fhirpath.typing.FieldSpec;
+import com.example.fhirpath.typing.InlineChoiceType;
 import com.example.fhirpath.typing.InlineComplexType;
 import com.example.fhirpath.typing.PrimitiveType;
 import com.example.fhirpath.typing.Shape;
@@ -61,6 +62,9 @@ class SparkSchemaConverter {
     final List<StructField> fields = new ArrayList<>();
 
     for (final FieldSpec fieldSpec : inlineType.getFields()) {
+      if (fieldSpec.getShape().elementType() instanceof InlineChoiceType) {
+        continue;
+      }
       final String fieldName = fieldSpec.getName();
       final DataType sparkType = toDataType(fieldSpec.getShape());
       fields.add(DataTypes.createStructField(fieldName, sparkType, true));
@@ -114,6 +118,13 @@ class SparkSchemaConverter {
         case NULL -> DataTypes.NullType;
         case ANY -> DataTypes.StringType; // Default to String for ANY
       };
+    }
+
+    if (type instanceof InlineChoiceType) {
+      // InlineChoiceType fields are skipped in toStructType() so this should be unreachable.
+      throw new IllegalStateException(
+          "InlineChoiceType should not reach toBaseType — "
+              + "toStructType() must skip choice fields");
     }
 
     if (type instanceof InlineComplexType inlineComplexType) {

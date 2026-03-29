@@ -17,18 +17,18 @@
 
 package com.example.fhirpath.compat;
 
+import static com.example.fhirpath.compat.CompatLiterals.toCoding;
+
 import java.util.List;
 import java.util.stream.Stream;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.StringType;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 /**
  * Tests for FHIRPath filtering and projection functions required by SQL on FHIR sharable view
  * profile: - where() function - ofType() function (for non-resource types)
  */
-@Disabled("Requires Pathling FhirTypedLiteral support")
 public class FilteringAndProjectionFunctionsDslTest extends CompatTestBase {
 
   @FhirPathTest
@@ -207,7 +207,7 @@ public class FilteringAndProjectionFunctionsDslTest extends CompatTestBase {
             "ofType() filters heterogeneous collection for undefined choice type (Decimal)")
         // ofType() with complex types
         .testEquals(
-            "PLACEHOLDER" /* FhirTypedLiteral.toCoding("http://example.org/codesystem|code1|display1") */,
+            toCoding("http://example.org/codesystem|code1||display1|"),
             "heteroComplex.test.ofType(Coding)",
             "ofType() returns Coding value when filtering for Coding type")
         .testEmpty(

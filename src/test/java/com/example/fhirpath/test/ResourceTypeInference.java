@@ -1,11 +1,14 @@
 package com.example.fhirpath.test;
 
-import com.example.fhirpath.typing.Cardinality;
+import static com.example.fhirpath.compat.CompatModelBuilder.CHOICE_ANNOTATION;
+import static com.example.fhirpath.compat.CompatModelBuilder.FHIR_TYPE_ANNOTATION;
+
 import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.ComplexType;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
 import com.example.fhirpath.typing.FieldSpec;
+import com.example.fhirpath.typing.InlineChoiceType;
 import com.example.fhirpath.typing.InlineComplexType;
 import com.example.fhirpath.typing.InlineResourceType;
 import com.example.fhirpath.typing.PrimitiveType;
@@ -83,16 +86,45 @@ class ResourceTypeInference {
   @Nonnull
   static ResourceType infer(
       @Nonnull final String resourceTypeName, @Nonnull final Map<String, Object> data) {
+    final List<FieldSpec> fieldSpecs = inferFieldSpecs(data, 0);
+    return new InlineResourceType(resourceTypeName, fieldSpecs);
+  }
+
+  /** Returns true if a map key is a metadata annotation (not a real field). */
+  static boolean isAnnotation(@Nonnull final String key) {
+    return key.startsWith("__") && key.endsWith("__");
+  }
+
+  /**
+   * Infer field specs from a map, handling {@code __CHOICE__} and {@code __FHIR_TYPE__}
+   * annotations.
+   */
+  @Nonnull
+  private static List<FieldSpec> inferFieldSpecs(
+      @Nonnull final Map<String, Object> data, final int depth) {
     final List<FieldSpec> fieldSpecs = new ArrayList<>();
+    final String choiceName = (String) data.get(CHOICE_ANNOTATION);
 
     for (final Map.Entry<String, Object> entry : data.entrySet()) {
-      final String fieldName = entry.getKey();
-      final Object value = entry.getValue();
-      final Shape shape = inferShape(value, 0);
-      fieldSpecs.add(new FieldSpec(fieldName, shape));
+      if (isAnnotation(entry.getKey())) {
+        continue;
+      }
+      final Shape shape = inferShape(entry.getValue(), depth);
+      fieldSpecs.add(new FieldSpec(entry.getKey(), shape));
     }
 
-    return new InlineResourceType(resourceTypeName, fieldSpecs);
+    // If __CHOICE__ is present, add an InlineChoiceType field whose variants are all sibling
+    // fields. The variant columns remain as siblings (Spark needs flat columns).
+    if (choiceName != null) {
+      final Map<String, FieldSpec> variants = new LinkedHashMap<>();
+      for (final FieldSpec fs : fieldSpecs) {
+        variants.put(fs.getName(), fs);
+      }
+      fieldSpecs.add(
+          new FieldSpec(choiceName, Shape.single(new InlineChoiceType(choiceName, variants))));
+    }
+
+    return fieldSpecs;
   }
 
   /**
@@ -180,6 +212,9 @@ class ResourceTypeInference {
       }
       for (final Map.Entry<?, ?> entry : map.entrySet()) {
         final String fieldName = (String) entry.getKey();
+        if (isAnnotation(fieldName)) {
+          continue;
+        }
         final Shape shape = inferShape(entry.getValue(), depth);
         mergedFields.merge(fieldName, shape, ResourceTypeInference::mergeShapes);
       }
@@ -248,6 +283,9 @@ class ResourceTypeInference {
   /**
    * Infer a ComplexType from a Map structure.
    *
+   * <p>Handles {@code __FHIR_TYPE__} annotation to produce a named complex type and {@code
+   * __CHOICE__} annotation to produce an {@link InlineChoiceType} field.
+   *
    * @param map The map representing a complex type
    * @param depth Current recursion depth
    * @return The inferred ComplexType
@@ -265,13 +303,12 @@ class ResourceTypeInference {
 
     @SuppressWarnings("unchecked")
     final Map<String, Object> typedMap = (Map<String, Object>) map;
+    final List<FieldSpec> fieldSpecs = inferFieldSpecs(typedMap, depth);
 
-    final List<FieldSpec> fieldSpecs = new ArrayList<>();
-    for (final Map.Entry<String, Object> entry : typedMap.entrySet()) {
-      final String fieldName = entry.getKey();
-      final Object value = entry.getValue();
-      final Shape shape = inferShape(value, depth);
-      fieldSpecs.add(new FieldSpec(fieldName, shape));
+    // If __FHIR_TYPE__ is present, use it as the type name (enables is/as/ofType matching)
+    final String fhirType = (String) typedMap.get(FHIR_TYPE_ANNOTATION);
+    if (fhirType != null) {
+      return new InlineComplexType(fhirType, fieldSpecs);
     }
 
     return new InlineComplexType(fieldSpecs);

@@ -17,12 +17,12 @@
 
 package com.example.fhirpath.compat;
 
+import static com.example.fhirpath.compat.CompatLiterals.toQuantity;
+
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 /** Tests for FHIRPath 'as' type-casting operator. */
-@Disabled("Requires Pathling FhirTypedLiteral support")
 public class AsOperatorDslTest extends CompatTestBase {
 
   @FhirPathTest
@@ -96,15 +96,15 @@ public class AsOperatorDslTest extends CompatTestBase {
         .group("'as' operator - namespace variations")
         // Test namespace handling
         .testEquals(
-            "PLACEHOLDER" /* toQuantity("11 'mg'") */,
+            toQuantity("11 'mg'"),
             "(11 'mg') as Quantity",
             "'as' operator works with unqualified type name")
         .testEquals(
-            "PLACEHOLDER" /* toQuantity("12 'cm'") */,
+            toQuantity("12 'cm'"),
             "(12 'cm') as System.Quantity",
             "'as' operator works with System namespace for Quantity")
         .testEquals(
-            "PLACEHOLDER" /* toQuantity("13 'mg'") */,
+            toQuantity("13 'mg'"),
             "(13 'mg') as FHIR.Quantity",
             "'as' operator works for System.Quantity with FHIR namespace")
         .group("'as' operator - edge cases")

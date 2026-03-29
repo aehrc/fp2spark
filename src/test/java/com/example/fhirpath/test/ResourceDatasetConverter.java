@@ -1,6 +1,7 @@
 package com.example.fhirpath.test;
 
 import com.example.fhirpath.typing.CodingValue;
+import com.example.fhirpath.typing.InlineComplexType;
 import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.TemporalValue;
@@ -66,10 +67,12 @@ class ResourceDatasetConverter {
       final ResourceType resourceType = resource.inferResourceType();
 
       // Step 2: Convert ResourceType to Spark schema (struct of fields)
-      // ResourceType for datasets is always an InlineComplexType subtype
-      final StructType fieldsSchema =
-          SCHEMA_CONVERTER.toStructType(
-              (com.example.fhirpath.typing.InlineComplexType) resourceType);
+      if (!(resourceType instanceof InlineComplexType inlineType)) {
+        throw new IllegalStateException(
+            "ResourceType must be an InlineComplexType for dataset conversion, got: "
+                + resourceType.getClass().getName());
+      }
+      final StructType fieldsSchema = SCHEMA_CONVERTER.toStructType(inlineType);
 
       // Step 3: Convert wrapper types to JSON-friendly forms, then serialize to JSON
       final Map<String, Object> jsonFriendlyData = toJsonFriendly(resource.getData());
@@ -104,7 +107,11 @@ class ResourceDatasetConverter {
   private static Map<String, Object> toJsonFriendly(@Nonnull final Map<String, Object> data) {
     final Map<String, Object> result = new HashMap<>();
     for (final Map.Entry<String, Object> entry : data.entrySet()) {
-      result.put(entry.getKey(), convertValue(entry.getValue()));
+      final String key = entry.getKey();
+      if (ResourceTypeInference.isAnnotation(key)) {
+        continue;
+      }
+      result.put(key, convertValue(entry.getValue()));
     }
     return result;
   }

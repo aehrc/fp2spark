@@ -21,7 +21,6 @@ import static org.hl7.fhir.r4.model.Enumerations.FHIRDefinedType.REFERENCE;
 
 import java.util.List;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 /**
@@ -49,7 +48,6 @@ public class JoinKeyFunctionsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Requires fhirType support")
   @FhirPathTest
   public Stream<DynamicTest> testGetReferenceKey() {
     return builder()
@@ -133,7 +131,6 @@ public class JoinKeyFunctionsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Requires fhirType support")
   @FhirPathTest
   public Stream<DynamicTest> testResourceKeyMatchesReferenceKeyWithVersionedId() {
     // This test demonstrates issue #2519: when a resource has a versioned ID in id_versioned,

@@ -1,28 +1,32 @@
 package com.example.fhirpath.test.assertion;
 
+import com.example.fhirpath.typing.CodingValue;
+import com.example.fhirpath.typing.QuantityValue;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
-import scala.collection.JavaConverters;
+import java.util.Map;
+import java.util.stream.IntStream;
+import org.apache.spark.sql.Row;
+import scala.jdk.javaapi.CollectionConverters;
 
 /**
  * Adapts expected test values to match actual value types returned by Spark.
  *
- * <p>This class handles type mismatches between convenient test value types (int, double) and
- * actual Spark return types (BigDecimal for FHIRPath DECIMAL).
+ * <p>This class handles type mismatches between convenient test value types (int, double,
+ * CodingValue, QuantityValue) and actual Spark return types (BigDecimal, Row).
  *
  * <p><b>Adaptation Rules:</b>
  *
  * <ul>
  *   <li>If actual is BigDecimal, adapt expected int/long/double/float to BigDecimal
- *   <li>For lists, assume monomorphic (detect element type from first non-null element)
- *   <li>No adaptation for incompatible type pairs (returns expected unchanged)
+ *   <li>CodingValue → Map with {system, code, version, display, userSelected}
+ *   <li>QuantityValue → Map with {value, unit, system, code}
+ *   <li>Spark Rows → Map (via {@link #convertScalaToJava})
+ *   <li>For lists, recursively adapt nested elements
  * </ul>
- *
- * <p><b>Rationale:</b> FHIRPath DECIMAL type maps to Java BigDecimal, but writing {@code
- * testEquals(new BigDecimal("5"), ...)} in every test is verbose. This adapter allows {@code
- * testEquals(5, ...)} while comparing against BigDecimal results correctly.
  */
 class TypeAdapter {
 
@@ -36,28 +40,32 @@ class TypeAdapter {
    * @return The adapted expected value, or original if no adaptation needed
    */
   @Nullable
-  Object adaptToActualType(@Nullable Object expected, @Nullable Object actual) {
+  Object adaptToActualType(@Nullable final Object expected, @Nullable final Object actual) {
     if (expected == null || actual == null) {
       return expected;
     }
 
-    // Convert Scala collections to Java collections for comparison
-    Object convertedActual = convertScalaToJava(actual);
+    // Convert Scala collections and Rows to Java equivalents for comparison
+    final Object convertedActual = convertScalaToJava(actual);
 
-    // Handle lists: adapt each element to match actual list's element type
+    // Handle lists: adapt each element by position (zip expected with actual)
     if (expected instanceof List<?> expectedList && convertedActual instanceof List<?> actualList) {
-      // Recursively adapt nested elements
-      return expectedList.stream()
-          .map(
-              e -> {
-                // Find corresponding actual element to determine target type
-                int index = expectedList.indexOf(e);
-                if (index >= 0 && index < actualList.size()) {
-                  return adaptToActualType(e, actualList.get(index));
-                }
-                return e;
-              })
+      final int actualSize = actualList.size();
+      return IntStream.range(0, expectedList.size())
+          .mapToObj(
+              i ->
+                  i < actualSize
+                      ? adaptToActualType(expectedList.get(i), actualList.get(i))
+                      : expectedList.get(i))
           .toList();
+    }
+
+    // Adapt CodingValue/QuantityValue to Map only when actual is also a Map (from Row conversion)
+    if (expected instanceof CodingValue cv && convertedActual instanceof Map) {
+      return codingValueToMap(cv);
+    }
+    if (expected instanceof QuantityValue qv && convertedActual instanceof Map) {
+      return quantityValueToMap(qv);
     }
 
     // Handle scalar values: adapt to actual type
@@ -65,25 +73,68 @@ class TypeAdapter {
   }
 
   /**
-   * Convert Scala collections to Java collections recursively.
+   * Convert Scala collections and Spark Rows to Java equivalents recursively.
    *
    * @param value The value to convert
-   * @return Java collection if value is Scala collection, otherwise original value
+   * @return Java collection/Map if value is Scala collection/Row, otherwise original value
    */
   @Nullable
-  Object convertScalaToJava(@Nullable Object value) {
+  Object convertScalaToJava(@Nullable final Object value) {
     if (value == null) {
       return null;
     }
 
     // Convert Scala Seq to Java List
     if (value instanceof scala.collection.Seq<?> scalaSeq) {
-      List<?> javaList = JavaConverters.seqAsJavaList(scalaSeq);
+      final List<?> javaList = CollectionConverters.asJava(scalaSeq);
       // Recursively convert nested collections
       return javaList.stream().map(this::convertScalaToJava).toList();
     }
 
+    // Convert Spark Row to Map for comparison with CodingValue/QuantityValue Maps
+    if (value instanceof Row row) {
+      return rowToMap(row);
+    }
+
     return value;
+  }
+
+  /** Converts a CodingValue to a Map matching the Spark Coding struct layout. */
+  @Nonnull
+  private static Map<String, Object> codingValueToMap(@Nonnull final CodingValue cv) {
+    final Map<String, Object> map = new HashMap<>();
+    map.put("system", cv.system());
+    map.put("code", cv.code());
+    map.put("version", cv.version());
+    map.put("display", cv.display());
+    map.put("userSelected", cv.userSelected());
+    return map;
+  }
+
+  /** Converts a QuantityValue to a Map matching the Spark Quantity struct layout. */
+  @Nonnull
+  private static Map<String, Object> quantityValueToMap(@Nonnull final QuantityValue qv) {
+    final Map<String, Object> map = new HashMap<>();
+    map.put("value", qv.value().stripTrailingZeros());
+    map.put("unit", qv.unit());
+    map.put("system", qv.system());
+    map.put("code", qv.code());
+    return map;
+  }
+
+  /** Converts a Spark Row to a Map for comparison, normalizing BigDecimal values. */
+  @Nonnull
+  private static Map<String, Object> rowToMap(@Nonnull final Row row) {
+    final Map<String, Object> map = new HashMap<>();
+    for (final String field : row.schema().fieldNames()) {
+      Object value = row.getAs(field);
+      // Normalize BigDecimal values (e.g., Spark DECIMAL(38,6) → stripped trailing zeros)
+      if (value instanceof BigDecimal bd) {
+        value = bd.stripTrailingZeros();
+      }
+      map.put(field, value);
+    }
+    return map;
   }
 
   /**
@@ -94,7 +145,7 @@ class TypeAdapter {
    * @return The adapted value, or original if no adaptation possible
    */
   @Nullable
-  private Object adaptValue(@Nullable Object value, @Nonnull Class<?> targetType) {
+  private Object adaptValue(@Nullable final Object value, @Nonnull final Class<?> targetType) {
     if (value == null) {
       return null;
     }
@@ -124,7 +175,7 @@ class TypeAdapter {
    * @return BigDecimal representation, or original value if not numeric
    */
   @Nullable
-  private Object adaptToBigDecimal(@Nonnull Object value) {
+  private Object adaptToBigDecimal(@Nonnull final Object value) {
     if (value instanceof Integer i) {
       return BigDecimal.valueOf(i);
     }
@@ -139,22 +190,5 @@ class TypeAdapter {
     }
     // Not a numeric type we can adapt
     return value;
-  }
-
-  /**
-   * Detect the element type of a list from its first non-null element.
-   *
-   * <p>Assumes lists are monomorphic (all elements have the same type).
-   *
-   * @param list The list to inspect
-   * @return The class of the first non-null element, or null if list is empty or all nulls
-   */
-  @Nullable
-  private Class<?> detectListElementType(@Nonnull List<?> list) {
-    return list.stream()
-        .filter(java.util.Objects::nonNull)
-        .findFirst()
-        .map(Object::getClass)
-        .orElse(null);
   }
 }

@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  * <p>Direct field traversal on a choice type is disallowed; users must first narrow to a specific
  * variant.
  */
-public final class ChoiceType implements Type {
+public final class ChoiceType implements ChoiceTypeLike {
 
   private static final Logger LOG = LoggerFactory.getLogger(ChoiceType.class);
 
@@ -72,9 +72,7 @@ public final class ChoiceType implements Type {
    */
   @Nonnull
   public Optional<FieldSpec> resolveVariant(@Nonnull final String typeName) {
-    // Build the column name: elementName + capitalize(typeName)
-    final String columnName =
-        elementName + typeName.substring(0, 1).toUpperCase() + typeName.substring(1);
+    final String columnName = ChoiceTypeLike.variantColumnName(elementName, typeName);
 
     // Check if this is a valid variant.
     // HAPI throws AssertionError (not IllegalArgumentException) for invalid child names

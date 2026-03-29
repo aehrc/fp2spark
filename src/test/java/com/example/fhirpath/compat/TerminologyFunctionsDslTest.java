@@ -26,5 +26,5 @@ import org.junit.jupiter.api.Disabled;
  * TerminologyServiceHelpers, FhirTypedLiteral, and Spring context support which are not available
  * in fp2sql.
  */
-@Disabled("Requires Pathling FhirTypedLiteral support")
+@Disabled("Requires terminology service support")
 public class TerminologyFunctionsDslTest extends CompatTestBase {}

@@ -22,7 +22,6 @@ import java.util.stream.Stream;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 /** Tests for FHIRPath path traversal related operations. */
@@ -95,7 +94,6 @@ public class SystemDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Requires choice type support")
   @FhirPathTest
   public Stream<DynamicTest> testBooleanEvaluation() {
     return builder()

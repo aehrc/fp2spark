@@ -8,8 +8,9 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 import org.apache.spark.sql.Row;
-import scala.collection.JavaConverters;
+import scala.jdk.javaapi.CollectionConverters;
 
 /**
  * Adapts expected test values to match actual value types returned by Spark.
@@ -39,27 +40,23 @@ class TypeAdapter {
    * @return The adapted expected value, or original if no adaptation needed
    */
   @Nullable
-  Object adaptToActualType(@Nullable Object expected, @Nullable Object actual) {
+  Object adaptToActualType(@Nullable final Object expected, @Nullable final Object actual) {
     if (expected == null || actual == null) {
       return expected;
     }
 
     // Convert Scala collections and Rows to Java equivalents for comparison
-    Object convertedActual = convertScalaToJava(actual);
+    final Object convertedActual = convertScalaToJava(actual);
 
-    // Handle lists: adapt each element to match actual list's element type
+    // Handle lists: adapt each element by position (zip expected with actual)
     if (expected instanceof List<?> expectedList && convertedActual instanceof List<?> actualList) {
-      // Recursively adapt nested elements
-      return expectedList.stream()
-          .map(
-              e -> {
-                // Find corresponding actual element to determine target type
-                int index = expectedList.indexOf(e);
-                if (index >= 0 && index < actualList.size()) {
-                  return adaptToActualType(e, actualList.get(index));
-                }
-                return e;
-              })
+      final int actualSize = actualList.size();
+      return IntStream.range(0, expectedList.size())
+          .mapToObj(
+              i ->
+                  i < actualSize
+                      ? adaptToActualType(expectedList.get(i), actualList.get(i))
+                      : expectedList.get(i))
           .toList();
     }
 
@@ -84,14 +81,14 @@ class TypeAdapter {
    * @return Java collection/Map if value is Scala collection/Row, otherwise original value
    */
   @Nullable
-  Object convertScalaToJava(@Nullable Object value) {
+  Object convertScalaToJava(@Nullable final Object value) {
     if (value == null) {
       return null;
     }
 
     // Convert Scala Seq to Java List
     if (value instanceof scala.collection.Seq<?> scalaSeq) {
-      List<?> javaList = JavaConverters.seqAsJavaList(scalaSeq);
+      final List<?> javaList = CollectionConverters.asJava(scalaSeq);
       // Recursively convert nested collections
       return javaList.stream().map(this::convertScalaToJava).toList();
     }
@@ -150,7 +147,7 @@ class TypeAdapter {
    * @return The adapted value, or original if no adaptation possible
    */
   @Nullable
-  private Object adaptValue(@Nullable Object value, @Nonnull Class<?> targetType) {
+  private Object adaptValue(@Nullable final Object value, @Nonnull final Class<?> targetType) {
     if (value == null) {
       return null;
     }
@@ -180,7 +177,7 @@ class TypeAdapter {
    * @return BigDecimal representation, or original value if not numeric
    */
   @Nullable
-  private Object adaptToBigDecimal(@Nonnull Object value) {
+  private Object adaptToBigDecimal(@Nonnull final Object value) {
     if (value instanceof Integer i) {
       return BigDecimal.valueOf(i);
     }

@@ -123,8 +123,10 @@ class SparkSchemaConverter {
     }
 
     if (type instanceof InlineChoiceType) {
-      // Choice types are not materialized in Spark — variant columns exist as siblings.
-      return DataTypes.NullType;
+      // InlineChoiceType fields are skipped in toStructType() so this should be unreachable.
+      throw new IllegalStateException(
+          "InlineChoiceType should not reach toBaseType — "
+              + "toStructType() must skip choice fields");
     }
 
     if (type instanceof InlineComplexType inlineComplexType) {

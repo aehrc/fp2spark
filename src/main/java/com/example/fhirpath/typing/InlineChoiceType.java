@@ -45,6 +45,15 @@ public final class InlineChoiceType implements ChoiceTypeLike {
     return false;
   }
 
+  /**
+   * Direct field traversal is disallowed on choice types. Users must narrow via {@code ofType()},
+   * {@code is}, or {@code as} first.
+   */
+  @Override
+  public Optional<FieldSpec> resolveField(@Nonnull final String fieldName) {
+    return Optional.empty();
+  }
+
   @Override
   @Nonnull
   public Optional<FieldSpec> resolveVariant(@Nonnull final String typeName) {

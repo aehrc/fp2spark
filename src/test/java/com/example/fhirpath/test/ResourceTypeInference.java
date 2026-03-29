@@ -91,7 +91,7 @@ class ResourceTypeInference {
   }
 
   /** Returns true if a map key is a metadata annotation (not a real field). */
-  private static boolean isAnnotation(@Nonnull final String key) {
+  static boolean isAnnotation(@Nonnull final String key) {
     return key.startsWith("__") && key.endsWith("__");
   }
 
@@ -212,6 +212,9 @@ class ResourceTypeInference {
       }
       for (final Map.Entry<?, ?> entry : map.entrySet()) {
         final String fieldName = (String) entry.getKey();
+        if (isAnnotation(fieldName)) {
+          continue;
+        }
         final Shape shape = inferShape(entry.getValue(), depth);
         mergedFields.merge(fieldName, shape, ResourceTypeInference::mergeShapes);
       }

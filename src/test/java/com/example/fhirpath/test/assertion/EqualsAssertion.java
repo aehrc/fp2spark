@@ -1,10 +1,13 @@
 package com.example.fhirpath.test.assertion;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Assertion that checks equality with an expected value.
@@ -36,7 +39,7 @@ public record EqualsAssertion(@Nullable Object expected) implements Assertion {
         && adaptedActual instanceof List<?> actualList) {
       assertListEquals(expectedList, actualList);
     } else {
-      assertEquals(
+      assertValuesEqual(
           adaptedExpected, adaptedActual, "Expression result does not match expected value");
     }
   }
@@ -70,7 +73,47 @@ public record EqualsAssertion(@Nullable Object expected) implements Assertion {
       Object adaptedExpected = TYPE_ADAPTER.adaptToActualType(expectedElement, actualElement);
       Object adaptedActual = TYPE_ADAPTER.convertScalaToJava(actualElement);
 
-      assertEquals(adaptedExpected, adaptedActual, "List element at index " + i + " doesn't match");
+      assertValuesEqual(
+          adaptedExpected, adaptedActual, "List element at index " + i + " doesn't match");
+    }
+  }
+
+  /**
+   * Asserts that two values are equal, using {@link BigDecimal#compareTo} for numeric comparison to
+   * avoid scale-sensitive {@link BigDecimal#equals} failures (e.g., {@code 120} vs {@code 1.2E+2}).
+   */
+  @SuppressWarnings("unchecked")
+  private static void assertValuesEqual(
+      @Nullable final Object expected,
+      @Nullable final Object actual,
+      @Nonnull final String message) {
+    if (expected instanceof BigDecimal expectedBd && actual instanceof BigDecimal actualBd) {
+      assertTrue(
+          expectedBd.compareTo(actualBd) == 0,
+          () ->
+              message
+                  + " expected: "
+                  + expectedBd.toPlainString()
+                  + ", was: "
+                  + actualBd.toPlainString());
+    } else if (expected instanceof Map<?, ?> expectedMap && actual instanceof Map<?, ?> actualMap) {
+      assertMapEquals((Map<String, Object>) expectedMap, (Map<String, Object>) actualMap, message);
+    } else {
+      assertEquals(expected, actual, message);
+    }
+  }
+
+  /**
+   * Asserts that two maps are equal, delegating value comparison to {@link #assertValuesEqual} so
+   * that BigDecimal values are compared numerically.
+   */
+  private static void assertMapEquals(
+      @Nonnull final Map<String, Object> expected,
+      @Nonnull final Map<String, Object> actual,
+      @Nonnull final String message) {
+    assertEquals(expected.keySet(), actual.keySet(), message + " (map keys differ)");
+    for (final String key : expected.keySet()) {
+      assertValuesEqual(expected.get(key), actual.get(key), message + " [key=" + key + "]");
     }
   }
 }

@@ -23,9 +23,9 @@ public class TemporalTypeFoundationTest {
 
   @Test
   void typeNames() {
-    assertEquals("date", PrimitiveType.DATE.getName());
-    assertEquals("dateTime", PrimitiveType.DATE_TIME.getName());
-    assertEquals("time", PrimitiveType.TIME.getName());
+    assertEquals("Date", PrimitiveType.DATE.getName());
+    assertEquals("DateTime", PrimitiveType.DATE_TIME.getName());
+    assertEquals("Time", PrimitiveType.TIME.getName());
   }
 
   @Test

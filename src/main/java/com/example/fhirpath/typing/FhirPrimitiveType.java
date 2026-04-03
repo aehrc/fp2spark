@@ -2,6 +2,7 @@ package com.example.fhirpath.typing;
 
 import jakarta.annotation.Nonnull;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -78,6 +79,27 @@ public final class FhirPrimitiveType implements Type {
    */
   public static boolean isKnown(@Nonnull final String fhirName) {
     return FHIR_TO_SYSTEM.containsKey(fhirName);
+  }
+
+  /**
+   * Returns the System type that the given FHIR type name maps to, if known.
+   *
+   * @param fhirName the FHIR type name (e.g., "string", "date", "code")
+   * @return the corresponding PrimitiveType, or empty if the name is not a known FHIR primitive
+   */
+  @Nonnull
+  public static Optional<PrimitiveType> systemTypeFor(@Nonnull final String fhirName) {
+    return Optional.ofNullable(FHIR_TO_SYSTEM.get(fhirName));
+  }
+
+  /**
+   * Returns the FHIR type name (e.g., "string", "boolean", "date").
+   *
+   * @return the unqualified FHIR type name
+   */
+  @Nonnull
+  public String getFhirName() {
+    return fhirName;
   }
 
   /**

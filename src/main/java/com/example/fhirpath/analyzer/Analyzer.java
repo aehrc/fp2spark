@@ -28,7 +28,6 @@ import com.example.fhirpath.typing.ChoiceTypeLike;
 import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.DateTimeValue;
 import com.example.fhirpath.typing.DateValue;
-import com.example.fhirpath.typing.FhirPrimitiveType;
 import com.example.fhirpath.typing.FieldSpec;
 import com.example.fhirpath.typing.InlineResourceType;
 import com.example.fhirpath.typing.LambdaType;
@@ -37,6 +36,7 @@ import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.TimeValue;
 import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.TypeSpecifier;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -511,8 +511,7 @@ public class Analyzer {
       return Optional.empty();
     }
 
-    // Extract type specifier string from argument
-    final String typeSpec = extractTypeSpecifier(call);
+    final TypeSpecifier typeSpec = extractTypeSpecifier(call);
     final Type targetType = targetIr.getType();
 
     if (targetType instanceof ChoiceTypeLike choiceType) {
@@ -524,42 +523,68 @@ public class Analyzer {
   }
 
   /**
-   * Extracts the type specifier string from a function call argument.
+   * Extracts a validated TypeSpecifier from a function call argument.
    *
    * <p>Handles both desugared is/as (AstLiteral("Quantity")) and ofType(Quantity) parsed as
    * AstTraversal. Also used by {@code getReferenceKey(Type)} for its optional type argument.
    */
   @Nonnull
-  private String extractTypeSpecifier(@Nonnull final AstFunctionCall call) {
+  private TypeSpecifier extractTypeSpecifier(@Nonnull final AstFunctionCall call) {
     if (call.arguments().isEmpty()) {
       throw new InvalidExpressionException(
           "Function '" + call.functionName() + "' requires a type argument", null);
     }
     final AstNode arg = call.arguments().get(0);
+    final String raw;
     if (arg instanceof AstLiteral lit && lit.value() instanceof String s) {
-      return stripNamespace(s);
+      raw = s;
+    } else if (arg instanceof AstTraversal trav) {
+      raw = reconstructQualifiedName(trav);
+    } else {
+      throw new InvalidExpressionException(
+          "Function '"
+              + call.functionName()
+              + "' requires a type specifier, got: "
+              + arg.getClass().getSimpleName(),
+          null);
     }
-    if (arg instanceof AstTraversal trav) {
-      return stripNamespace(trav.path());
+    try {
+      return TypeSpecifier.fromExpression(raw);
+    } catch (final IllegalArgumentException e) {
+      throw new InvalidExpressionException(
+          "Invalid type specifier '" + raw + "': " + e.getMessage(), null);
     }
-    throw new InvalidExpressionException(
-        "Function '"
-            + call.functionName()
-            + "' requires a type specifier, got: "
-            + arg.getClass().getSimpleName(),
-        null);
   }
 
-  /** Strips namespace prefix (e.g., "FHIR.Quantity" → "Quantity", "System.Coding" → "Coding"). */
+  /**
+   * Reconstructs a qualified type name from a traversal chain.
+   *
+   * <p>When a qualified type specifier like {@code System.HumanName} is parsed as a function
+   * argument, the parser creates a chain of traversals: {@code AstTraversal("HumanName",
+   * target=AstTraversal("System"))}. This method walks the chain to reconstruct the dotted name.
+   *
+   * <p>For unqualified names (e.g., {@code ofType(Quantity)}), the traversal has no target and the
+   * bare path is returned directly.
+   *
+   * @param trav the traversal node representing the type specifier argument
+   * @return the reconstructed type name (e.g., "System.HumanName" or "Quantity")
+   */
   @Nonnull
-  private static String stripNamespace(@Nonnull final String typeSpec) {
-    if (typeSpec.startsWith("FHIR.")) {
-      return typeSpec.substring("FHIR.".length());
+  private static String reconstructQualifiedName(@Nonnull final AstTraversal trav) {
+    if (trav.target() instanceof AstTraversal parent) {
+      if (parent.target() != null) {
+        throw new InvalidExpressionException(
+            "Type specifier must have at most one namespace qualifier, got: "
+                + parent.target()
+                + "."
+                + parent.path()
+                + "."
+                + trav.path(),
+            null);
+      }
+      return parent.path() + "." + trav.path();
     }
-    if (typeSpec.startsWith("System.")) {
-      return typeSpec.substring("System.".length());
-    }
-    return typeSpec;
+    return trav.path();
   }
 
   /**
@@ -575,8 +600,8 @@ public class Analyzer {
       @Nonnull final String operation,
       @Nonnull final ChoiceTypeLike choiceType,
       @Nonnull final IRNode targetIr,
-      @Nonnull final String typeSpec) {
-    final Optional<FieldSpec> variant = choiceType.resolveVariant(typeSpec);
+      @Nonnull final TypeSpecifier typeSpec) {
+    final Optional<FieldSpec> variant = choiceType.resolveVariant(typeSpec.toFhirVariantName());
     if (variant.isEmpty()) {
       // Unknown variant — return empty for ofType/as, false for is
       if ("is".equals(operation)) {
@@ -609,8 +634,8 @@ public class Analyzer {
   private IRNode resolveNonChoiceTypeOperation(
       @Nonnull final String operation,
       @Nonnull final IRNode targetIr,
-      @Nonnull final String typeSpec) {
-    final boolean matches = typeMatches(targetIr.getType(), typeSpec);
+      @Nonnull final TypeSpecifier typeSpec) {
+    final boolean matches = typeSpec.matchesType(targetIr.getType());
 
     return switch (operation) {
       case "is" -> new Literal(matches, Types.BOOLEAN);
@@ -618,23 +643,6 @@ public class Analyzer {
       case "ofType" -> matches ? targetIr : new Literal(null, Types.NULL);
       default -> throw new IllegalStateException("Unexpected type operation: " + operation);
     };
-  }
-
-  /**
-   * Checks whether a type matches a type specifier string.
-   *
-   * <p>Matches against both the FHIR type name (for FhirPrimitiveType) and common type names.
-   */
-  private static boolean typeMatches(@Nonnull final Type type, @Nonnull final String typeSpec) {
-    // Check FHIR primitive type by its FHIR name (e.g., "boolean", "string", "date")
-    if (type instanceof FhirPrimitiveType fpt) {
-      // Match against FHIR name (strip "FHIR." prefix from getName())
-      final String fhirName = fpt.getName().replace("FHIR.", "");
-      return fhirName.equals(typeSpec);
-    }
-
-    // Check complex types by name
-    return type.getName().equals(typeSpec);
   }
 
   /**
@@ -702,9 +710,11 @@ public class Analyzer {
       return new Operation("getReferenceKey", List.of(targetIr), sig);
     }
     // Extract type specifier from argument
-    final String typeSpec = extractTypeSpecifier(call);
+    final TypeSpecifier typeSpec = extractTypeSpecifier(call);
     return new Operation(
-        "getReferenceKey", List.of(targetIr, new Literal(typeSpec, Types.STRING)), sig);
+        "getReferenceKey",
+        List.of(targetIr, new Literal(typeSpec.getTypeName(), Types.STRING)),
+        sig);
   }
 
   private Type inferType(final Object value) {

@@ -1,6 +1,11 @@
 package com.example.fhirpath.typing;
 
+import jakarta.annotation.Nonnull;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Enumeration of FHIRPath primitive types.
@@ -12,22 +17,38 @@ import java.util.Optional;
  * Cardinality} specifies how many elements (0..1 or 0..*).
  */
 public enum PrimitiveType implements Type {
-  INTEGER("integer"),
-  DECIMAL("decimal"),
-  BOOLEAN("boolean"),
-  STRING("string"),
-  DATE("date"),
-  DATE_TIME("dateTime"),
-  TIME("time"),
-  QUANTITY("quantity"),
+  INTEGER("Integer"),
+  DECIMAL("Decimal"),
+  BOOLEAN("Boolean"),
+  STRING("String"),
+  DATE("Date"),
+  DATE_TIME("DateTime"),
+  TIME("Time"),
+  QUANTITY("Quantity"),
   CODING("Coding"),
   NULL("null"),
   ANY("unknown");
+
+  private static final Map<String, PrimitiveType> BY_NAME =
+      Stream.of(values())
+          .filter(t -> t != NULL && t != ANY)
+          .collect(Collectors.toUnmodifiableMap(PrimitiveType::getName, Function.identity()));
 
   private final String name;
 
   PrimitiveType(final String name) {
     this.name = name;
+  }
+
+  /**
+   * Returns the PrimitiveType for the given name, if one exists.
+   *
+   * @param name the type name (e.g., "String", "Integer", "Coding")
+   * @return the matching PrimitiveType, or empty if not found
+   */
+  @Nonnull
+  public static Optional<PrimitiveType> fromName(@Nonnull final String name) {
+    return Optional.ofNullable(BY_NAME.get(name));
   }
 
   @Override

@@ -12,14 +12,14 @@ import java.util.Optional;
  * Cardinality} specifies how many elements (0..1 or 0..*).
  */
 public enum PrimitiveType implements Type {
-  INTEGER("integer"),
-  DECIMAL("decimal"),
-  BOOLEAN("boolean"),
-  STRING("string"),
-  DATE("date"),
-  DATE_TIME("dateTime"),
-  TIME("time"),
-  QUANTITY("quantity"),
+  INTEGER("Integer"),
+  DECIMAL("Decimal"),
+  BOOLEAN("Boolean"),
+  STRING("String"),
+  DATE("Date"),
+  DATE_TIME("DateTime"),
+  TIME("Time"),
+  QUANTITY("Quantity"),
   CODING("Coding"),
   NULL("null"),
   ANY("unknown");

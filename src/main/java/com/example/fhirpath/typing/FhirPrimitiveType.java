@@ -81,6 +81,16 @@ public final class FhirPrimitiveType implements Type {
   }
 
   /**
+   * Returns the FHIR type name (e.g., "string", "boolean", "date").
+   *
+   * @return the unqualified FHIR type name
+   */
+  @Nonnull
+  public String getFhirName() {
+    return fhirName;
+  }
+
+  /**
    * Returns the underlying FHIRPath System type.
    *
    * @return the System type that this FHIR type maps to

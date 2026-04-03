@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Infers ResourceType from Map-based test data structures.
@@ -113,16 +114,7 @@ class ResourceTypeInference {
       fieldSpecs.add(new FieldSpec(entry.getKey(), shape));
     }
 
-    // If __CHOICE__ is present, add an InlineChoiceType field whose variants are all sibling
-    // fields. The variant columns remain as siblings (Spark needs flat columns).
-    if (choiceName != null) {
-      final Map<String, FieldSpec> variants = new LinkedHashMap<>();
-      for (final FieldSpec fs : fieldSpecs) {
-        variants.put(fs.getName(), fs);
-      }
-      fieldSpecs.add(
-          new FieldSpec(choiceName, Shape.single(new InlineChoiceType(choiceName, variants))));
-    }
+    addChoiceTypeIfPresent(fieldSpecs, choiceName);
 
     return fieldSpecs;
   }
@@ -192,10 +184,32 @@ class ResourceTypeInference {
   }
 
   /**
+   * If a choice name is present, adds an {@link InlineChoiceType} field whose variants are all
+   * existing fields in the list. The variant columns remain as siblings (Spark needs flat columns).
+   *
+   * @param fieldSpecs the mutable list of field specs to append to
+   * @param choiceName the choice base name, or {@code null} if no choice annotation was found
+   */
+  private static void addChoiceTypeIfPresent(
+      @Nonnull final List<FieldSpec> fieldSpecs, @Nullable final String choiceName) {
+    if (choiceName != null) {
+      final Map<String, FieldSpec> variants = new LinkedHashMap<>();
+      for (final FieldSpec fs : fieldSpecs) {
+        variants.put(fs.getName(), fs);
+      }
+      fieldSpecs.add(
+          new FieldSpec(choiceName, Shape.single(new InlineChoiceType(choiceName, variants))));
+    }
+  }
+
+  /**
    * Merge field specs from all Map elements in a list to produce a complete ComplexType.
    *
    * <p>This handles the case where a field is null in some elements but has a concrete type in
    * others. The merged type uses the first non-null type found for each field.
+   *
+   * <p>If any element carries a {@code __CHOICE__} annotation, the choice type schema is propagated
+   * to the merged result so that all elements share the same choice type structure.
    *
    * @param list The list of Map elements
    * @param depth Current recursion depth
@@ -204,11 +218,15 @@ class ResourceTypeInference {
   @Nonnull
   private static ComplexType mergeComplexTypes(@Nonnull final List<?> list, final int depth) {
     final Map<String, Shape> mergedFields = new LinkedHashMap<>();
+    String choiceName = null;
 
     for (final Object element : list) {
       if (!(element instanceof Map<?, ?> map)) {
         throw new IllegalArgumentException(
             "Expected Map element in complex type list, found: " + element.getClass().getName());
+      }
+      if (choiceName == null) {
+        choiceName = (String) map.get(CHOICE_ANNOTATION);
       }
       for (final Map.Entry<?, ?> entry : map.entrySet()) {
         final String fieldName = (String) entry.getKey();
@@ -221,7 +239,12 @@ class ResourceTypeInference {
     }
 
     final List<FieldSpec> fieldSpecs =
-        mergedFields.entrySet().stream().map(e -> new FieldSpec(e.getKey(), e.getValue())).toList();
+        mergedFields.entrySet().stream()
+            .map(e -> new FieldSpec(e.getKey(), e.getValue()))
+            .collect(Collectors.toCollection(ArrayList::new));
+
+    addChoiceTypeIfPresent(fieldSpecs, choiceName);
+
     return new InlineComplexType(fieldSpecs);
   }
 

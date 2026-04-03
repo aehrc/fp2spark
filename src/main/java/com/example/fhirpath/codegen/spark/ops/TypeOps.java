@@ -1,14 +1,21 @@
 package com.example.fhirpath.codegen.spark.ops;
 
-import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
+import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 
 /**
  * Spark code generation for type testing operations.
  *
- * <p>The {@code is} operator checks whether a value is non-null (used after narrowing a choice type
- * to a specific variant column).
+ * <p>The {@code is} operator has two forms:
+ *
+ * <ul>
+ *   <li><b>Unary (choice type):</b> checks whether a variant column is non-null. Created by {@code
+ *       Analyzer.resolveChoiceTypeOperation()}.
+ *   <li><b>Binary (non-choice type):</b> null-propagating static type match. The first argument is
+ *       the value, the second is a boolean literal indicating the static match result. Created by
+ *       {@code Analyzer.resolveNonChoiceTypeOperation()}.
+ * </ul>
  *
  * <p>The {@code ofType} and {@code as} operators are resolved to {@link
  * com.example.fhirpath.ir.Traversal} nodes by the Analyzer, so they use existing traversal code
@@ -24,8 +31,15 @@ public final class TypeOps {
    * @param registry the registry to register operations into
    */
   public static void register(final SparkOperationRegistry registry) {
-    // is: check if the variant column is non-null.
-    // Corresponds to the IR Operation("is", ...) created by Analyzer.resolveChoiceTypeOperation().
-    registry.register("is", unary(col -> col.isNotNull()));
+    registry.register(
+        "is",
+        ctx -> {
+          if (ctx.args().size() == 2) {
+            // Non-choice: CASE WHEN value IS NOT NULL THEN match_result ELSE NULL END
+            return when(ctx.arg(0).isNotNull(), ctx.arg(1));
+          }
+          // Choice type: variant column null check
+          return ctx.arg(0).isNotNull();
+        });
   }
 }

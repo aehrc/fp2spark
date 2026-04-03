@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Infers ResourceType from Map-based test data structures.
@@ -224,12 +225,12 @@ class ResourceTypeInference {
         throw new IllegalArgumentException(
             "Expected Map element in complex type list, found: " + element.getClass().getName());
       }
+      if (choiceName == null) {
+        choiceName = (String) map.get(CHOICE_ANNOTATION);
+      }
       for (final Map.Entry<?, ?> entry : map.entrySet()) {
         final String fieldName = (String) entry.getKey();
         if (isAnnotation(fieldName)) {
-          if (CHOICE_ANNOTATION.equals(fieldName) && choiceName == null) {
-            choiceName = (String) entry.getValue();
-          }
           continue;
         }
         final Shape shape = inferShape(entry.getValue(), depth);
@@ -238,10 +239,9 @@ class ResourceTypeInference {
     }
 
     final List<FieldSpec> fieldSpecs =
-        new ArrayList<>(
-            mergedFields.entrySet().stream()
-                .map(e -> new FieldSpec(e.getKey(), e.getValue()))
-                .toList());
+        mergedFields.entrySet().stream()
+            .map(e -> new FieldSpec(e.getKey(), e.getValue()))
+            .collect(Collectors.toCollection(ArrayList::new));
 
     addChoiceTypeIfPresent(fieldSpecs, choiceName);
 

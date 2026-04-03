@@ -2,7 +2,9 @@ package com.example.fhirpath.typing;
 
 import jakarta.annotation.Nonnull;
 import java.util.Map;
-import org.hl7.fhir.exceptions.FHIRException;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.hl7.fhir.r4.model.Enumerations.FHIRDefinedType;
 
 /**
@@ -23,27 +25,12 @@ public final class TypeSpecifier {
   /** The namespace identifier for FHIR types. */
   public static final String FHIR_NAMESPACE = "FHIR";
 
-  /** Maps capitalized System type names to their PrimitiveType enum values. */
-  private static final Map<String, PrimitiveType> SYSTEM_NAME_TO_PRIMITIVE =
-      Map.of(
-          "String", PrimitiveType.STRING,
-          "Integer", PrimitiveType.INTEGER,
-          "Decimal", PrimitiveType.DECIMAL,
-          "Boolean", PrimitiveType.BOOLEAN,
-          "Date", PrimitiveType.DATE,
-          "DateTime", PrimitiveType.DATE_TIME,
-          "Time", PrimitiveType.TIME,
-          "Quantity", PrimitiveType.QUANTITY,
-          "Coding", PrimitiveType.CODING);
-
-  /**
-   * Additional FHIR type names that map to PrimitiveType but are not in {@link FhirPrimitiveType}'s
-   * FHIR-to-System mapping. These are complex types that also exist at the System level.
-   */
-  private static final Map<String, PrimitiveType> FHIR_COMPLEX_AS_PRIMITIVE =
-      Map.of(
-          "Coding", PrimitiveType.CODING,
-          "Quantity", PrimitiveType.QUANTITY);
+  /** Pre-built set of valid FHIR type codes, avoiding exception-driven control flow. */
+  private static final Set<String> VALID_FHIR_TYPES =
+      Stream.of(FHIRDefinedType.values())
+          .filter(t -> t != FHIRDefinedType.NULL)
+          .map(FHIRDefinedType::toCode)
+          .collect(Collectors.toUnmodifiableSet());
 
   /**
    * Maps System type names to their default FHIR variant names. Used by {@link
@@ -182,20 +169,16 @@ public final class TypeSpecifier {
   }
 
   private boolean matchesSystemType(@Nonnull final Type type) {
-    final PrimitiveType expected = SYSTEM_NAME_TO_PRIMITIVE.get(typeName);
+    final PrimitiveType expected = PrimitiveType.fromName(typeName).orElse(null);
     if (expected == null) {
-      // System namespace type that is not a primitive — cannot match anything
       return false;
     }
-
     if (type instanceof PrimitiveType pt) {
       return pt == expected;
     }
     if (type instanceof FhirPrimitiveType fpt) {
       return fpt.getSystemType() == expected;
     }
-    // Complex types (FhirComplexType, InlineComplexType) are never System types
-    // except Coding/Quantity which are handled through PrimitiveType path
     return false;
   }
 
@@ -204,12 +187,12 @@ public final class TypeSpecifier {
       return typeName.equals(fpt.getFhirName());
     }
     if (type instanceof PrimitiveType pt) {
-      // Inline subjects use PrimitiveType directly — reverse-map FHIR name to PrimitiveType.
-      // Delegates to FhirPrimitiveType for primitive FHIR types, with fallback to
-      // FHIR_COMPLEX_AS_PRIMITIVE for Coding/Quantity which are complex System types
-      // modelled as PrimitiveType in this system.
+      // Inline subjects use PrimitiveType directly — map FHIR name to PrimitiveType
+      // via FhirPrimitiveType (for primitives like "string"→STRING) with fallback to
+      // PrimitiveType.fromName() (for Coding/Quantity which share names across namespaces).
       final PrimitiveType mapped =
-          FhirPrimitiveType.systemTypeFor(typeName).orElse(FHIR_COMPLEX_AS_PRIMITIVE.get(typeName));
+          FhirPrimitiveType.systemTypeFor(typeName)
+              .orElseGet(() -> PrimitiveType.fromName(typeName).orElse(null));
       return mapped != null && mapped == pt;
     }
     if (type instanceof ComplexType ct) {
@@ -248,12 +231,11 @@ public final class TypeSpecifier {
       if (!isValidFhirType(typeName)) {
         throw new IllegalArgumentException("Invalid FHIR type: " + namespace + "." + typeName);
       }
-    } else if (SYSTEM_NAMESPACE.equals(namespace)) {
+    } else {
+      assert SYSTEM_NAMESPACE.equals(namespace) : "Unexpected namespace: " + namespace;
       if (!isValidSystemType(typeName)) {
         throw new IllegalArgumentException("Invalid System type: " + namespace + "." + typeName);
       }
-    } else {
-      throw new IllegalArgumentException("Invalid namespace: " + namespace);
     }
     return new TypeSpecifier(namespace, typeName);
   }
@@ -271,14 +253,10 @@ public final class TypeSpecifier {
   }
 
   private static boolean isValidFhirType(@Nonnull final String typeName) {
-    try {
-      return FHIRDefinedType.fromCode(typeName) != null;
-    } catch (final FHIRException e) {
-      return false;
-    }
+    return VALID_FHIR_TYPES.contains(typeName);
   }
 
   private static boolean isValidSystemType(@Nonnull final String typeName) {
-    return SYSTEM_NAME_TO_PRIMITIVE.containsKey(typeName);
+    return PrimitiveType.fromName(typeName).isPresent();
   }
 }

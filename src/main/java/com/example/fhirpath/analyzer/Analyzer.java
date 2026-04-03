@@ -511,7 +511,6 @@ public class Analyzer {
       return Optional.empty();
     }
 
-    // Extract and validate type specifier from argument
     final TypeSpecifier typeSpec = extractTypeSpecifier(call);
     final Type targetType = targetIr.getType();
 

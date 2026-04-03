@@ -563,10 +563,26 @@ public class Analyzer {
    * <p>When a qualified type specifier like {@code System.HumanName} is parsed as a function
    * argument, the parser creates a chain of traversals: {@code AstTraversal("HumanName",
    * target=AstTraversal("System"))}. This method walks the chain to reconstruct the dotted name.
+   *
+   * <p>For unqualified names (e.g., {@code ofType(Quantity)}), the traversal has no target and the
+   * bare path is returned directly.
+   *
+   * @param trav the traversal node representing the type specifier argument
+   * @return the reconstructed type name (e.g., "System.HumanName" or "Quantity")
    */
   @Nonnull
   private static String reconstructQualifiedName(@Nonnull final AstTraversal trav) {
-    if (trav.target() instanceof AstTraversal parent && parent.target() == null) {
+    if (trav.target() instanceof AstTraversal parent) {
+      if (parent.target() != null) {
+        throw new InvalidExpressionException(
+            "Type specifier must have at most one namespace qualifier, got: "
+                + parent.target()
+                + "."
+                + parent.path()
+                + "."
+                + trav.path(),
+            null);
+      }
       return parent.path() + "." + trav.path();
     }
     return trav.path();

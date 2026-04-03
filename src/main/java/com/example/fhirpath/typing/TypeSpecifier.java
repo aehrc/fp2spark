@@ -37,38 +37,22 @@ public final class TypeSpecifier {
           "Coding", PrimitiveType.CODING);
 
   /**
-   * Maps FHIR type codes to their corresponding PrimitiveType. Includes all entries from {@link
-   * FhirPrimitiveType}'s FHIR-to-System mapping plus complex types that also exist at the System
-   * level (Coding, Quantity).
+   * Additional FHIR type names that map to PrimitiveType but are not in {@link FhirPrimitiveType}'s
+   * FHIR-to-System mapping. These are complex types that also exist at the System level.
    */
-  private static final Map<String, PrimitiveType> FHIR_NAME_TO_PRIMITIVE =
-      Map.ofEntries(
-          Map.entry("boolean", PrimitiveType.BOOLEAN),
-          Map.entry("string", PrimitiveType.STRING),
-          Map.entry("uri", PrimitiveType.STRING),
-          Map.entry("url", PrimitiveType.STRING),
-          Map.entry("canonical", PrimitiveType.STRING),
-          Map.entry("code", PrimitiveType.STRING),
-          Map.entry("oid", PrimitiveType.STRING),
-          Map.entry("id", PrimitiveType.STRING),
-          Map.entry("uuid", PrimitiveType.STRING),
-          Map.entry("markdown", PrimitiveType.STRING),
-          Map.entry("base64Binary", PrimitiveType.STRING),
-          Map.entry("integer", PrimitiveType.INTEGER),
-          Map.entry("unsignedInt", PrimitiveType.INTEGER),
-          Map.entry("positiveInt", PrimitiveType.INTEGER),
-          Map.entry("decimal", PrimitiveType.DECIMAL),
-          Map.entry("date", PrimitiveType.DATE),
-          Map.entry("dateTime", PrimitiveType.DATE_TIME),
-          Map.entry("instant", PrimitiveType.DATE_TIME),
-          Map.entry("time", PrimitiveType.TIME),
-          Map.entry("Coding", PrimitiveType.CODING),
-          Map.entry("Quantity", PrimitiveType.QUANTITY));
+  private static final Map<String, PrimitiveType> FHIR_COMPLEX_AS_PRIMITIVE =
+      Map.of(
+          "Coding", PrimitiveType.CODING,
+          "Quantity", PrimitiveType.QUANTITY);
 
   /**
    * Maps System type names to their default FHIR variant names. Used by {@link
    * #toFhirVariantName()} to convert System namespace specifiers to FHIR column names for choice
    * type resolution.
+   *
+   * <p>This cannot be derived by inverting the FHIR→System mapping because that mapping is
+   * many-to-one (e.g., "uri", "code", "markdown" all map to System.String). A canonical FHIR name
+   * must be chosen per System type.
    */
   private static final Map<String, String> SYSTEM_TO_FHIR_VARIANT =
       Map.of(
@@ -131,18 +115,30 @@ public final class TypeSpecifier {
     return namespace;
   }
 
-  /** Returns the unqualified type name (e.g., "String", "boolean", "HumanName"). */
+  /**
+   * Returns the unqualified type name (e.g., "String", "boolean", "HumanName").
+   *
+   * @return the type name without namespace prefix
+   */
   @Nonnull
   public String getTypeName() {
     return typeName;
   }
 
-  /** Returns whether this is a FHIR namespace type specifier. */
+  /**
+   * Returns whether this is a FHIR namespace type specifier.
+   *
+   * @return true if the namespace is {@value #FHIR_NAMESPACE}
+   */
   public boolean isFhirType() {
     return FHIR_NAMESPACE.equals(namespace);
   }
 
-  /** Returns whether this is a System namespace type specifier. */
+  /**
+   * Returns whether this is a System namespace type specifier.
+   *
+   * @return true if the namespace is {@value #SYSTEM_NAMESPACE}
+   */
   public boolean isSystemType() {
     return SYSTEM_NAMESPACE.equals(namespace);
   }
@@ -208,8 +204,12 @@ public final class TypeSpecifier {
       return typeName.equals(fpt.getFhirName());
     }
     if (type instanceof PrimitiveType pt) {
-      // Inline subjects use PrimitiveType directly — reverse-map FHIR name to PrimitiveType
-      final PrimitiveType mapped = FHIR_NAME_TO_PRIMITIVE.get(typeName);
+      // Inline subjects use PrimitiveType directly — reverse-map FHIR name to PrimitiveType.
+      // Delegates to FhirPrimitiveType for primitive FHIR types, with fallback to
+      // FHIR_COMPLEX_AS_PRIMITIVE for Coding/Quantity which are complex System types
+      // modelled as PrimitiveType in this system.
+      final PrimitiveType mapped =
+          FhirPrimitiveType.systemTypeFor(typeName).orElse(FHIR_COMPLEX_AS_PRIMITIVE.get(typeName));
       return mapped != null && mapped == pt;
     }
     if (type instanceof ComplexType ct) {

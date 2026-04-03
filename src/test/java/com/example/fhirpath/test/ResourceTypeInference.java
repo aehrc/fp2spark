@@ -204,6 +204,7 @@ class ResourceTypeInference {
   @Nonnull
   private static ComplexType mergeComplexTypes(@Nonnull final List<?> list, final int depth) {
     final Map<String, Shape> mergedFields = new LinkedHashMap<>();
+    String choiceName = null;
 
     for (final Object element : list) {
       if (!(element instanceof Map<?, ?> map)) {
@@ -213,6 +214,9 @@ class ResourceTypeInference {
       for (final Map.Entry<?, ?> entry : map.entrySet()) {
         final String fieldName = (String) entry.getKey();
         if (isAnnotation(fieldName)) {
+          if (CHOICE_ANNOTATION.equals(fieldName) && choiceName == null) {
+            choiceName = (String) entry.getValue();
+          }
           continue;
         }
         final Shape shape = inferShape(entry.getValue(), depth);
@@ -221,7 +225,20 @@ class ResourceTypeInference {
     }
 
     final List<FieldSpec> fieldSpecs =
-        mergedFields.entrySet().stream().map(e -> new FieldSpec(e.getKey(), e.getValue())).toList();
+        new ArrayList<>(
+            mergedFields.entrySet().stream()
+                .map(e -> new FieldSpec(e.getKey(), e.getValue()))
+                .toList());
+
+    if (choiceName != null) {
+      final Map<String, FieldSpec> variants = new LinkedHashMap<>();
+      for (final FieldSpec fs : fieldSpecs) {
+        variants.put(fs.getName(), fs);
+      }
+      fieldSpecs.add(
+          new FieldSpec(choiceName, Shape.single(new InlineChoiceType(choiceName, variants))));
+    }
+
     return new InlineComplexType(fieldSpecs);
   }
 

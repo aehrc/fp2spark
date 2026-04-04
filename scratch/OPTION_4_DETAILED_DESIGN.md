@@ -621,7 +621,7 @@ public interface IRNodeVisitor<T> {
 package com.example.fhirpath.codegen;
 
 import com.example.fhirpath.ir.*;
-import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.Column;
@@ -720,7 +720,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
-        return switch ((PrimitiveType) resultType) {
+        return switch ((SystemType) resultType) {
             case INTEGER, DECIMAL -> left.plus(right);
             case STRING -> concat(left, right);
             case DATE_TIME -> dateTime(left).plus(quantity(right));
@@ -735,7 +735,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
-        return switch ((PrimitiveType) resultType) {
+        return switch ((SystemType) resultType) {
             case INTEGER, DECIMAL -> left.minus(right);
             case DATE_TIME -> dateTime(left).minus(quantity(right));
             case QUANTITY -> quantity(left).minus(quantity(right));
@@ -749,7 +749,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
-        return switch ((PrimitiveType) resultType) {
+        return switch ((SystemType) resultType) {
             case INTEGER, DECIMAL -> left.multiply(right);
             case QUANTITY -> quantity(left).multiply(quantity(right));
             default -> throw new IllegalArgumentException(
@@ -762,7 +762,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
-        return switch ((PrimitiveType) resultType) {
+        return switch ((SystemType) resultType) {
             case INTEGER, DECIMAL -> left.divide(right);
             case QUANTITY -> quantity(left).divide(quantity(right));
             default -> throw new IllegalArgumentException(
@@ -784,7 +784,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
 
         // Get input type from first argument's type (before comparison)
         // Note: resultType is always BOOLEAN for comparisons
-        return switch ((PrimitiveType) inputType) {
+        return switch ((SystemType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.gt(right);
             case QUANTITY -> quantity(left).gt(quantity(right));
             case DATE_TIME -> dateTime(left).gt(dateTime(right));
@@ -800,7 +800,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
-        return switch ((PrimitiveType) inputType) {
+        return switch ((SystemType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.lt(right);
             case QUANTITY -> quantity(left).lt(quantity(right));
             case DATE_TIME -> dateTime(left).lt(dateTime(right));
@@ -816,7 +816,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
-        return switch ((PrimitiveType) inputType) {
+        return switch ((SystemType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.geq(right);
             case QUANTITY -> quantity(left).geq(quantity(right));
             case DATE_TIME -> dateTime(left).geq(dateTime(right));
@@ -832,7 +832,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         Column left = args.get(0);
         Column right = args.get(1);
 
-        return switch ((PrimitiveType) inputType) {
+        return switch ((SystemType) inputType) {
             case INTEGER, DECIMAL, STRING -> left.leq(right);
             case QUANTITY -> quantity(left).leq(quantity(right));
             case DATE_TIME -> dateTime(left).leq(dateTime(right));
@@ -859,7 +859,7 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
     private Column evaluateAbs(List<Column> args, Type resultType) {
         Column target = args.get(0);
 
-        return switch ((PrimitiveType) resultType) {
+        return switch ((SystemType) resultType) {
             case INTEGER, DECIMAL -> abs(target);
             case QUANTITY -> quantity(target).abs();
             default -> throw new IllegalArgumentException(
@@ -1698,7 +1698,7 @@ After Phase 4, adding SQL Server support requires only implementing a new visito
 package com.example.fhirpath.codegen;
 
 import com.example.fhirpath.ir.*;
-import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Type;
 
 import javax.annotation.Nonnull;
@@ -1770,7 +1770,7 @@ public class SqlServerCodeGenerator implements IRNodeVisitor<String> {
         String left = args.get(0);
         String right = args.get(1);
 
-        return switch ((PrimitiveType) resultType) {
+        return switch ((SystemType) resultType) {
             case INTEGER, DECIMAL -> "(" + left + " + " + right + ")";
             case STRING -> "CONCAT(" + left + ", " + right + ")";
             // DATE_TIME and QUANTITY would need custom handling
@@ -1828,7 +1828,7 @@ public class SqlServerCodeGenerator implements IRNodeVisitor<String> {
     // ... implement other visit methods
 
     private String toSqlServerType(Type type) {
-        return switch ((PrimitiveType) type) {
+        return switch ((SystemType) type) {
             case INTEGER -> "INT";
             case DECIMAL -> "DECIMAL(18,6)";
             case STRING -> "NVARCHAR(MAX)";

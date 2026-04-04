@@ -1,6 +1,6 @@
 package com.example.fhirpath.codegen.spark;
 
-import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
@@ -57,7 +57,7 @@ public final class SparkDefs {
    */
   @Nonnull
   public SparkDefs when(
-      @Nonnull final Set<PrimitiveType> types, @Nonnull final SparkOperationDef def) {
+          @Nonnull final Set<SystemType> types, @Nonnull final SparkOperationDef def) {
     cases.add(new Case(types, def));
     return this;
   }
@@ -80,7 +80,7 @@ public final class SparkDefs {
 
   /** Creates an immutable set of primitive types for use with {@link #when}. */
   @Nonnull
-  public static Set<PrimitiveType> types(@Nonnull final PrimitiveType... types) {
+  public static Set<SystemType> types(@Nonnull final SystemType... types) {
     return Set.of(types);
   }
 
@@ -150,5 +150,5 @@ public final class SparkDefs {
     return ctx -> ctx.collectionArg(0).applyNonNull(arrayFn, singleFn, nullDefault);
   }
 
-  private record Case(@Nonnull Set<PrimitiveType> types, @Nonnull SparkOperationDef def) {}
+  private record Case(@Nonnull Set<SystemType> types, @Nonnull SparkOperationDef def) {}
 }

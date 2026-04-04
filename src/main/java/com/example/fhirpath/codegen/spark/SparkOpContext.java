@@ -5,7 +5,7 @@ import com.example.fhirpath.ir.Lambda;
 import com.example.fhirpath.ir.Literal;
 import com.example.fhirpath.ir.Operation;
 import com.example.fhirpath.ir.Resource;
-import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import java.util.List;
@@ -67,22 +67,22 @@ public record SparkOpContext(
   }
 
   /**
-   * Returns the result type as a {@link PrimitiveType}, throwing if it is not one.
+   * Returns the result type as a {@link SystemType}, throwing if it is not one.
    *
    * @return the result type as a PrimitiveType
    * @throws IllegalArgumentException if the result type is not a PrimitiveType
    */
   @Nonnull
-  public PrimitiveType primitiveResultType() {
+  public SystemType primitiveResultType() {
     final Type type = resultType();
-    if (!(type instanceof PrimitiveType pt)) {
+    if (!(type instanceof SystemType pt)) {
       throw new IllegalArgumentException("Expected PrimitiveType result, got: " + type.getClass());
     }
     return pt;
   }
 
   /**
-   * Returns the type of argument at the given index as a {@link PrimitiveType}, throwing if it is
+   * Returns the type of argument at the given index as a {@link SystemType}, throwing if it is
    * not one.
    *
    * @param i the argument index
@@ -90,9 +90,9 @@ public record SparkOpContext(
    * @throws IllegalArgumentException if the argument type is not a PrimitiveType
    */
   @Nonnull
-  public PrimitiveType primitiveArgType(final int i) {
+  public SystemType primitiveArgType(final int i) {
     final Type type = argType(i);
-    if (!(type instanceof PrimitiveType pt)) {
+    if (!(type instanceof SystemType pt)) {
       throw new IllegalArgumentException(
           "Expected PrimitiveType at argument " + i + ", got: " + type.getClass());
     }

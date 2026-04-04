@@ -54,7 +54,7 @@ class FhirTypeProviderTest {
     final Optional<FieldSpec> field = patient.resolveField("active");
     assertTrue(field.isPresent(), "Patient.active should be resolvable");
     final FhirPrimitiveType type = assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
-    assertEquals(PrimitiveType.BOOLEAN, type.getSystemType());
+    assertEquals(SystemType.BOOLEAN, type.getSystemType());
     assertTrue(field.get().isSingular());
   }
 
@@ -63,7 +63,7 @@ class FhirTypeProviderTest {
     final Optional<FieldSpec> field = patient.resolveField("gender");
     assertTrue(field.isPresent(), "Patient.gender should be resolvable");
     final FhirPrimitiveType type = assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
-    assertEquals(PrimitiveType.STRING, type.getSystemType());
+    assertEquals(SystemType.STRING, type.getSystemType());
     assertTrue(field.get().isSingular());
   }
 
@@ -72,7 +72,7 @@ class FhirTypeProviderTest {
     final Optional<FieldSpec> field = patient.resolveField("birthDate");
     assertTrue(field.isPresent(), "Patient.birthDate should be resolvable");
     final FhirPrimitiveType type = assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
-    assertEquals(PrimitiveType.DATE, type.getSystemType());
+    assertEquals(SystemType.DATE, type.getSystemType());
     assertTrue(field.get().isSingular());
   }
 
@@ -97,7 +97,7 @@ class FhirTypeProviderTest {
     final Optional<FieldSpec> field = humanName.resolveField("family");
     assertTrue(field.isPresent(), "HumanName.family should be resolvable");
     final FhirPrimitiveType type = assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
-    assertEquals(PrimitiveType.STRING, type.getSystemType());
+    assertEquals(SystemType.STRING, type.getSystemType());
     assertTrue(field.get().isSingular());
   }
 
@@ -111,7 +111,7 @@ class FhirTypeProviderTest {
     final Optional<FieldSpec> field = humanName.resolveField("given");
     assertTrue(field.isPresent(), "HumanName.given should be resolvable");
     final FhirPrimitiveType type = assertInstanceOf(FhirPrimitiveType.class, field.get().getType());
-    assertEquals(PrimitiveType.STRING, type.getSystemType());
+    assertEquals(SystemType.STRING, type.getSystemType());
     assertFalse(field.get().isSingular(), "HumanName.given should be MANY");
   }
 
@@ -131,7 +131,7 @@ class FhirTypeProviderTest {
 
   @Test
   void resolveFieldOnSystemPrimitiveType() {
-    final Optional<FieldSpec> field = PrimitiveType.STRING.resolveField("value");
+    final Optional<FieldSpec> field = SystemType.STRING.resolveField("value");
     assertFalse(field.isPresent(), "System primitive types should have no child fields");
   }
 

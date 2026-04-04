@@ -11,7 +11,7 @@ import com.example.fhirpath.typing.FieldSpec;
 import com.example.fhirpath.typing.InlineChoiceType;
 import com.example.fhirpath.typing.InlineComplexType;
 import com.example.fhirpath.typing.InlineResourceType;
-import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
@@ -34,12 +34,12 @@ import java.util.stream.Collectors;
  * <p><b>Type Inference Rules:</b>
  *
  * <ul>
- *   <li>String values → {@link PrimitiveType#STRING}
- *   <li>Integer values → {@link PrimitiveType#INTEGER}
- *   <li>Double values → {@link PrimitiveType#DECIMAL}
- *   <li>Boolean values → {@link PrimitiveType#BOOLEAN}
- *   <li>null values → {@link PrimitiveType#NULL}
- *   <li>{@link TypedNull} values → the wrapped {@link PrimitiveType} with {@link
+ *   <li>String values → {@link SystemType#STRING}
+ *   <li>Integer values → {@link SystemType#INTEGER}
+ *   <li>Double values → {@link SystemType#DECIMAL}
+ *   <li>Boolean values → {@link SystemType#BOOLEAN}
+ *   <li>null values → {@link SystemType#NULL}
+ *   <li>{@link TypedNull} values → the wrapped {@link SystemType} with {@link
  *       Cardinality#SINGLE}
  *   <li>List values → {@link Cardinality#MANY} with element type merged across all items
  *   <li>Map values → {@link ComplexType} with recursive inference
@@ -50,7 +50,7 @@ import java.util.stream.Collectors;
  * <ul>
  *   <li>Single values (String, Integer, etc.) → {@link Cardinality#SINGLE}
  *   <li>List values → {@link Cardinality#MANY}
- *   <li>Empty lists → {@link Cardinality#MANY} with {@link PrimitiveType#ANY}
+ *   <li>Empty lists → {@link Cardinality#MANY} with {@link SystemType#ANY}
  * </ul>
  *
  * <p><b>Example:</b>
@@ -135,7 +135,7 @@ class ResourceTypeInference {
     }
 
     if (value == null) {
-      return Shape.single(PrimitiveType.NULL);
+      return Shape.single(SystemType.NULL);
     }
 
     if (value instanceof TypedNull typedNull) {
@@ -166,7 +166,7 @@ class ResourceTypeInference {
   private static Shape inferListShape(@Nonnull final List<?> list, final int depth) {
     if (list.isEmpty()) {
       // Empty list - use ANY type
-      return Shape.many(PrimitiveType.ANY);
+      return Shape.many(SystemType.ANY);
     }
 
     // Use first element to determine type
@@ -261,12 +261,12 @@ class ResourceTypeInference {
    */
   @Nonnull
   private static Shape mergeShapes(@Nonnull final Shape existing, @Nonnull final Shape incoming) {
-    if (existing.elementType() == PrimitiveType.NULL) {
+    if (existing.elementType() == SystemType.NULL) {
       return incoming;
     }
-    if (incoming.elementType() != PrimitiveType.NULL) {
-      if (existing.elementType() instanceof PrimitiveType
-          && incoming.elementType() instanceof PrimitiveType
+    if (incoming.elementType() != SystemType.NULL) {
+      if (existing.elementType() instanceof SystemType
+          && incoming.elementType() instanceof SystemType
           && existing.elementType() != incoming.elementType()) {
         throw new IllegalStateException(
             "Type conflict for field: existing=" + existing + ", incoming=" + incoming);
@@ -346,16 +346,16 @@ class ResourceTypeInference {
   @Nonnull
   private static Type inferPrimitiveType(@Nonnull final Object value) {
     return switch (value) {
-      case String s -> PrimitiveType.STRING;
-      case Integer i -> PrimitiveType.INTEGER;
-      case Double d -> PrimitiveType.DECIMAL;
-      case Boolean b -> PrimitiveType.BOOLEAN;
-      case DateValue dv -> PrimitiveType.DATE;
-      case DateTimeValue dtv -> PrimitiveType.DATE_TIME;
-      case TimeValue tv -> PrimitiveType.TIME;
-      case QuantityValue qv -> PrimitiveType.QUANTITY;
-      case CodingValue cv -> PrimitiveType.CODING;
-      case null -> PrimitiveType.NULL;
+      case String s -> SystemType.STRING;
+      case Integer i -> SystemType.INTEGER;
+      case Double d -> SystemType.DECIMAL;
+      case Boolean b -> SystemType.BOOLEAN;
+      case DateValue dv -> SystemType.DATE;
+      case DateTimeValue dtv -> SystemType.DATE_TIME;
+      case TimeValue tv -> SystemType.TIME;
+      case QuantityValue qv -> SystemType.QUANTITY;
+      case CodingValue cv -> SystemType.CODING;
+      case null -> SystemType.NULL;
       default ->
           throw new IllegalArgumentException(
               "Unsupported value type: " + value.getClass().getName());

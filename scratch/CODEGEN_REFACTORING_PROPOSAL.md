@@ -677,7 +677,7 @@ package com.example.fhirpath.codegen.spark;
 
 import com.example.fhirpath.codegen.spark.strategy.*;
 import com.example.fhirpath.codegen.spark.handler.*;
-import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 
@@ -706,7 +706,7 @@ import static org.apache.spark.sql.functions.*;
 public class OperationImplementationRegistry {
 
     private final Map<OperationKey, OperationImplementation> implementations = new HashMap<>();
-    private final Map<PrimitiveType, TypeHandler> typeHandlers = new HashMap<>();
+    private final Map<SystemType, TypeHandler> typeHandlers = new HashMap<>();
 
     public OperationImplementationRegistry() {
         registerTypeHandlers();
@@ -732,7 +732,7 @@ public class OperationImplementationRegistry {
         // ... (fallback logic)
 
         throw new IllegalArgumentException(
-            "No implementation for operation: " + operationName + " on type: " + type
+                "No implementation for operation: " + operationName + " on type: " + type
         );
     }
 
@@ -740,82 +740,82 @@ public class OperationImplementationRegistry {
      * Register operation implementation for specific type.
      */
     public void register(@Nonnull String operationName,
-                        @Nonnull Type type,
-                        @Nonnull OperationImplementation implementation) {
+                         @Nonnull Type type,
+                         @Nonnull OperationImplementation implementation) {
         implementations.put(new OperationKey(operationName, type), implementation);
     }
 
     private void registerTypeHandlers() {
-        typeHandlers.put(PrimitiveType.QUANTITY, new QuantityHandler());
-        typeHandlers.put(PrimitiveType.DATE_TIME, new DateTimeHandler());
-        typeHandlers.put(PrimitiveType.DATE, new DateHandler());
-        typeHandlers.put(PrimitiveType.TIME, new TimeHandler());
+        typeHandlers.put(SystemType.QUANTITY, new QuantityHandler());
+        typeHandlers.put(SystemType.DATE_TIME, new DateTimeHandler());
+        typeHandlers.put(SystemType.DATE, new DateHandler());
+        typeHandlers.put(SystemType.TIME, new TimeHandler());
     }
 
     private void registerOperations() {
         // STRING operations - all direct mappings
-        register("upper", PrimitiveType.STRING, DirectMapping.unary(::upper));
-        register("lower", PrimitiveType.STRING, DirectMapping.unary(::lower));
-        register("length", PrimitiveType.STRING, DirectMapping.unary(::length));
-        register("startsWith", PrimitiveType.STRING,
+        register("upper", SystemType.STRING, DirectMapping.unary(::upper));
+        register("lower", SystemType.STRING, DirectMapping.unary(::lower));
+        register("length", SystemType.STRING, DirectMapping.unary(::length));
+        register("startsWith", SystemType.STRING,
                 DirectMapping.binary(Column::startsWith));
-        register("endsWith", PrimitiveType.STRING,
+        register("endsWith", SystemType.STRING,
                 DirectMapping.binary(Column::endsWith));
-        register("contains", PrimitiveType.STRING,
+        register("contains", SystemType.STRING,
                 DirectMapping.binary(Column::contains));
-        register("replace", PrimitiveType.STRING,
+        register("replace", SystemType.STRING,
                 DirectMapping.ternary(::regexp_replace));
 
         // STRING substring - complex expression
-        register("substring", PrimitiveType.STRING,
+        register("substring", SystemType.STRING,
                 ComplexExpression.of(this::generateSubstring));
 
         // NUMERIC operations - direct mappings
-        register("add", PrimitiveType.INTEGER, DirectMapping.binary(Column::plus));
-        register("add", PrimitiveType.DECIMAL, DirectMapping.binary(Column::plus));
-        register("sub", PrimitiveType.INTEGER, DirectMapping.binary(Column::minus));
-        register("sub", PrimitiveType.DECIMAL, DirectMapping.binary(Column::minus));
-        register("multiply", PrimitiveType.INTEGER, DirectMapping.binary(Column::multiply));
-        register("multiply", PrimitiveType.DECIMAL, DirectMapping.binary(Column::multiply));
-        register("divide", PrimitiveType.INTEGER, DirectMapping.binary(Column::divide));
-        register("divide", PrimitiveType.DECIMAL, DirectMapping.binary(Column::divide));
-        register("mod", PrimitiveType.INTEGER, DirectMapping.binary(Column::mod));
-        register("mod", PrimitiveType.DECIMAL, DirectMapping.binary(Column::mod));
+        register("add", SystemType.INTEGER, DirectMapping.binary(Column::plus));
+        register("add", SystemType.DECIMAL, DirectMapping.binary(Column::plus));
+        register("sub", SystemType.INTEGER, DirectMapping.binary(Column::minus));
+        register("sub", SystemType.DECIMAL, DirectMapping.binary(Column::minus));
+        register("multiply", SystemType.INTEGER, DirectMapping.binary(Column::multiply));
+        register("multiply", SystemType.DECIMAL, DirectMapping.binary(Column::multiply));
+        register("divide", SystemType.INTEGER, DirectMapping.binary(Column::divide));
+        register("divide", SystemType.DECIMAL, DirectMapping.binary(Column::divide));
+        register("mod", SystemType.INTEGER, DirectMapping.binary(Column::mod));
+        register("mod", SystemType.DECIMAL, DirectMapping.binary(Column::mod));
 
-        register("abs", PrimitiveType.INTEGER, DirectMapping.unary(::abs));
-        register("abs", PrimitiveType.DECIMAL, DirectMapping.unary(::abs));
-        register("ceiling", PrimitiveType.DECIMAL, DirectMapping.unary(::ceil));
-        register("floor", PrimitiveType.DECIMAL, DirectMapping.unary(::floor));
-        register("sqrt", PrimitiveType.DECIMAL, DirectMapping.unary(::sqrt));
-        register("exp", PrimitiveType.DECIMAL, DirectMapping.unary(::exp));
-        register("ln", PrimitiveType.DECIMAL, DirectMapping.unary(::log));
+        register("abs", SystemType.INTEGER, DirectMapping.unary(::abs));
+        register("abs", SystemType.DECIMAL, DirectMapping.unary(::abs));
+        register("ceiling", SystemType.DECIMAL, DirectMapping.unary(::ceil));
+        register("floor", SystemType.DECIMAL, DirectMapping.unary(::floor));
+        register("sqrt", SystemType.DECIMAL, DirectMapping.unary(::sqrt));
+        register("exp", SystemType.DECIMAL, DirectMapping.unary(::exp));
+        register("ln", SystemType.DECIMAL, DirectMapping.unary(::log));
 
         // QUANTITY operations - delegate to handler
-        TypeHandler quantityHandler = typeHandlers.get(PrimitiveType.QUANTITY);
-        register("add", PrimitiveType.QUANTITY,
+        TypeHandler quantityHandler = typeHandlers.get(SystemType.QUANTITY);
+        register("add", SystemType.QUANTITY,
                 new TypeHandlerDelegate(quantityHandler, "add"));
-        register("sub", PrimitiveType.QUANTITY,
+        register("sub", SystemType.QUANTITY,
                 new TypeHandlerDelegate(quantityHandler, "sub"));
-        register("multiply", PrimitiveType.QUANTITY,
+        register("multiply", SystemType.QUANTITY,
                 new TypeHandlerDelegate(quantityHandler, "multiply"));
-        register("divide", PrimitiveType.QUANTITY,
+        register("divide", SystemType.QUANTITY,
                 new TypeHandlerDelegate(quantityHandler, "divide"));
-        register("gt", PrimitiveType.QUANTITY,
+        register("gt", SystemType.QUANTITY,
                 new TypeHandlerDelegate(quantityHandler, "gt"));
-        register("lt", PrimitiveType.QUANTITY,
+        register("lt", SystemType.QUANTITY,
                 new TypeHandlerDelegate(quantityHandler, "lt"));
-        register("abs", PrimitiveType.QUANTITY,
+        register("abs", SystemType.QUANTITY,
                 new TypeHandlerDelegate(quantityHandler, "abs"));
 
         // DATETIME operations - delegate to handler
-        TypeHandler dateTimeHandler = typeHandlers.get(PrimitiveType.DATE_TIME);
-        register("add", PrimitiveType.DATE_TIME,
+        TypeHandler dateTimeHandler = typeHandlers.get(SystemType.DATE_TIME);
+        register("add", SystemType.DATE_TIME,
                 new TypeHandlerDelegate(dateTimeHandler, "add"));
-        register("sub", PrimitiveType.DATE_TIME,
+        register("sub", SystemType.DATE_TIME,
                 new TypeHandlerDelegate(dateTimeHandler, "sub"));
-        register("gt", PrimitiveType.DATE_TIME,
+        register("gt", SystemType.DATE_TIME,
                 new TypeHandlerDelegate(dateTimeHandler, "gt"));
-        register("lt", PrimitiveType.DATE_TIME,
+        register("lt", SystemType.DATE_TIME,
                 new TypeHandlerDelegate(dateTimeHandler, "lt"));
 
         // ... more registrations
@@ -827,14 +827,15 @@ public class OperationImplementationRegistry {
         Column len = coalesce(args.get(2), lit(Integer.MAX_VALUE));
 
         Column nullCondition = target.isNull()
-            .or(pos.isNull())
-            .or(pos.leq(0))
-            .or(pos.gt(length(target)));
+                .or(pos.isNull())
+                .or(pos.leq(0))
+                .or(pos.gt(length(target)));
 
         return when(not(nullCondition), substr(target, pos, len));
     }
 
-    private record OperationKey(String operationName, Type type) {}
+    private record OperationKey(String operationName, Type type) {
+    }
 }
 ```
 

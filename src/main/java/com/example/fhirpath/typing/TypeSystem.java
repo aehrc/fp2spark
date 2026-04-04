@@ -22,17 +22,17 @@ public final class TypeSystem {
    */
   public static boolean canCast(final Type from, final Type to) {
     if (from == to) return true;
-    if (from == PrimitiveType.NULL) return true;
+    if (from == SystemType.NULL) return true;
 
     // FhirPrimitiveType delegates to its underlying System type
     if (from instanceof FhirPrimitiveType fpt) {
       return canCast(fpt.getSystemType(), to);
     }
 
-    if (from == PrimitiveType.INTEGER && to == PrimitiveType.DECIMAL) return true;
-    if (from == PrimitiveType.DATE && to == PrimitiveType.DATE_TIME) return true;
-    if (from == PrimitiveType.INTEGER && to == PrimitiveType.QUANTITY) return true;
-    if (from == PrimitiveType.DECIMAL && to == PrimitiveType.QUANTITY) return true;
+    if (from == SystemType.INTEGER && to == SystemType.DECIMAL) return true;
+    if (from == SystemType.DATE && to == SystemType.DATE_TIME) return true;
+    if (from == SystemType.INTEGER && to == SystemType.QUANTITY) return true;
+    if (from == SystemType.DECIMAL && to == SystemType.QUANTITY) return true;
 
     return false;
   }
@@ -40,22 +40,22 @@ public final class TypeSystem {
   /**
    * Returns a stream of all primitive types, including ANY.
    *
-   * @return stream of all {@link PrimitiveType} values
+   * @return stream of all {@link SystemType} values
    */
   @Nonnull
   public static Stream<Type> allTypes() {
-    return Stream.of(PrimitiveType.values());
+    return Stream.of(SystemType.values());
   }
 
   /**
    * Returns a stream of all defined primitive types, excluding the ANY wildcard.
    *
-   * @return stream of concrete {@link PrimitiveType} values
+   * @return stream of concrete {@link SystemType} values
    */
   @Nonnull
   public static Stream<Type> definedTypes() {
-    return Stream.of(PrimitiveType.values())
+    return Stream.of(SystemType.values())
         .map(Type.class::cast)
-        .filter(t -> t != PrimitiveType.ANY);
+        .filter(t -> t != SystemType.ANY);
   }
 }

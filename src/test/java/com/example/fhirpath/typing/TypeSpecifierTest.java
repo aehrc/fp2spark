@@ -120,13 +120,13 @@ class TypeSpecifierTest {
     @Test
     void systemStringMatchesPrimitiveString() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("System.String");
-      assertTrue(ts.matchesType(PrimitiveType.STRING));
+      assertTrue(ts.matchesType(SystemType.STRING));
     }
 
     @Test
     void systemIntegerDoesNotMatchPrimitiveString() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("System.Integer");
-      assertFalse(ts.matchesType(PrimitiveType.STRING));
+      assertFalse(ts.matchesType(SystemType.STRING));
     }
 
     @Test
@@ -158,31 +158,31 @@ class TypeSpecifierTest {
     void fhirBooleanMatchesPrimitiveBoolean() {
       // FHIR.boolean should match PrimitiveType.BOOLEAN (inline subjects)
       final TypeSpecifier ts = TypeSpecifier.fromExpression("FHIR.boolean");
-      assertTrue(ts.matchesType(PrimitiveType.BOOLEAN));
+      assertTrue(ts.matchesType(SystemType.BOOLEAN));
     }
 
     @Test
     void fhirDecimalMatchesPrimitiveDecimal() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("FHIR.decimal");
-      assertTrue(ts.matchesType(PrimitiveType.DECIMAL));
+      assertTrue(ts.matchesType(SystemType.DECIMAL));
     }
 
     @Test
     void fhirCodingMatchesPrimitiveCoding() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("FHIR.Coding");
-      assertTrue(ts.matchesType(PrimitiveType.CODING));
+      assertTrue(ts.matchesType(SystemType.CODING));
     }
 
     @Test
     void fhirQuantityMatchesPrimitiveQuantity() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("FHIR.Quantity");
-      assertTrue(ts.matchesType(PrimitiveType.QUANTITY));
+      assertTrue(ts.matchesType(SystemType.QUANTITY));
     }
 
     @Test
     void systemCodingMatchesPrimitiveCoding() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("System.Coding");
-      assertTrue(ts.matchesType(PrimitiveType.CODING));
+      assertTrue(ts.matchesType(SystemType.CODING));
     }
 
     @Test

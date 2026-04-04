@@ -29,10 +29,10 @@ public record QuantityValue(
   /** Quantity subfield specifications for field traversal (e.g. {@code quantity.value}). */
   private static final Map<String, FieldSpec> FIELDS =
       Map.of(
-          "value", new FieldSpec("value", Shape.single(PrimitiveType.DECIMAL)),
-          "unit", new FieldSpec("unit", Shape.single(PrimitiveType.STRING)),
-          "system", new FieldSpec("system", Shape.single(PrimitiveType.STRING)),
-          "code", new FieldSpec("code", Shape.single(PrimitiveType.STRING)));
+          "value", new FieldSpec("value", Shape.single(SystemType.DECIMAL)),
+          "unit", new FieldSpec("unit", Shape.single(SystemType.STRING)),
+          "system", new FieldSpec("system", Shape.single(SystemType.STRING)),
+          "code", new FieldSpec("code", Shape.single(SystemType.STRING)));
 
   public static final String UCUM_SYSTEM = "http://unitsofmeasure.org";
   public static final String CALENDAR_SYSTEM = "http://hl7.org/fhirpath/calendar";

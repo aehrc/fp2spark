@@ -4,9 +4,9 @@ import static com.example.fhirpath.codegen.spark.SparkDefs.binary;
 import static com.example.fhirpath.codegen.spark.SparkDefs.byResultType;
 import static com.example.fhirpath.codegen.spark.SparkDefs.types;
 import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
-import static com.example.fhirpath.typing.PrimitiveType.DECIMAL;
-import static com.example.fhirpath.typing.PrimitiveType.INTEGER;
-import static com.example.fhirpath.typing.PrimitiveType.QUANTITY;
+import static com.example.fhirpath.typing.SystemType.DECIMAL;
+import static com.example.fhirpath.typing.SystemType.INTEGER;
+import static com.example.fhirpath.typing.SystemType.QUANTITY;
 
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import jakarta.annotation.Nonnull;

@@ -7,7 +7,7 @@ import com.example.fhirpath.codegen.spark.SparkOperationDef;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
 import com.example.fhirpath.codegen.spark.udf.QuantityConvertToUnit;
-import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.QuantityValue;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
@@ -77,9 +77,9 @@ public final class ConversionOps {
   @Nonnull
   private static SparkOperationDef conversion(@Nonnull final ConversionFunction conversionFn) {
     return ctx -> {
-      final PrimitiveType sourceType = ctx.primitiveArgType(0);
+      final SystemType sourceType = ctx.primitiveArgType(0);
       // Empty input → empty result (FHIRPath spec: empty propagation)
-      if (sourceType == PrimitiveType.NULL) {
+      if (sourceType == SystemType.NULL) {
         return lit(null);
       }
       final Column input = ctx.arg(0);
@@ -98,9 +98,9 @@ public final class ConversionOps {
   @Nonnull
   private static SparkOperationDef validation(@Nonnull final ValidationFunction validationFn) {
     return ctx -> {
-      final PrimitiveType sourceType = ctx.primitiveArgType(0);
+      final SystemType sourceType = ctx.primitiveArgType(0);
       // Empty input → empty result (FHIRPath spec: empty propagation)
-      if (sourceType == PrimitiveType.NULL) {
+      if (sourceType == SystemType.NULL) {
         return lit(null);
       }
       final Column input = ctx.arg(0);
@@ -118,8 +118,8 @@ public final class ConversionOps {
   @Nonnull
   private static SparkOperationDef toQuantityWithUnit() {
     return ctx -> {
-      final PrimitiveType sourceType = ctx.primitiveArgType(0);
-      if (sourceType == PrimitiveType.NULL) {
+      final SystemType sourceType = ctx.primitiveArgType(0);
+      if (sourceType == SystemType.NULL) {
         return lit(null);
       }
       final Column input = ctx.arg(0);
@@ -143,8 +143,8 @@ public final class ConversionOps {
   @Nonnull
   private static SparkOperationDef convertsToQuantityWithUnit() {
     return ctx -> {
-      final PrimitiveType sourceType = ctx.primitiveArgType(0);
-      if (sourceType == PrimitiveType.NULL) {
+      final SystemType sourceType = ctx.primitiveArgType(0);
+      if (sourceType == SystemType.NULL) {
         return lit(null);
       }
       final Column input = ctx.arg(0);
@@ -164,18 +164,18 @@ public final class ConversionOps {
   /** Converts input to quantity, returning identity if already QUANTITY. */
   @Nonnull
   private static Column asQuantity(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column input) {
-    return (sourceType == PrimitiveType.QUANTITY) ? input : convertToQuantity(sourceType, input);
+          @Nonnull final SystemType sourceType, @Nonnull final Column input) {
+    return (sourceType == SystemType.QUANTITY) ? input : convertToQuantity(sourceType, input);
   }
 
   @FunctionalInterface
   private interface ConversionFunction {
-    Column convert(PrimitiveType sourceType, Column value);
+    Column convert(SystemType sourceType, Column value);
   }
 
   @FunctionalInterface
   private interface ValidationFunction {
-    Column validate(PrimitiveType sourceType, Column value);
+    Column validate(SystemType sourceType, Column value);
   }
 
   // ========== Conversion Functions ==========
@@ -187,7 +187,7 @@ public final class ConversionOps {
    */
   @Nonnull
   private static Column convertToBoolean(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case STRING -> {
         final Column lower = functions.lower(value);
@@ -205,7 +205,7 @@ public final class ConversionOps {
   /** Converts to Integer. Boolean: true→1, false→0. String: integer regex then cast. */
   @Nonnull
   private static Column convertToInteger(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case BOOLEAN -> value.try_cast(DataTypes.IntegerType);
       case STRING -> when(value.rlike(INTEGER_REGEX), value.try_cast(DataTypes.IntegerType));
@@ -216,7 +216,7 @@ public final class ConversionOps {
   /** Converts to Decimal. Boolean/Integer/String: cast to decimal. */
   @Nonnull
   private static Column convertToDecimal(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case BOOLEAN, INTEGER -> value.try_cast(SparkTypeMapper.DECIMAL_TYPE);
       case STRING -> when(value.rlike(DECIMAL_REGEX), value.try_cast(SparkTypeMapper.DECIMAL_TYPE));
@@ -231,7 +231,7 @@ public final class ConversionOps {
    */
   @Nonnull
   private static Column convertToString(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case BOOLEAN, INTEGER, DATE, DATE_TIME, TIME -> value.try_cast(DataTypes.StringType);
       case DECIMAL -> decimalToString(value);
@@ -244,7 +244,7 @@ public final class ConversionOps {
   /** Converts to Date. Only String with valid date format. */
   @Nonnull
   private static Column convertToDate(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case STRING -> when(value.rlike(DATE_REGEX), value);
       case DATE_TIME -> extractDateFromDateTime(value);
@@ -255,7 +255,7 @@ public final class ConversionOps {
   /** Converts to DateTime. String with valid dateTime format. Date is implicitly converted. */
   @Nonnull
   private static Column convertToDateTime(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case STRING -> when(value.rlike(DATETIME_REGEX), value);
       case DATE -> value; // Date→DateTime: date string is valid dateTime (partial precision)
@@ -266,7 +266,7 @@ public final class ConversionOps {
   /** Converts to Time. Only String with valid time format. */
   @Nonnull
   private static Column convertToTime(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case STRING -> when(value.rlike(TIME_REGEX), value);
       default -> lit(null);
@@ -279,7 +279,7 @@ public final class ConversionOps {
    */
   @Nonnull
   private static Column convertToQuantity(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case BOOLEAN -> numericToQuantity(value.try_cast(SparkTypeMapper.DECIMAL_TYPE));
       case INTEGER, DECIMAL -> numericToQuantity(value.cast(SparkTypeMapper.DECIMAL_TYPE));
@@ -293,7 +293,7 @@ public final class ConversionOps {
   /** Validates conversion to Boolean. */
   @Nonnull
   private static Column validateToBoolean(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case BOOLEAN -> lit(true);
       case STRING -> {
@@ -313,7 +313,7 @@ public final class ConversionOps {
   /** Validates conversion to Integer. */
   @Nonnull
   private static Column validateToInteger(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case INTEGER, BOOLEAN -> lit(true);
       case STRING -> value.rlike(INTEGER_REGEX);
@@ -324,7 +324,7 @@ public final class ConversionOps {
   /** Validates conversion to Decimal. */
   @Nonnull
   private static Column validateToDecimal(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case DECIMAL, BOOLEAN, INTEGER -> lit(true);
       case STRING -> value.rlike(DECIMAL_REGEX);
@@ -335,7 +335,7 @@ public final class ConversionOps {
   /** Validates conversion to String. All primitive types can convert to String. */
   @Nonnull
   private static Column validateToString(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case STRING, BOOLEAN, INTEGER, DECIMAL, DATE, DATE_TIME, TIME, QUANTITY, CODING -> lit(true);
       default -> lit(false);
@@ -345,7 +345,7 @@ public final class ConversionOps {
   /** Validates conversion to Date. */
   @Nonnull
   private static Column validateToDate(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case DATE, DATE_TIME -> lit(true);
       case STRING -> value.rlike(DATE_REGEX);
@@ -356,7 +356,7 @@ public final class ConversionOps {
   /** Validates conversion to DateTime. */
   @Nonnull
   private static Column validateToDateTime(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case DATE_TIME, DATE -> lit(true);
       case STRING -> value.rlike(DATETIME_REGEX);
@@ -367,7 +367,7 @@ public final class ConversionOps {
   /** Validates conversion to Time. */
   @Nonnull
   private static Column validateToTime(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case TIME -> lit(true);
       case STRING -> value.rlike(TIME_REGEX);
@@ -378,7 +378,7 @@ public final class ConversionOps {
   /** Validates conversion to Quantity. */
   @Nonnull
   private static Column validateToQuantity(
-      @Nonnull final PrimitiveType sourceType, @Nonnull final Column value) {
+          @Nonnull final SystemType sourceType, @Nonnull final Column value) {
     return switch (sourceType) {
       case QUANTITY, BOOLEAN, INTEGER, DECIMAL -> lit(true);
       case STRING -> value.rlike(QUANTITY_REGEX);

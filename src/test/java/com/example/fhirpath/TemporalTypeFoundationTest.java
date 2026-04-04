@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
-import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.TypeSets;
 import com.example.fhirpath.typing.TypeSystem;
@@ -23,26 +23,26 @@ public class TemporalTypeFoundationTest {
 
   @Test
   void typeNames() {
-    assertEquals("Date", PrimitiveType.DATE.getName());
-    assertEquals("DateTime", PrimitiveType.DATE_TIME.getName());
-    assertEquals("Time", PrimitiveType.TIME.getName());
+    assertEquals("Date", SystemType.DATE.getName());
+    assertEquals("DateTime", SystemType.DATE_TIME.getName());
+    assertEquals("Time", SystemType.TIME.getName());
   }
 
   @Test
   void typeProperties() {
-    assertTrue(PrimitiveType.DATE.isPrimitive());
-    assertTrue(PrimitiveType.DATE_TIME.isPrimitive());
-    assertTrue(PrimitiveType.TIME.isPrimitive());
-    assertFalse(PrimitiveType.DATE.isComplex());
-    assertFalse(PrimitiveType.DATE_TIME.isComplex());
-    assertFalse(PrimitiveType.TIME.isComplex());
+    assertTrue(SystemType.DATE.isPrimitive());
+    assertTrue(SystemType.DATE_TIME.isPrimitive());
+    assertTrue(SystemType.TIME.isPrimitive());
+    assertFalse(SystemType.DATE.isComplex());
+    assertFalse(SystemType.DATE_TIME.isComplex());
+    assertFalse(SystemType.TIME.isComplex());
   }
 
   @Test
   void typeConstants() {
-    assertEquals(PrimitiveType.DATE, Types.DATE);
-    assertEquals(PrimitiveType.DATE_TIME, Types.DATE_TIME);
-    assertEquals(PrimitiveType.TIME, Types.TIME);
+    assertEquals(SystemType.DATE, Types.DATE);
+    assertEquals(SystemType.DATE_TIME, Types.DATE_TIME);
+    assertEquals(SystemType.TIME, Types.TIME);
   }
 
   @Test

@@ -5,7 +5,7 @@ import com.example.fhirpath.typing.FhirPrimitiveType;
 import com.example.fhirpath.typing.FieldSpec;
 import com.example.fhirpath.typing.InlineChoiceType;
 import com.example.fhirpath.typing.InlineComplexType;
-import com.example.fhirpath.typing.PrimitiveType;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
@@ -106,8 +106,8 @@ class SparkSchemaConverter {
       return toBaseType(fpt.getSystemType());
     }
 
-    if (type instanceof PrimitiveType primitiveType) {
-      return switch (primitiveType) {
+    if (type instanceof SystemType systemType) {
+      return switch (systemType) {
         case INTEGER -> DataTypes.IntegerType;
         case DECIMAL -> DataTypes.DoubleType;
         case BOOLEAN -> DataTypes.BooleanType;

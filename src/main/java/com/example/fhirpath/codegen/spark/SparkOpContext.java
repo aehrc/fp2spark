@@ -73,7 +73,7 @@ public record SparkOpContext(
    * @throws IllegalArgumentException if the result type is not a SystemType
    */
   @Nonnull
-  public SystemType primitiveResultType() {
+  public SystemType systemResultType() {
     final Type type = resultType();
     if (!(type instanceof SystemType pt)) {
       throw new IllegalArgumentException("Expected SystemType result, got: " + type.getClass());
@@ -90,7 +90,7 @@ public record SparkOpContext(
    * @throws IllegalArgumentException if the argument type is not a SystemType
    */
   @Nonnull
-  public SystemType primitiveArgType(final int i) {
+  public SystemType systemArgType(final int i) {
     final Type type = argType(i);
     if (!(type instanceof SystemType pt)) {
       throw new IllegalArgumentException(

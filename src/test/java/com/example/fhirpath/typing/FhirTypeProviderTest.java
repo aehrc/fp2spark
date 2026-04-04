@@ -136,6 +136,30 @@ class FhirTypeProviderTest {
   }
 
   @Test
+  void resolveQuantityFields() {
+    final Optional<FieldSpec> value = SystemType.QUANTITY.resolveField("value");
+    assertTrue(value.isPresent(), "Quantity.value should be resolvable");
+    assertEquals(SystemType.DECIMAL, value.get().getType());
+    assertTrue(value.get().isSingular());
+
+    final Optional<FieldSpec> unit = SystemType.QUANTITY.resolveField("unit");
+    assertTrue(unit.isPresent(), "Quantity.unit should be resolvable");
+    assertEquals(SystemType.STRING, unit.get().getType());
+
+    final Optional<FieldSpec> system = SystemType.QUANTITY.resolveField("system");
+    assertTrue(system.isPresent(), "Quantity.system should be resolvable");
+    assertEquals(SystemType.STRING, system.get().getType());
+
+    final Optional<FieldSpec> code = SystemType.QUANTITY.resolveField("code");
+    assertTrue(code.isPresent(), "Quantity.code should be resolvable");
+    assertEquals(SystemType.STRING, code.get().getType());
+
+    assertFalse(
+        SystemType.QUANTITY.resolveField("bogus").isPresent(),
+        "Unknown Quantity field should return empty");
+  }
+
+  @Test
   void resolveChoiceTypeReturnsChoiceType() {
     // Patient.deceased[x] is a choice type — should return ChoiceType
     final Optional<FieldSpec> field = patient.resolveField("deceased");

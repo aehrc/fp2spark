@@ -77,14 +77,14 @@ public final class ConversionOps {
   @Nonnull
   private static SparkOperationDef conversion(@Nonnull final ConversionFunction conversionFn) {
     return ctx -> {
-      final SystemType sourceType = ctx.primitiveArgType(0);
+      final SystemType sourceType = ctx.systemArgType(0);
       // Empty input → empty result (FHIRPath spec: empty propagation)
       if (sourceType == SystemType.NULL) {
         return lit(null);
       }
       final Column input = ctx.arg(0);
       // Identity: same type returns unchanged
-      if (sourceType == ctx.primitiveResultType()) {
+      if (sourceType == ctx.systemResultType()) {
         return input;
       }
       return conversionFn.convert(sourceType, input);
@@ -98,7 +98,7 @@ public final class ConversionOps {
   @Nonnull
   private static SparkOperationDef validation(@Nonnull final ValidationFunction validationFn) {
     return ctx -> {
-      final SystemType sourceType = ctx.primitiveArgType(0);
+      final SystemType sourceType = ctx.systemArgType(0);
       // Empty input → empty result (FHIRPath spec: empty propagation)
       if (sourceType == SystemType.NULL) {
         return lit(null);
@@ -118,7 +118,7 @@ public final class ConversionOps {
   @Nonnull
   private static SparkOperationDef toQuantityWithUnit() {
     return ctx -> {
-      final SystemType sourceType = ctx.primitiveArgType(0);
+      final SystemType sourceType = ctx.systemArgType(0);
       if (sourceType == SystemType.NULL) {
         return lit(null);
       }
@@ -143,7 +143,7 @@ public final class ConversionOps {
   @Nonnull
   private static SparkOperationDef convertsToQuantityWithUnit() {
     return ctx -> {
-      final SystemType sourceType = ctx.primitiveArgType(0);
+      final SystemType sourceType = ctx.systemArgType(0);
       if (sourceType == SystemType.NULL) {
         return lit(null);
       }

@@ -24,6 +24,7 @@ import com.example.fhirpath.operation.OverloadResolutionException;
 import com.example.fhirpath.operation.OverloadResolver;
 import com.example.fhirpath.operation.signature.ResolvedSignature;
 import com.example.fhirpath.operation.signature.SignatureDefinition;
+import com.example.fhirpath.typing.Cardinality;
 import com.example.fhirpath.typing.ChoiceTypeLike;
 import com.example.fhirpath.typing.CodingValue;
 import com.example.fhirpath.typing.DateTimeValue;
@@ -629,16 +630,44 @@ public class Analyzer {
     };
   }
 
-  /** Resolves a type operation on a non-choice type (static type check). */
+  /**
+   * Resolves a type operation on a non-choice type.
+   *
+   * <p>For {@code is}/{@code as}, MANY cardinality is rejected since the type is fully known at
+   * compile time — {@code ofType()} should be used for collections. Choice types handle this
+   * differently (runtime singleton enforcement) because filtered collections may be singletons.
+   *
+   * <p>For {@code is}, a runtime null-propagating {@link Operation} node is emitted instead of a
+   * static {@link Literal}, so that empty (null) singletons return empty rather than a boolean.
+   */
   @Nonnull
   private IRNode resolveNonChoiceTypeOperation(
       @Nonnull final String operation,
       @Nonnull final IRNode targetIr,
       @Nonnull final TypeSpecifier typeSpec) {
+
+    // is/as are singleton operators — reject MANY cardinality (ofType works on collections)
+    if (!"ofType".equals(operation) && targetIr.getCardinality() == Cardinality.MANY) {
+      throw new InvalidExpressionException(
+          "Operator '" + operation + "' requires a singleton input; use ofType() for collections",
+          null);
+    }
+
+    // NULL type (e.g., {}) → always empty regardless of operation
+    if (targetIr.getType() == Types.NULL) {
+      return new Literal(null, Types.NULL);
+    }
+
     final boolean matches = typeSpec.matchesType(targetIr.getType());
 
     return switch (operation) {
-      case "is" -> new Literal(matches, Types.BOOLEAN);
+      case "is" -> {
+        // Emit runtime null-check: CASE WHEN value IS NOT NULL THEN matches ELSE NULL END
+        final ResolvedSignature sig =
+            new ResolvedSignature(
+                List.of(targetIr.getType(), Types.BOOLEAN), Shape.single(Types.BOOLEAN));
+        yield new Operation("is", List.of(targetIr, new Literal(matches, Types.BOOLEAN)), sig);
+      }
       case "as" -> matches ? targetIr : new Literal(null, Types.NULL);
       case "ofType" -> matches ? targetIr : new Literal(null, Types.NULL);
       default -> throw new IllegalStateException("Unexpected type operation: " + operation);

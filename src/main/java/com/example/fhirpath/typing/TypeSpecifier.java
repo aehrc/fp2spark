@@ -187,9 +187,9 @@ public final class TypeSpecifier {
       return typeName.equals(fpt.getFhirName());
     }
     if (type instanceof SystemType pt) {
-      // Inline subjects use PrimitiveType directly — map FHIR name to PrimitiveType
+      // Inline subjects use SystemType directly — map FHIR name to SystemType
       // via FhirPrimitiveType (for primitives like "string"→STRING) with fallback to
-      // PrimitiveType.fromName() (for Coding/Quantity which share names across namespaces).
+      // SystemType.fromName() (for Coding/Quantity which share names across namespaces).
       final SystemType mapped =
           FhirPrimitiveType.systemTypeFor(typeName)
               .orElseGet(() -> SystemType.fromName(typeName).orElse(null));

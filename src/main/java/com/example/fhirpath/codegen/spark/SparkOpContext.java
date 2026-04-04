@@ -69,32 +69,32 @@ public record SparkOpContext(
   /**
    * Returns the result type as a {@link SystemType}, throwing if it is not one.
    *
-   * @return the result type as a PrimitiveType
-   * @throws IllegalArgumentException if the result type is not a PrimitiveType
+   * @return the result type as a SystemType
+   * @throws IllegalArgumentException if the result type is not a SystemType
    */
   @Nonnull
   public SystemType primitiveResultType() {
     final Type type = resultType();
     if (!(type instanceof SystemType pt)) {
-      throw new IllegalArgumentException("Expected PrimitiveType result, got: " + type.getClass());
+      throw new IllegalArgumentException("Expected SystemType result, got: " + type.getClass());
     }
     return pt;
   }
 
   /**
-   * Returns the type of argument at the given index as a {@link SystemType}, throwing if it is
-   * not one.
+   * Returns the type of argument at the given index as a {@link SystemType}, throwing if it is not
+   * one.
    *
    * @param i the argument index
-   * @return the argument type as a PrimitiveType
-   * @throws IllegalArgumentException if the argument type is not a PrimitiveType
+   * @return the argument type as a SystemType
+   * @throws IllegalArgumentException if the argument type is not a SystemType
    */
   @Nonnull
   public SystemType primitiveArgType(final int i) {
     final Type type = argType(i);
     if (!(type instanceof SystemType pt)) {
       throw new IllegalArgumentException(
-          "Expected PrimitiveType at argument " + i + ", got: " + type.getClass());
+          "Expected SystemType at argument " + i + ", got: " + type.getClass());
     }
     return pt;
   }

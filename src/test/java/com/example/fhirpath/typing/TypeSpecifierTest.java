@@ -156,7 +156,7 @@ class TypeSpecifierTest {
 
     @Test
     void fhirBooleanMatchesPrimitiveBoolean() {
-      // FHIR.boolean should match PrimitiveType.BOOLEAN (inline subjects)
+      // FHIR.boolean should match SystemType.BOOLEAN (inline subjects)
       final TypeSpecifier ts = TypeSpecifier.fromExpression("FHIR.boolean");
       assertTrue(ts.matchesType(SystemType.BOOLEAN));
     }

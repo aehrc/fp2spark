@@ -11,10 +11,10 @@ import com.example.fhirpath.typing.FieldSpec;
 import com.example.fhirpath.typing.InlineChoiceType;
 import com.example.fhirpath.typing.InlineComplexType;
 import com.example.fhirpath.typing.InlineResourceType;
-import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.TimeValue;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
@@ -39,8 +39,7 @@ import java.util.stream.Collectors;
  *   <li>Double values → {@link SystemType#DECIMAL}
  *   <li>Boolean values → {@link SystemType#BOOLEAN}
  *   <li>null values → {@link SystemType#NULL}
- *   <li>{@link TypedNull} values → the wrapped {@link SystemType} with {@link
- *       Cardinality#SINGLE}
+ *   <li>{@link TypedNull} values → the wrapped {@link SystemType} with {@link Cardinality#SINGLE}
  *   <li>List values → {@link Cardinality#MANY} with element type merged across all items
  *   <li>Map values → {@link ComplexType} with recursive inference
  * </ul>
@@ -341,7 +340,7 @@ class ResourceTypeInference {
    * Infer primitive type from a Java value.
    *
    * @param value The value to analyze
-   * @return The inferred PrimitiveType
+   * @return The inferred SystemType
    */
   @Nonnull
   private static Type inferPrimitiveType(@Nonnull final Object value) {

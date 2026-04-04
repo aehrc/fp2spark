@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
-import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Shape;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.TypeSets;
 import com.example.fhirpath.typing.TypeSystem;
 import com.example.fhirpath.typing.Types;

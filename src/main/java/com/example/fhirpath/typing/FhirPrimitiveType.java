@@ -45,8 +45,7 @@ public final class FhirPrimitiveType implements Type {
   private final String fhirName;
   private final SystemType systemType;
 
-  private FhirPrimitiveType(
-      @Nonnull final String fhirName, @Nonnull final SystemType systemType) {
+  private FhirPrimitiveType(@Nonnull final String fhirName, @Nonnull final SystemType systemType) {
     this.fhirName = fhirName;
     this.systemType = systemType;
   }
@@ -85,7 +84,7 @@ public final class FhirPrimitiveType implements Type {
    * Returns the System type that the given FHIR type name maps to, if known.
    *
    * @param fhirName the FHIR type name (e.g., "string", "date", "code")
-   * @return the corresponding PrimitiveType, or empty if the name is not a known FHIR primitive
+   * @return the corresponding SystemType, or empty if the name is not a known FHIR primitive
    */
   @Nonnull
   public static Optional<SystemType> systemTypeFor(@Nonnull final String fhirName) {

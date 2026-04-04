@@ -54,8 +54,6 @@ public final class TypeSystem {
    */
   @Nonnull
   public static Stream<Type> definedTypes() {
-    return Stream.of(SystemType.values())
-        .map(Type.class::cast)
-        .filter(t -> t != SystemType.ANY);
+    return Stream.of(SystemType.values()).map(Type.class::cast).filter(t -> t != SystemType.ANY);
   }
 }

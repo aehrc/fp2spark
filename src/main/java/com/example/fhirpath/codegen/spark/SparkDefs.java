@@ -57,7 +57,7 @@ public final class SparkDefs {
    */
   @Nonnull
   public SparkDefs when(
-          @Nonnull final Set<SystemType> types, @Nonnull final SparkOperationDef def) {
+      @Nonnull final Set<SystemType> types, @Nonnull final SparkOperationDef def) {
     cases.add(new Case(types, def));
     return this;
   }

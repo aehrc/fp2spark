@@ -130,9 +130,9 @@ class FhirTypeProviderTest {
   }
 
   @Test
-  void resolveFieldOnSystemPrimitiveType() {
+  void resolveFieldOnSystemType() {
     final Optional<FieldSpec> field = SystemType.STRING.resolveField("value");
-    assertFalse(field.isPresent(), "System primitive types should have no child fields");
+    assertFalse(field.isPresent(), "Simple system types should have no child fields");
   }
 
   @Test

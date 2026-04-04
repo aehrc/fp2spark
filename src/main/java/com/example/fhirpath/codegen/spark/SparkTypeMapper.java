@@ -1,8 +1,8 @@
 package com.example.fhirpath.codegen.spark;
 
 import com.example.fhirpath.typing.FhirPrimitiveType;
-import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Shape;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Type;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.DataTypes;

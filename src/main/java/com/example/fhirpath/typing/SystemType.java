@@ -8,15 +8,15 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Enumeration of FHIRPath primitive types.
+ * Enumeration of FHIRPath system types.
  *
- * <p>Primitive types represent the fundamental value types in FHIRPath such as integers, strings,
- * booleans, and temporal types.
+ * <p>System types represent the fundamental value types in FHIRPath such as integers, strings,
+ * booleans, and temporal types, as well as complex system types like Quantity and Coding.
  *
- * <p>In the element-first type system, PrimitiveType represents the element type, while {@link
+ * <p>In the element-first type system, SystemType represents the element type, while {@link
  * Cardinality} specifies how many elements (0..1 or 0..*).
  */
-public enum PrimitiveType implements Type {
+public enum SystemType implements Type {
   INTEGER("Integer"),
   DECIMAL("Decimal"),
   BOOLEAN("Boolean"),
@@ -29,25 +29,25 @@ public enum PrimitiveType implements Type {
   NULL("null"),
   ANY("unknown");
 
-  private static final Map<String, PrimitiveType> BY_NAME =
+  private static final Map<String, SystemType> BY_NAME =
       Stream.of(values())
           .filter(t -> t != NULL && t != ANY)
-          .collect(Collectors.toUnmodifiableMap(PrimitiveType::getName, Function.identity()));
+          .collect(Collectors.toUnmodifiableMap(SystemType::getName, Function.identity()));
 
   private final String name;
 
-  PrimitiveType(final String name) {
+  SystemType(final String name) {
     this.name = name;
   }
 
   /**
-   * Returns the PrimitiveType for the given name, if one exists.
+   * Returns the SystemType for the given name, if one exists.
    *
    * @param name the type name (e.g., "String", "Integer", "Coding")
-   * @return the matching PrimitiveType, or empty if not found
+   * @return the matching SystemType, or empty if not found
    */
   @Nonnull
-  public static Optional<PrimitiveType> fromName(@Nonnull final String name) {
+  public static Optional<SystemType> fromName(@Nonnull final String name) {
     return Optional.ofNullable(BY_NAME.get(name));
   }
 
@@ -68,9 +68,10 @@ public enum PrimitiveType implements Type {
 
   @Override
   public Optional<FieldSpec> resolveField(final String fieldName) {
-    if (this == CODING) {
-      return CodingValue.resolveField(fieldName);
-    }
-    return Optional.empty();
+    return switch (this) {
+      case CODING -> CodingValue.resolveField(fieldName);
+      case QUANTITY -> QuantityValue.resolveField(fieldName);
+      default -> Optional.empty();
+    };
   }
 }

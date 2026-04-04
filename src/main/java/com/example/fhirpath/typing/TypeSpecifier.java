@@ -169,11 +169,11 @@ public final class TypeSpecifier {
   }
 
   private boolean matchesSystemType(@Nonnull final Type type) {
-    final PrimitiveType expected = PrimitiveType.fromName(typeName).orElse(null);
+    final SystemType expected = SystemType.fromName(typeName).orElse(null);
     if (expected == null) {
       return false;
     }
-    if (type instanceof PrimitiveType pt) {
+    if (type instanceof SystemType pt) {
       return pt == expected;
     }
     if (type instanceof FhirPrimitiveType fpt) {
@@ -186,13 +186,13 @@ public final class TypeSpecifier {
     if (type instanceof FhirPrimitiveType fpt) {
       return typeName.equals(fpt.getFhirName());
     }
-    if (type instanceof PrimitiveType pt) {
-      // Inline subjects use PrimitiveType directly — map FHIR name to PrimitiveType
+    if (type instanceof SystemType pt) {
+      // Inline subjects use SystemType directly — map FHIR name to SystemType
       // via FhirPrimitiveType (for primitives like "string"→STRING) with fallback to
-      // PrimitiveType.fromName() (for Coding/Quantity which share names across namespaces).
-      final PrimitiveType mapped =
+      // SystemType.fromName() (for Coding/Quantity which share names across namespaces).
+      final SystemType mapped =
           FhirPrimitiveType.systemTypeFor(typeName)
-              .orElseGet(() -> PrimitiveType.fromName(typeName).orElse(null));
+              .orElseGet(() -> SystemType.fromName(typeName).orElse(null));
       return mapped != null && mapped == pt;
     }
     if (type instanceof ComplexType ct) {
@@ -257,6 +257,6 @@ public final class TypeSpecifier {
   }
 
   private static boolean isValidSystemType(@Nonnull final String typeName) {
-    return PrimitiveType.fromName(typeName).isPresent();
+    return SystemType.fromName(typeName).isPresent();
   }
 }

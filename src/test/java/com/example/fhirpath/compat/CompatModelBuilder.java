@@ -249,8 +249,8 @@ public class CompatModelBuilder {
     return this;
   }
 
-  // Uses plain null because TypedNull only holds PrimitiveType and complex types have no
-  // equivalent. This is safe: empty complex fields resolve to PrimitiveType.NULL in the type
+  // Uses plain null because TypedNull only holds SystemType and complex types have no
+  // equivalent. This is safe: empty complex fields resolve to SystemType.NULL in the type
   // system, which correctly propagates emptiness without risking false overload matches (unlike
   // empty primitives, complex types are never operands to math/comparison operators).
   @Nonnull

@@ -2,17 +2,17 @@ package com.example.fhirpath.typing;
 
 /** Common Type constants for convenience. */
 public final class Types {
-  public static final Type INTEGER = PrimitiveType.INTEGER;
-  public static final Type DECIMAL = PrimitiveType.DECIMAL;
-  public static final Type BOOLEAN = PrimitiveType.BOOLEAN;
-  public static final Type STRING = PrimitiveType.STRING;
-  public static final Type DATE = PrimitiveType.DATE;
-  public static final Type DATE_TIME = PrimitiveType.DATE_TIME;
-  public static final Type TIME = PrimitiveType.TIME;
-  public static final Type QUANTITY = PrimitiveType.QUANTITY;
-  public static final Type CODING = PrimitiveType.CODING;
-  public static final Type NULL = PrimitiveType.NULL;
-  public static final Type ANY = PrimitiveType.ANY;
+  public static final Type INTEGER = SystemType.INTEGER;
+  public static final Type DECIMAL = SystemType.DECIMAL;
+  public static final Type BOOLEAN = SystemType.BOOLEAN;
+  public static final Type STRING = SystemType.STRING;
+  public static final Type DATE = SystemType.DATE;
+  public static final Type DATE_TIME = SystemType.DATE_TIME;
+  public static final Type TIME = SystemType.TIME;
+  public static final Type QUANTITY = SystemType.QUANTITY;
+  public static final Type CODING = SystemType.CODING;
+  public static final Type NULL = SystemType.NULL;
+  public static final Type ANY = SystemType.ANY;
 
   private Types() {
     // Utility class

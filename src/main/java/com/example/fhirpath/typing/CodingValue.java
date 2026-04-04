@@ -27,11 +27,11 @@ public record CodingValue(
 
   private static final Map<String, FieldSpec> FIELDS =
       Map.of(
-          "system", new FieldSpec("system", Shape.single(PrimitiveType.STRING)),
-          "code", new FieldSpec("code", Shape.single(PrimitiveType.STRING)),
-          "version", new FieldSpec("version", Shape.single(PrimitiveType.STRING)),
-          "display", new FieldSpec("display", Shape.single(PrimitiveType.STRING)),
-          "userSelected", new FieldSpec("userSelected", Shape.single(PrimitiveType.BOOLEAN)));
+          "system", new FieldSpec("system", Shape.single(SystemType.STRING)),
+          "code", new FieldSpec("code", Shape.single(SystemType.STRING)),
+          "version", new FieldSpec("version", Shape.single(SystemType.STRING)),
+          "display", new FieldSpec("display", Shape.single(SystemType.STRING)),
+          "userSelected", new FieldSpec("userSelected", Shape.single(SystemType.BOOLEAN)));
 
   /**
    * Parses a pipe-delimited Coding literal string. Components may be single-quoted (quotes are

@@ -20,33 +20,32 @@ public final class FhirPrimitiveType implements Type {
 
   private static final Map<String, FhirPrimitiveType> CACHE = new ConcurrentHashMap<>();
 
-  private static final Map<String, PrimitiveType> FHIR_TO_SYSTEM =
+  private static final Map<String, SystemType> FHIR_TO_SYSTEM =
       Map.ofEntries(
-          Map.entry("boolean", PrimitiveType.BOOLEAN),
-          Map.entry("string", PrimitiveType.STRING),
-          Map.entry("uri", PrimitiveType.STRING),
-          Map.entry("url", PrimitiveType.STRING),
-          Map.entry("canonical", PrimitiveType.STRING),
-          Map.entry("code", PrimitiveType.STRING),
-          Map.entry("oid", PrimitiveType.STRING),
-          Map.entry("id", PrimitiveType.STRING),
-          Map.entry("uuid", PrimitiveType.STRING),
-          Map.entry("markdown", PrimitiveType.STRING),
-          Map.entry("base64Binary", PrimitiveType.STRING),
-          Map.entry("integer", PrimitiveType.INTEGER),
-          Map.entry("unsignedInt", PrimitiveType.INTEGER),
-          Map.entry("positiveInt", PrimitiveType.INTEGER),
-          Map.entry("decimal", PrimitiveType.DECIMAL),
-          Map.entry("date", PrimitiveType.DATE),
-          Map.entry("dateTime", PrimitiveType.DATE_TIME),
-          Map.entry("instant", PrimitiveType.DATE_TIME),
-          Map.entry("time", PrimitiveType.TIME));
+          Map.entry("boolean", SystemType.BOOLEAN),
+          Map.entry("string", SystemType.STRING),
+          Map.entry("uri", SystemType.STRING),
+          Map.entry("url", SystemType.STRING),
+          Map.entry("canonical", SystemType.STRING),
+          Map.entry("code", SystemType.STRING),
+          Map.entry("oid", SystemType.STRING),
+          Map.entry("id", SystemType.STRING),
+          Map.entry("uuid", SystemType.STRING),
+          Map.entry("markdown", SystemType.STRING),
+          Map.entry("base64Binary", SystemType.STRING),
+          Map.entry("integer", SystemType.INTEGER),
+          Map.entry("unsignedInt", SystemType.INTEGER),
+          Map.entry("positiveInt", SystemType.INTEGER),
+          Map.entry("decimal", SystemType.DECIMAL),
+          Map.entry("date", SystemType.DATE),
+          Map.entry("dateTime", SystemType.DATE_TIME),
+          Map.entry("instant", SystemType.DATE_TIME),
+          Map.entry("time", SystemType.TIME));
 
   private final String fhirName;
-  private final PrimitiveType systemType;
+  private final SystemType systemType;
 
-  private FhirPrimitiveType(
-      @Nonnull final String fhirName, @Nonnull final PrimitiveType systemType) {
+  private FhirPrimitiveType(@Nonnull final String fhirName, @Nonnull final SystemType systemType) {
     this.fhirName = fhirName;
     this.systemType = systemType;
   }
@@ -63,7 +62,7 @@ public final class FhirPrimitiveType implements Type {
     return CACHE.computeIfAbsent(
         fhirName,
         name -> {
-          final PrimitiveType systemType = FHIR_TO_SYSTEM.get(name);
+          final SystemType systemType = FHIR_TO_SYSTEM.get(name);
           if (systemType == null) {
             throw new IllegalArgumentException("Unknown FHIR primitive type: " + name);
           }
@@ -85,10 +84,10 @@ public final class FhirPrimitiveType implements Type {
    * Returns the System type that the given FHIR type name maps to, if known.
    *
    * @param fhirName the FHIR type name (e.g., "string", "date", "code")
-   * @return the corresponding PrimitiveType, or empty if the name is not a known FHIR primitive
+   * @return the corresponding SystemType, or empty if the name is not a known FHIR primitive
    */
   @Nonnull
-  public static Optional<PrimitiveType> systemTypeFor(@Nonnull final String fhirName) {
+  public static Optional<SystemType> systemTypeFor(@Nonnull final String fhirName) {
     return Optional.ofNullable(FHIR_TO_SYSTEM.get(fhirName));
   }
 
@@ -108,7 +107,7 @@ public final class FhirPrimitiveType implements Type {
    * @return the System type that this FHIR type maps to
    */
   @Nonnull
-  public PrimitiveType getSystemType() {
+  public SystemType getSystemType() {
     return systemType;
   }
 

@@ -3,6 +3,7 @@ package com.example.fhirpath.typing;
 import jakarta.annotation.Nonnull;
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Wrapper for FHIRPath Quantity literal values (e.g. {@code 10 'mg'}, {@code 4 days}).
@@ -24,6 +25,14 @@ import java.util.Map;
  */
 public record QuantityValue(
     @Nonnull BigDecimal value, @Nonnull String unit, @Nonnull String system, @Nonnull String code) {
+
+  /** Quantity subfield specifications for field traversal (e.g. {@code quantity.value}). */
+  private static final Map<String, FieldSpec> FIELDS =
+      Map.of(
+          "value", new FieldSpec("value", Shape.single(SystemType.DECIMAL)),
+          "unit", new FieldSpec("unit", Shape.single(SystemType.STRING)),
+          "system", new FieldSpec("system", Shape.single(SystemType.STRING)),
+          "code", new FieldSpec("code", Shape.single(SystemType.STRING)));
 
   public static final String UCUM_SYSTEM = "http://unitsofmeasure.org";
   public static final String CALENDAR_SYSTEM = "http://hl7.org/fhirpath/calendar";
@@ -99,5 +108,16 @@ public record QuantityValue(
    */
   public static boolean isCalendarKeyword(@Nonnull final String keyword) {
     return CALENDAR_KEYWORDS.containsKey(keyword);
+  }
+
+  /**
+   * Resolves a Quantity subfield specification by name.
+   *
+   * @param fieldName the field name (e.g. "value", "unit", "system", "code")
+   * @return the field specification, or empty if the field name is not recognized
+   */
+  @Nonnull
+  public static Optional<FieldSpec> resolveField(@Nonnull final String fieldName) {
+    return Optional.ofNullable(FIELDS.get(fieldName));
   }
 }

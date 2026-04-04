@@ -42,6 +42,10 @@ Type information is resolved during analysis and stored in IR nodes:
 - No type recalculation during code generation
 - Clean separation between type checking and code generation
 
+### 5. Static Validity
+
+All type and cardinality checks are performed statically during analysis — not at runtime. An expression that passes analysis is guaranteed to evaluate successfully on any conformant dataset, regardless of actual data values or collection sizes. This is an intentional deviation from the FHIRPath specification, which permits runtime singleton evaluation (coercing a 1-element collection to a scalar) and defers some type checks to evaluation time. In this system, operators that require singleton input (e.g., `is()`, `as()`, math, comparison) reject `MANY`-cardinality arguments at analysis time, even if a particular dataset might produce only one element at runtime.
+
 ---
 
 ## Layered Architecture

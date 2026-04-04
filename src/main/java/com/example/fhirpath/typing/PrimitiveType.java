@@ -68,9 +68,10 @@ public enum PrimitiveType implements Type {
 
   @Override
   public Optional<FieldSpec> resolveField(final String fieldName) {
-    if (this == CODING) {
-      return CodingValue.resolveField(fieldName);
-    }
-    return Optional.empty();
+    return switch (this) {
+      case CODING -> CodingValue.resolveField(fieldName);
+      case QUANTITY -> QuantityValue.resolveField(fieldName);
+      default -> Optional.empty();
+    };
   }
 }

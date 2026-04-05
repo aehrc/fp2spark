@@ -35,6 +35,12 @@ import org.apache.spark.sql.Column;
  */
 public final class TypeOps {
 
+  /**
+   * Number of args per variant in the "typeChoice" operation: [variantCol, namespace, name,
+   * baseType]. Must match the packing in {@code Analyzer.resolveChoiceTypeFunction()}.
+   */
+  static final int VARIANT_GROUP_SIZE = 4;
+
   private TypeOps() {}
 
   /**
@@ -63,8 +69,11 @@ public final class TypeOps {
           return target.map(elem -> when(elem.isNotNull(), typeInfoStruct)).column();
         });
 
-    // Choice type(): CASE WHEN chain over variant columns
+    // Choice type() singular: CASE WHEN chain over pre-evaluated variant columns
     registry.register("typeChoice", TypeOps::generateChoiceType);
+
+    // Choice type() plural: element-wise transform with CASE WHEN over variant field names
+    registry.register("typeChoicePlural", TypeOps::generatePluralChoiceType);
   }
 
   /**
@@ -76,7 +85,7 @@ public final class TypeOps {
   private static Column generateChoiceType(final SparkOpContext ctx) {
     Column result = lit(null).cast(SparkTypeMapper.TYPE_INFO_TYPE);
     // Iterate in reverse so the first matching variant wins
-    for (int i = ctx.args().size() - 4; i >= 0; i -= 4) {
+    for (int i = ctx.args().size() - VARIANT_GROUP_SIZE; i >= 0; i -= VARIANT_GROUP_SIZE) {
       final Column variantCol = ctx.arg(i);
       final Column ns = ctx.arg(i + 1);
       final Column nm = ctx.arg(i + 2);
@@ -86,7 +95,33 @@ public final class TypeOps {
     return result;
   }
 
-  /** Creates a TypeInfo struct column from namespace, name, and baseType columns. */
+  /**
+   * Generates type info for plural choice types using element-wise transform. Args: [parent, col1,
+   * ns1, name1, bt1, col2, ...]. The parent array is transformed per-element, checking each variant
+   * field for non-null.
+   */
+  private static Column generatePluralChoiceType(final SparkOpContext ctx) {
+    final CollectionValue parent = ctx.collectionArg(0);
+    return parent
+        .map(
+            elem -> {
+              Column result = lit(null).cast(SparkTypeMapper.TYPE_INFO_TYPE);
+              for (int i = ctx.args().size() - VARIANT_GROUP_SIZE;
+                  i >= 1;
+                  i -= VARIANT_GROUP_SIZE) {
+                final String colName = (String) ctx.literalArg(i).value();
+                final Column ns = ctx.arg(i + 1);
+                final Column nm = ctx.arg(i + 2);
+                final Column bt = ctx.arg(i + 3);
+                result =
+                    when(elem.getField(colName).isNotNull(), typeInfoStruct(ns, nm, bt))
+                        .otherwise(result);
+              }
+              return result;
+            })
+        .column();
+  }
+
   private static Column typeInfoStruct(
       final Column namespace, final Column name, final Column baseType) {
     return struct(namespace.as("namespace"), name.as("name"), baseType.as("baseType"));

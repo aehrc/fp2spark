@@ -556,6 +556,10 @@ public class Analyzer {
       return Optional.empty();
     }
 
+    if (!call.arguments().isEmpty()) {
+      throw new InvalidExpressionException("Function 'type()' takes no arguments", null);
+    }
+
     final Type targetType = targetIr.getType();
 
     // Empty collection → empty result
@@ -585,11 +589,14 @@ public class Analyzer {
   /**
    * Resolves {@code type()} on a choice type by creating variant Traversal nodes.
    *
-   * <p>Each variant contributes 4 args: [variantTraversal, namespace, name, baseType]. The variant
-   * Traversal nodes use the existing traversal codegen for correct column resolution (handles
-   * Resource parents, lambda contexts, etc.).
+   * <p>For singular parents, each variant contributes 4 args: [variantTraversal, namespace, name,
+   * baseType]. The variant Traversal nodes use existing traversal codegen for correct column
+   * resolution (handles Resource parents, lambda contexts, etc.). Uses operation name "typeChoice".
    *
-   * <p>Uses the operation name "typeChoice" to distinguish from non-choice type() in codegen.
+   * <p>For plural parents (e.g., {@code component.value.type()}), variant Traversals would produce
+   * arrays rather than per-element values. Instead, the parent node is passed directly with variant
+   * column names as string literals, and the codegen uses {@code transform()} for element-wise
+   * resolution. Uses operation name "typeChoicePlural".
    */
   @Nonnull
   private IRNode resolveChoiceTypeFunction(
@@ -603,17 +610,32 @@ public class Analyzer {
     final List<FieldSpec> variants = choiceType.getVariants();
     final var argsBuilder = new ArrayList<IRNode>();
 
+    if (parentNode.isSingular()) {
+      // Singular: use pre-resolved variant Traversal columns
+      for (final FieldSpec variant : variants) {
+        final TypeInfoValue info = TypeInfoValue.fromType(variant.getType());
+        argsBuilder.add(new Traversal(parentNode, variant));
+        argsBuilder.add(new Literal(info.namespace(), Types.STRING));
+        argsBuilder.add(new Literal(info.name(), Types.STRING));
+        argsBuilder.add(new Literal(info.baseType(), Types.STRING));
+      }
+      final ResolvedSignature sig =
+          new ResolvedSignature(argsBuilder.stream().map(IRNode::getType).toList(), resultShape);
+      return new Operation("typeChoice", argsBuilder, sig);
+    }
+
+    // Plural: pass parent + variant info as string literals for element-wise transform
+    argsBuilder.add(parentNode);
     for (final FieldSpec variant : variants) {
       final TypeInfoValue info = TypeInfoValue.fromType(variant.getType());
-      argsBuilder.add(new Traversal(parentNode, variant));
+      argsBuilder.add(new Literal(variant.getName(), Types.STRING));
       argsBuilder.add(new Literal(info.namespace(), Types.STRING));
       argsBuilder.add(new Literal(info.name(), Types.STRING));
       argsBuilder.add(new Literal(info.baseType(), Types.STRING));
     }
-
     final ResolvedSignature sig =
         new ResolvedSignature(argsBuilder.stream().map(IRNode::getType).toList(), resultShape);
-    return new Operation("typeChoice", argsBuilder, sig);
+    return new Operation("typeChoicePlural", argsBuilder, sig);
   }
 
   /**

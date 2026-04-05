@@ -1,11 +1,16 @@
 package com.example.fhirpath.ir.type;
 
+import com.example.fhirpath.analyzer.InvalidExpressionException;
 import com.example.fhirpath.test.FhirPathTestBase;
+import java.math.BigDecimal;
 import java.util.stream.Stream;
+import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Quantity;
+import org.hl7.fhir.r4.model.StringType;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -60,8 +65,6 @@ class TypeReflectionTest extends FhirPathTestBase {
     return obs;
   }
 
-  // --- System primitive literals ---
-
   @TestFactory
   Stream<DynamicTest> testTypeOnSystemPrimitiveLiterals() {
     return builder()
@@ -90,8 +93,6 @@ class TypeReflectionTest extends FhirPathTestBase {
         .build();
   }
 
-  // --- System complex types ---
-
   @TestFactory
   Stream<DynamicTest> testTypeOnSystemComplexTypes() {
     return builder()
@@ -105,8 +106,6 @@ class TypeReflectionTest extends FhirPathTestBase {
         .testEquals("System.Any", "(http://example.com|code).type().baseType")
         .build();
   }
-
-  // --- FHIR primitive elements ---
 
   @TestFactory
   Stream<DynamicTest> testTypeOnFhirPrimitiveElements() {
@@ -122,8 +121,6 @@ class TypeReflectionTest extends FhirPathTestBase {
         .build();
   }
 
-  // --- FHIR complex type elements ---
-
   @TestFactory
   Stream<DynamicTest> testTypeOnFhirComplexTypeElements() {
     return builder()
@@ -134,8 +131,6 @@ class TypeReflectionTest extends FhirPathTestBase {
         .testEquals("FHIR.Element", "name.first().type().baseType")
         .build();
   }
-
-  // --- FHIR resource type ---
 
   @TestFactory
   Stream<DynamicTest> testTypeOnFhirResourceType() {
@@ -148,8 +143,6 @@ class TypeReflectionTest extends FhirPathTestBase {
         .build();
   }
 
-  // --- Empty collection ---
-
   @TestFactory
   Stream<DynamicTest> testTypeOnEmptyCollection() {
     return builder()
@@ -157,8 +150,6 @@ class TypeReflectionTest extends FhirPathTestBase {
         .testEmpty("{}.type()", "type() returns empty for empty collection")
         .build();
   }
-
-  // --- Nested type().type() ---
 
   @TestFactory
   Stream<DynamicTest> testNestedTypeCall() {
@@ -169,8 +160,6 @@ class TypeReflectionTest extends FhirPathTestBase {
         .testEquals("System.Any", "1.type().type().baseType")
         .build();
   }
-
-  // --- Choice type per-row resolution ---
 
   @TestFactory
   Stream<DynamicTest> testTypeOnChoiceTypeQuantity() {
@@ -192,8 +181,6 @@ class TypeReflectionTest extends FhirPathTestBase {
         .testEquals("string", "value.type().name")
         .build();
   }
-
-  // --- Integration with other functions ---
 
   @TestFactory
   Stream<DynamicTest> testTypeIntegrationWithEquality() {
@@ -240,6 +227,40 @@ class TypeReflectionTest extends FhirPathTestBase {
             2,
             "name.given.type().count()",
             "Plural collection returns one TypeInfo per non-null element")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testTypeOnPluralChoiceType() {
+    final Observation obs = new Observation();
+    obs.setId("multi-component");
+    final Observation.ObservationComponentComponent c1 =
+        new Observation.ObservationComponentComponent();
+    c1.setCode(new CodeableConcept().addCoding(new Coding().setCode("bp")));
+    c1.setValue(new Quantity().setValue(new BigDecimal("120")).setUnit("mmHg"));
+    obs.addComponent(c1);
+    final Observation.ObservationComponentComponent c2 =
+        new Observation.ObservationComponentComponent();
+    c2.setCode(new CodeableConcept().addCoding(new Coding().setCode("note")));
+    c2.setValue(new StringType("normal"));
+    obs.addComponent(c2);
+
+    return builder()
+        .withSubject(obs)
+        .group("type() on plural choice element (component.value)")
+        .testEquals(2, "component.value.type().count()", "Returns one TypeInfo per component")
+        .testEquals(
+            "Quantity", "component.value.type().first().name", "First component value is Quantity")
+        .testEquals("string", "component.value.type()[1].name", "Second component value is string")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testTypeWithArgumentErrors() {
+    return builder()
+        .group("type() rejects arguments")
+        .testError(
+            InvalidExpressionException.class, "1.type(String)", "type() with argument throws error")
         .build();
   }
 }

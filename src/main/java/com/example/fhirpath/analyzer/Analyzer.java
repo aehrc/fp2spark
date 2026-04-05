@@ -512,14 +512,14 @@ public class Analyzer {
       return Optional.empty();
     }
 
-    final TypeSpecifier typeSpec = extractTypeSpecifier(call);
-    final Type targetType = targetIr.getType();
-
     // is/as are singleton operators — reject MANY cardinality (ofType works on collections)
     if (!"ofType".equals(name) && targetIr.getCardinality() == Cardinality.MANY) {
       throw new InvalidExpressionException(
           "Operator '" + name + "' requires a singleton input; use ofType() for collections", null);
     }
+
+    final TypeSpecifier typeSpec = extractTypeSpecifier(call);
+    final Type targetType = targetIr.getType();
 
     if (targetType instanceof ChoiceTypeLike choiceType) {
       return Optional.of(resolveChoiceTypeOperation(name, choiceType, targetIr, typeSpec));
@@ -666,8 +666,7 @@ public class Analyzer {
                 List.of(targetIr.getType(), Types.BOOLEAN), Shape.single(Types.BOOLEAN));
         yield new Operation("is", List.of(targetIr, new Literal(matches, Types.BOOLEAN)), sig);
       }
-      case "as" -> matches ? targetIr : new Literal(null, Types.NULL);
-      case "ofType" -> matches ? targetIr : new Literal(null, Types.NULL);
+      case "as", "ofType" -> matches ? targetIr : new Literal(null, Types.NULL);
       default -> throw new IllegalStateException("Unexpected type operation: " + operation);
     };
   }

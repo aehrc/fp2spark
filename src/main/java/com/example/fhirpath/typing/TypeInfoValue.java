@@ -68,7 +68,7 @@ public record TypeInfoValue(
     if (type instanceof SystemType st) {
       return new TypeInfoValue(TypeSpecifier.SYSTEM_NAMESPACE, st.getName(), SYSTEM_ANY_BASE);
     }
-    // Fallback for TypeInfo itself or unknown types
+    // Fallback for unknown types (callers should not pass ChoiceTypeLike directly)
     return new TypeInfoValue(TypeSpecifier.SYSTEM_NAMESPACE, "Object", SYSTEM_ANY_BASE);
   }
 }

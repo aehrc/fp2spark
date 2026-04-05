@@ -261,6 +261,10 @@ public final class OperationRegistry {
         // guard in resolveFunctionCall() does not reject the operation name.
 
         register("is", Signatures.typeTest(ANY)),
+
+        // type() is intercepted early by Analyzer.resolveTypeFunction() before normal signature
+        // resolution. This registration exists so that the "unknown function" guard in
+        // resolveFunctionCall() does not reject the operation name.
         register("type", Signatures.unaryFunc(ANY, ANY)),
 
         // CONDITIONAL OPERATIONS (FHIRPath Spec 6.7)

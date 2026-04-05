@@ -9,7 +9,6 @@ import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
 import org.apache.spark.sql.Column;
-import org.apache.spark.sql.types.DataTypes;
 
 /**
  * Spark code generation for type testing and reflection operations.
@@ -90,9 +89,6 @@ public final class TypeOps {
   /** Creates a TypeInfo struct column from namespace, name, and baseType columns. */
   private static Column typeInfoStruct(
       final Column namespace, final Column name, final Column baseType) {
-    return struct(
-        namespace.cast(DataTypes.StringType).as("namespace"),
-        name.cast(DataTypes.StringType).as("name"),
-        baseType.cast(DataTypes.StringType).as("baseType"));
+    return struct(namespace.as("namespace"), name.as("name"), baseType.as("baseType"));
   }
 }

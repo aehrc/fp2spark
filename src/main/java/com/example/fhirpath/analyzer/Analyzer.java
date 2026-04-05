@@ -43,6 +43,7 @@ import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -600,7 +601,7 @@ public class Analyzer {
         (targetIr instanceof Traversal choiceTraversal) ? choiceTraversal.target() : targetIr;
 
     final List<FieldSpec> variants = choiceType.getVariants();
-    final var argsBuilder = new java.util.ArrayList<IRNode>();
+    final var argsBuilder = new ArrayList<IRNode>();
 
     for (final FieldSpec variant : variants) {
       final TypeInfoValue info = TypeInfoValue.fromType(variant.getType());

@@ -1,6 +1,7 @@
 package com.example.fhirpath.typing;
 
 import jakarta.annotation.Nonnull;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -52,6 +53,12 @@ public final class InlineChoiceType implements ChoiceTypeLike {
   @Override
   public Optional<FieldSpec> resolveField(@Nonnull final String fieldName) {
     return Optional.empty();
+  }
+
+  @Override
+  @Nonnull
+  public List<FieldSpec> getVariants() {
+    return List.copyOf(variants.values());
   }
 
   @Override

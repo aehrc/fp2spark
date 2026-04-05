@@ -261,6 +261,7 @@ public final class OperationRegistry {
         // guard in resolveFunctionCall() does not reject the operation name.
 
         register("is", Signatures.typeTest(ANY)),
+        register("type", Signatures.unaryFunc(ANY, ANY)),
 
         // CONDITIONAL OPERATIONS (FHIRPath Spec 6.7)
 

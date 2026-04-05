@@ -1,6 +1,7 @@
 package com.example.fhirpath.typing;
 
 import jakarta.annotation.Nonnull;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -10,6 +11,17 @@ import java.util.Optional;
  * interface, allowing the Analyzer to handle choice type operations uniformly.
  */
 public interface ChoiceTypeLike extends Type {
+
+  /**
+   * Returns all variant field specifications for this choice type.
+   *
+   * <p>Each field spec represents a possible variant (e.g., "valueString", "valueQuantity") with
+   * its column name and type.
+   *
+   * @return the list of all variant field specifications
+   */
+  @Nonnull
+  List<FieldSpec> getVariants();
 
   /**
    * Resolves a specific variant by FHIR type name.

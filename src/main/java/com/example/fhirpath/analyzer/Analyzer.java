@@ -37,6 +37,7 @@ import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.TimeValue;
 import com.example.fhirpath.typing.Type;
+import com.example.fhirpath.typing.TypeInfoValue;
 import com.example.fhirpath.typing.TypeSpecifier;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
@@ -306,6 +307,12 @@ public class Analyzer {
       return typeOp.get();
     }
 
+    // Check for type() reflection function — needs compile-time type info
+    final Optional<IRNode> typeFunc = resolveTypeFunction(resolvedCall, targetIr);
+    if (typeFunc.isPresent()) {
+      return typeFunc.get();
+    }
+
     // Check for SQL on FHIR key functions (getResourceKey, getReferenceKey)
     final Optional<IRNode> keyOp = resolveKeyFunction(resolvedCall, targetIr);
     if (keyOp.isPresent()) {
@@ -527,6 +534,85 @@ public class Analyzer {
 
     // Non-choice type: static type checking
     return Optional.of(resolveNonChoiceTypeOperation(name, targetIr, typeSpec));
+  }
+
+  /**
+   * Resolves the {@code type()} reflection function.
+   *
+   * <p>The {@code type()} function returns type information (namespace, name, baseType) for each
+   * element in the input collection. Since type information is known at compile time for non-choice
+   * types and per-variant for choice types, the Analyzer resolves it rather than deferring to
+   * runtime.
+   *
+   * <p>For non-choice types, creates an Operation with: [target, namespace, name, baseType] as
+   * literal args. For choice types, creates an Operation with: [parent, col1, ns1, name1, bt1,
+   * col2, ns2, name2, bt2, ...] where each group of 4 represents a variant.
+   */
+  @Nonnull
+  private Optional<IRNode> resolveTypeFunction(
+      @Nonnull final AstFunctionCall call, @Nonnull final IRNode targetIr) {
+    if (!"type".equals(call.functionName())) {
+      return Optional.empty();
+    }
+
+    final Type targetType = targetIr.getType();
+
+    // Empty collection → empty result
+    if (targetType == Types.NULL) {
+      return Optional.of(new Literal(null, Types.NULL));
+    }
+
+    final Shape resultShape = Shape.of(TypeInfoValue.TYPE_INFO_TYPE, targetIr.getCardinality());
+
+    if (targetType instanceof ChoiceTypeLike choiceType) {
+      return Optional.of(resolveChoiceTypeFunction(choiceType, targetIr, resultShape));
+    }
+
+    // Non-choice: type info is statically known
+    final TypeInfoValue info = TypeInfoValue.fromType(targetType);
+    final List<IRNode> args =
+        List.of(
+            targetIr,
+            new Literal(info.namespace(), Types.STRING),
+            new Literal(info.name(), Types.STRING),
+            new Literal(info.baseType(), Types.STRING));
+    final ResolvedSignature sig =
+        new ResolvedSignature(args.stream().map(IRNode::getType).toList(), resultShape);
+    return Optional.of(new Operation("type", args, sig));
+  }
+
+  /**
+   * Resolves {@code type()} on a choice type by creating variant Traversal nodes.
+   *
+   * <p>Each variant contributes 4 args: [variantTraversal, namespace, name, baseType]. The variant
+   * Traversal nodes use the existing traversal codegen for correct column resolution (handles
+   * Resource parents, lambda contexts, etc.).
+   *
+   * <p>Uses the operation name "typeChoice" to distinguish from non-choice type() in codegen.
+   */
+  @Nonnull
+  private IRNode resolveChoiceTypeFunction(
+      @Nonnull final ChoiceTypeLike choiceType,
+      @Nonnull final IRNode targetIr,
+      @Nonnull final Shape resultShape) {
+    // Skip the choice traversal to get the parent node (same pattern as is/as/ofType)
+    final IRNode parentNode =
+        (targetIr instanceof Traversal choiceTraversal) ? choiceTraversal.target() : targetIr;
+
+    final List<FieldSpec> variants = choiceType.getVariants();
+    final var argsBuilder = new java.util.ArrayList<IRNode>();
+
+    for (final FieldSpec variant : variants) {
+      final TypeInfoValue info = TypeInfoValue.fromType(variant.getType());
+      argsBuilder.add(new Traversal(parentNode, variant));
+      argsBuilder.add(new Literal(info.namespace(), Types.STRING));
+      argsBuilder.add(new Literal(info.name(), Types.STRING));
+      argsBuilder.add(new Literal(info.baseType(), Types.STRING));
+    }
+
+    final ResolvedSignature sig =
+        new ResolvedSignature(argsBuilder.stream().map(IRNode::getType).toList(), resultShape);
+    return new Operation("typeChoice", argsBuilder, sig);
   }
 
   /**

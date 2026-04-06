@@ -3,6 +3,8 @@ package com.example.fhirpath.typing;
 import ca.uhn.fhir.context.BaseRuntimeElementDefinition;
 import ca.uhn.fhir.context.RuntimeChildChoiceDefinition;
 import jakarta.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,6 +96,20 @@ public final class ChoiceType implements ChoiceTypeLike {
 
     final Type variantType = FhirComplexType.toFhirPathType(elementDef);
     return Optional.of(new FieldSpec(columnName, Shape.single(variantType)));
+  }
+
+  @Override
+  @Nonnull
+  public List<FieldSpec> getVariants() {
+    final List<FieldSpec> variants = new ArrayList<>();
+    for (final String childName : childDefinition.getValidChildNames()) {
+      final BaseRuntimeElementDefinition<?> elemDef = childDefinition.getChildByName(childName);
+      if (elemDef != null) {
+        final Type variantType = FhirComplexType.toFhirPathType(elemDef);
+        variants.add(new FieldSpec(childName, Shape.single(variantType)));
+      }
+    }
+    return variants;
   }
 
   @Override

@@ -31,6 +31,14 @@ public final class SparkTypeMapper {
   public static final int Q_SYSTEM = 2;
   public static final int Q_CODE = 3;
 
+  public static final StructType TYPE_INFO_TYPE =
+      DataTypes.createStructType(
+          new StructField[] {
+            DataTypes.createStructField("namespace", DataTypes.StringType, true),
+            DataTypes.createStructField("name", DataTypes.StringType, true),
+            DataTypes.createStructField("baseType", DataTypes.StringType, true),
+          });
+
   public static final StructType CODING_TYPE =
       DataTypes.createStructType(
           new StructField[] {

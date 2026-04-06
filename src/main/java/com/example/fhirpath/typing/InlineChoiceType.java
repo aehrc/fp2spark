@@ -1,6 +1,9 @@
 package com.example.fhirpath.typing;
 
 import jakarta.annotation.Nonnull;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,7 +30,7 @@ public final class InlineChoiceType implements ChoiceTypeLike {
   public InlineChoiceType(
       @Nonnull final String elementName, @Nonnull final Map<String, FieldSpec> variants) {
     this.elementName = elementName;
-    this.variants = Map.copyOf(variants);
+    this.variants = Collections.unmodifiableMap(new LinkedHashMap<>(variants));
   }
 
   @Override
@@ -52,6 +55,12 @@ public final class InlineChoiceType implements ChoiceTypeLike {
   @Override
   public Optional<FieldSpec> resolveField(@Nonnull final String fieldName) {
     return Optional.empty();
+  }
+
+  @Override
+  @Nonnull
+  public List<FieldSpec> getVariants() {
+    return List.copyOf(variants.values());
   }
 
   @Override

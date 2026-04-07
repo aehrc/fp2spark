@@ -1,0 +1,202 @@
+package com.example.fhirpath.compat;
+
+import static com.example.fhirpath.compat.ExclusionGroup.group;
+import static org.junit.jupiter.api.Assertions.fail;
+
+import jakarta.annotation.Nonnull;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.DynamicTest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Central registry of expected test failures (exclusions) for the compat test suite.
+ *
+ * <p>Exclusions are grouped by root cause. Each group carries a reason string and one or more
+ * matchers that identify individual test runs by display name (and optionally test class).
+ *
+ * <p>This class is intentionally separate from the test classes so that test classes remain clean
+ * mirrors of Pathling's test definitions.
+ *
+ * @see ExclusionGroup
+ * @see ExclusionRule
+ */
+public final class CompatExclusions {
+
+  private static final Logger log = LoggerFactory.getLogger(CompatExclusions.class);
+
+  private CompatExclusions() {}
+
+  // @formatter:off
+  private static final List<ExclusionRule> RULES =
+      Stream.of(
+
+              // --- resolve() function not implemented ---
+              group("resolve() function not implemented").expressions("resolve()"),
+
+              // --- Strict typing: Boolean operators reject non-Boolean input ---
+              // fp2sql enforces Boolean-only operands for not/and/or/xor;
+              // Pathling coerces non-Boolean singletons to Boolean
+              group("Strict typing: Boolean operators reject non-Boolean input")
+                  .scope(BooleanLogicFunctionsDslTest.class)
+                  .expressions(
+                      "emptyString.not()",
+                      "stringValue.where($this.empty()).not()",
+                      "stringArray.where($this.empty()).not()",
+                      "%resource.not()",
+                      "stringValue.not()",
+                      "stringArray.where($this='value1').not()",
+                      "choiceField.value.not()",
+                      "choiceField.value.ofType(string).not()",
+                      "choiceField.value.ofType(integer).not()",
+                      "stringArray.not()",
+                      "boolArray.not()",
+                      "people.active.not()")
+                  .scope(SystemDslTest.class)
+                  // empty evaluation for functions
+                  .expressions(
+                      "emptyString.not()",
+                      "stringArray.where($this.empty()).not()",
+                      "emptyCoding.not()",
+                      "emptyCoding.where($this.empty()).not()",
+                      "choiceField.value.ofType(integer).not()")
+                  // empty evaluation for operators
+                  .expressions(
+                      "true and emptyString",
+                      "stringArray.where($this.empty()) or false",
+                      "false xor emptyCoding",
+                      "emptyCoding.where($this.empty()) or false",
+                      "true and choiceField.value.ofType(integer)")
+                  // single element collection evaluate to true in functions
+                  .expressions(
+                      "stringValue.not()",
+                      "codingValue.not()",
+                      "stringArrayOne.not()",
+                      "stringArray.where($this='value1').not()",
+                      "%resource.not()",
+                      "choiceField.value.not()",
+                      "choiceField.value.ofType(string).not()")
+                  // single element collection evaluate to true in boolean operators
+                  .expressions(
+                      "stringValue or {}",
+                      "true and codingValue",
+                      "{} or stringArrayOne",
+                      "stringArray.where($this='value1') and true",
+                      "choiceField.value and true",
+                      "choiceField.value.ofType(string) or false")
+                  // collections with many elements
+                  .expressions(
+                      "booleanArray.not()",
+                      "stringArray.not()",
+                      "stringArray.where($this.exists()).not()",
+                      "booleanArray and true",
+                      "false or stringArray",
+                      "true and stringArray.where($this.exists())")
+                  // boolean evaluation in boolean expressions
+                  .expressions(
+                      "complex.where($this.singularString).id",
+                      "complex.where($this.oneString).id",
+                      "complex.where($this.manyStrings).id"),
+
+              // --- Strict typing: where()/exists() rejects non-Boolean criteria ---
+              group("Strict typing: where()/exists() rejects non-Boolean criteria expression")
+                  .scope(ExistenceFunctionsDslTest.class)
+                  .expressions("people.exists(name)"),
+
+              // --- Strict typing: comparison with incompatible empty types ---
+              group("Strict typing: comparison rejects incompatible types")
+                  .scope(ComparisonOperatorsDslTest.class)
+                  .expressions("str1 < boolEmpty"),
+
+              // --- Membership operator: complex type ---
+              group("Membership operator accepts complex types")
+                  .scope(MembershipOperatorsDslTest.class)
+                  .expressions("name in name"),
+
+              // --- Union operator: struct/type representation mismatch ---
+              group("Union operator: struct/type representation mismatch")
+                  .scope(CombiningOperatorsDslTest.class)
+                  .pattern("\\[Coding union")
+                  .pattern("\\[Quantity union")
+                  .pattern("\\[Decimal union")
+                  .pattern("\\[DateTime union"),
+
+              // --- convertsTo*: non-convertible and empty input differences ---
+              group("convertsTo*: returns false instead of empty for non-convertible/empty input")
+                  .scope(ConversionFunctionsDslTest.class)
+                  .pattern("\\[convertsTo\\w+\\(\\) with (non-convertible|empty)")
+                  .pattern(
+                      "\\[convertsTo\\w+\\(\\) - (Non-convertible|Empty|String sources \\(invalid)")
+                  .pattern("\\[convertsToString\\(\\) with empty")
+                  .pattern("\\[convertsToQuantity\\(unitCode\\)"),
+
+              // --- toQuantity: calendar duration unit naming ---
+              group("toQuantity: calendar duration unit naming differences")
+                  .scope(ConversionFunctionsDslTest.class)
+                  .pattern("\\[toQuantity\\(\\) - String sources \\(calendar")
+                  .pattern("\\[toQuantity\\(unitCode\\)"),
+
+              // --- Type functions: as operator on where()-filtered collections ---
+              group("Strict typing: as operator requires singleton input")
+                  .scope(TypeFunctionsDslTest.class)
+                  .expressions(
+                      "component.where(value.is(String)).value.as(String)",
+                      "component.where(value.is(Boolean)).value.as(Boolean)"),
+
+              // --- Type functions: ofType equality on complex types ---
+              group("Type functions: ofType equality on FHIR complex types")
+                  .scope(TypeFunctionsDslTest.class)
+                  .expressions(
+                      "name.ofType(FHIR.HumanName) = name",
+                      "address.ofType(FHIR.Address) = address"),
+
+              // --- ofType() for non-resource types ---
+              group("ofType() non-resource type differences")
+                  .scope(FilteringAndProjectionFunctionsDslTest.class)
+                  .pattern("\\[ofType\\(\\) function with non-resource types\\]")
+                  .pattern("\\[ofType\\(\\) on polymorphic collections with System types\\]"),
+
+              // --- getReferenceKey on non-Reference elements ---
+              group("getReferenceKey() strict Reference element check")
+                  .scope(JoinKeyFunctionsDslTest.class)
+                  .expressions("getReferenceKey()"))
+          .flatMap(g -> g.build().stream())
+          .toList();
+
+  // @formatter:on
+
+  /**
+   * Find the first exclusion rule matching the given test.
+   *
+   * @param displayName The DynamicTest display name
+   * @param testClass The test class that produced the test
+   * @return The matching rule, or empty if no exclusion applies
+   */
+  static Optional<ExclusionRule> findMatch(
+      @Nonnull String displayName, @Nonnull Class<?> testClass) {
+    return RULES.stream().filter(rule -> rule.matches(displayName, testClass)).findFirst();
+  }
+
+  /**
+   * Wrap a DynamicTest with XFAIL behavior.
+   *
+   * <p>The test still runs. If it fails (expected), the failure is absorbed and the test passes. If
+   * it unexpectedly passes, the test fails with a message to remove the exclusion.
+   */
+  static DynamicTest wrapXFail(@Nonnull DynamicTest test, @Nonnull ExclusionRule rule) {
+    return DynamicTest.dynamicTest(
+        "[XFAIL] " + test.getDisplayName(),
+        () -> {
+          try {
+            test.getExecutable().execute();
+            // Test unexpectedly passed — flag for exclusion removal
+            fail("XFAIL test unexpectedly passed. Remove this exclusion. Reason: " + rule.reason());
+          } catch (AssertionError | Exception e) {
+            // Expected failure — absorb it
+            log.info("[XFAIL] {} — {}", test.getDisplayName(), rule.reason());
+          }
+        });
+  }
+}

@@ -2,7 +2,6 @@ package com.example.fhirpath.compat;
 
 import com.example.fhirpath.test.FhirPathTestBuilder;
 import jakarta.annotation.Nonnull;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -25,9 +24,12 @@ import org.junit.jupiter.api.DynamicTest;
 public class CompatTestBuilder {
 
   private final FhirPathTestBuilder delegate;
+  private final Class<?> testClass;
 
-  CompatTestBuilder(@Nonnull final FhirPathTestBuilder delegate) {
+  CompatTestBuilder(
+      @Nonnull final FhirPathTestBuilder delegate, @Nonnull final Class<?> testClass) {
     this.delegate = delegate;
+    this.testClass = testClass;
   }
 
   /**
@@ -41,7 +43,7 @@ public class CompatTestBuilder {
       @Nonnull final Function<CompatModelBuilder, CompatModelBuilder> builderFunction) {
     final CompatModelBuilder modelBuilder = new CompatModelBuilder();
     builderFunction.apply(modelBuilder);
-    final Map<String, Object> model = modelBuilder.getModel();
+    final java.util.Map<String, Object> model = modelBuilder.getModel();
     final String resourceType =
         model.containsKey("resourceType") ? String.valueOf(model.get("resourceType")) : "Test";
     delegate.withSubject(resourceType, model);
@@ -115,9 +117,20 @@ public class CompatTestBuilder {
     return this;
   }
 
-  /** Build the stream of dynamic tests. */
+  /**
+   * Build the stream of dynamic tests, applying XFAIL wrapping for known exclusions.
+   *
+   * <p>Each test is checked against {@link CompatExclusions}. Matching tests are wrapped with XFAIL
+   * behavior: failures are absorbed, unexpected passes are flagged.
+   */
   @Nonnull
   public Stream<DynamicTest> build() {
-    return delegate.build();
+    return delegate
+        .build()
+        .map(
+            test ->
+                CompatExclusions.findMatch(test.getDisplayName(), testClass)
+                    .map(rule -> CompatExclusions.wrapXFail(test, rule))
+                    .orElse(test));
   }
 }

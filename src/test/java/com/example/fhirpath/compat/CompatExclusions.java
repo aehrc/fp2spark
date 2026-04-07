@@ -185,6 +185,8 @@ public final class CompatExclusions {
    * <p>The test still runs. If it fails (expected), the failure is absorbed and the test passes. If
    * it unexpectedly passes, the test fails with a message to remove the exclusion.
    */
+  @SuppressWarnings("java:S2221") // Catching Exception is intentional: XFAIL must absorb all
+  // test failures (AssertionError) and runtime errors (e.g., UnsupportedFeatureException)
   static DynamicTest wrapXFail(@Nonnull DynamicTest test, @Nonnull ExclusionRule rule) {
     return DynamicTest.dynamicTest(
         "[XFAIL] " + test.getDisplayName(),

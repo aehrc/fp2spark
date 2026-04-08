@@ -1,5 +1,6 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.struct;
 import static org.apache.spark.sql.functions.when;
@@ -74,6 +75,15 @@ public final class TypeOps {
 
     // Choice type() plural: element-wise transform with CASE WHEN over variant field names
     registry.register("typeChoicePlural", TypeOps::generatePluralChoiceType);
+
+    // Multi-variant coalesce for ofType on singular parents:
+    // coalesce(variant1, variant2, ...) — first non-null wins
+    registry.register("coalesce", ctx -> coalesce(ctx.args().toArray(new Column[0])));
+
+    // Multi-variant coalesce for ofType on plural parents:
+    // filter(transform(parent, x -> coalesce(x.f1, x.f2, ...)), y -> y IS NOT NULL)
+    // Args: [parentArray, fieldName1, fieldName2, ...]
+    registry.register("coalesceFields", TypeOps::generateCoalesceFields);
   }
 
   /**
@@ -120,6 +130,29 @@ public final class TypeOps {
               return result;
             })
         .column();
+  }
+
+  /**
+   * Generates per-element coalesce over multiple variant fields on a plural parent.
+   *
+   * <p>Args: [parentArray, fieldName1, fieldName2, ...]. Produces: {@code filter(transform(parent,
+   * x -> coalesce(x.f1, x.f2, ...)), y -> y IS NOT NULL)}, with empty arrays converted to null.
+   */
+  private static Column generateCoalesceFields(final SparkOpContext ctx) {
+    final CollectionValue parent = ctx.collectionArg(0);
+    final CollectionValue result =
+        parent
+            .map(
+                elem -> {
+                  final Column[] fields = new Column[ctx.args().size() - 1];
+                  for (int i = 1; i < ctx.args().size(); i++) {
+                    final String fieldName = (String) ctx.literalArg(i).value();
+                    fields[i - 1] = elem.getField(fieldName);
+                  }
+                  return coalesce(fields);
+                })
+            .filterNulls();
+    return CollectionValue.nullIfEmpty(result.column());
   }
 
   private static Column typeInfoStruct(

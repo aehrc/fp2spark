@@ -1,6 +1,7 @@
 package com.example.fhirpath.typing;
 
 import jakarta.annotation.Nonnull;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -150,6 +151,36 @@ public final class TypeSpecifier {
       throw new IllegalStateException("No FHIR variant mapping for System type: " + typeName);
     }
     return fhirName;
+  }
+
+  /**
+   * Returns all FHIR variant names that match this type specifier.
+   *
+   * <p>For FHIR namespace, returns a single-element list with the type name. For System namespace,
+   * returns all FHIR primitive types that map to the corresponding System type (e.g., {@code
+   * System.String} → {@code ["string", "uri", "code", "id", ...]}). For complex System types like
+   * {@code System.Quantity} and {@code System.Coding} that have no FHIR primitive mappings, falls
+   * back to the canonical FHIR variant name from {@link #SYSTEM_TO_FHIR_VARIANT}.
+   *
+   * @return all matching FHIR variant names
+   */
+  @Nonnull
+  public List<String> toAllFhirVariantNames() {
+    if (isFhirType()) {
+      return List.of(typeName);
+    }
+    final SystemType systemType = SystemType.fromName(typeName).orElse(null);
+    if (systemType == null) {
+      return List.of();
+    }
+    final List<String> primitiveNames = FhirPrimitiveType.allFhirNamesFor(systemType);
+    if (!primitiveNames.isEmpty()) {
+      return primitiveNames;
+    }
+    // Complex System types (Quantity, Coding) have no FHIR primitive entries;
+    // fall back to the canonical FHIR variant name.
+    final String canonical = SYSTEM_TO_FHIR_VARIANT.get(typeName);
+    return canonical != null ? List.of(canonical) : List.of();
   }
 
   /**

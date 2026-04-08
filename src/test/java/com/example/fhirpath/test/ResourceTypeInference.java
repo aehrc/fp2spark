@@ -210,6 +210,11 @@ class ResourceTypeInference {
    * <p>If any element carries a {@code __CHOICE__} annotation, the choice type schema is propagated
    * to the merged result so that all elements share the same choice type structure.
    *
+   * <p>If any element carries a {@code __FHIR_TYPE__} annotation, the FHIR type name is propagated
+   * to the merged result so that the inferred ComplexType carries the correct type name (e.g.,
+   * "Reference") rather than the anonymous "ComplexType" default. All elements must agree on the
+   * FHIR type; conflicting annotations trigger an {@link IllegalStateException}.
+   *
    * @param list The list of Map elements
    * @param depth Current recursion depth
    * @return A ComplexType with merged field specs
@@ -218,6 +223,7 @@ class ResourceTypeInference {
   private static ComplexType mergeComplexTypes(@Nonnull final List<?> list, final int depth) {
     final Map<String, Shape> mergedFields = new LinkedHashMap<>();
     String choiceName = null;
+    String fhirType = null;
 
     for (final Object element : list) {
       if (!(element instanceof Map<?, ?> map)) {
@@ -226,6 +232,17 @@ class ResourceTypeInference {
       }
       if (choiceName == null) {
         choiceName = (String) map.get(CHOICE_ANNOTATION);
+      }
+      final String incomingFhirType = (String) map.get(FHIR_TYPE_ANNOTATION);
+      if (incomingFhirType != null) {
+        if (fhirType != null && !fhirType.equals(incomingFhirType)) {
+          throw new IllegalStateException(
+              "Conflicting __FHIR_TYPE__ annotations in array: "
+                  + fhirType
+                  + " vs "
+                  + incomingFhirType);
+        }
+        fhirType = incomingFhirType;
       }
       for (final Map.Entry<?, ?> entry : map.entrySet()) {
         final String fieldName = (String) entry.getKey();
@@ -244,7 +261,9 @@ class ResourceTypeInference {
 
     addChoiceTypeIfPresent(fieldSpecs, choiceName);
 
-    return new InlineComplexType(fieldSpecs);
+    return fhirType != null
+        ? new InlineComplexType(fhirType, fieldSpecs)
+        : new InlineComplexType(fieldSpecs);
   }
 
   /**

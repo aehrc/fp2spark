@@ -173,12 +173,7 @@ public final class CompatExclusions {
                       "monoCode.value.ofType(String)",
                       "polyStrings.value.ofType(System.String)",
                       "polyStrings.value.ofType(System.Decimal)"
-                          + " + polyStrings.value.ofType(FHIR.decimal)"),
-
-              // --- getReferenceKey on collection inputs ---
-              group("getReferenceKey() rejects collection input")
-                  .scope(JoinKeyFunctionsDslTest.class)
-                  .expressions("multipleReferences.getReferenceKey"))
+                          + " + polyStrings.value.ofType(FHIR.decimal)"))
           .flatMap(g -> g.build().stream())
           .toList();
 

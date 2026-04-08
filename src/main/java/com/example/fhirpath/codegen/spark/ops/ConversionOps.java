@@ -502,10 +502,10 @@ public final class ConversionOps {
             "(?i)(years?|months?|weeks?|days?|hours?|minutes?|seconds?|milliseconds?)\\s*$",
             1);
 
-    // Normalize calendar unit to singular form (e.g. "years" → "year")
+    // Normalize calendar unit to singular form for the code field (e.g. "years" → "year")
     final Column normalizedCalendarUnit = functions.regexp_replace(calendarUnit, "s$", "");
 
-    // Determine the effective unit code
+    // Determine the effective unit code and display unit
     final Column hasQuotedUnit = quotedUnit.notEqual(lit(""));
     final Column hasCalendarUnit = calendarUnit.notEqual(lit(""));
     final Column unitCode =
@@ -513,12 +513,18 @@ public final class ConversionOps {
             .when(hasCalendarUnit, normalizedCalendarUnit)
             .otherwise(lit(QuantityValue.DEFAULT_UNIT));
 
+    // Display unit preserves the original keyword (e.g. "days" stays "days")
+    final Column displayUnit =
+        when(hasQuotedUnit, quotedUnit)
+            .when(hasCalendarUnit, functions.lower(calendarUnit))
+            .otherwise(lit(QuantityValue.DEFAULT_UNIT));
+
     // Determine the system URI
     final Column system =
         when(hasCalendarUnit, lit(QuantityValue.CALENDAR_SYSTEM))
             .otherwise(lit(QuantityValue.UCUM_SYSTEM));
 
-    return when(matches, quantityStruct(decimalValue, unitCode, system, unitCode));
+    return when(matches, quantityStruct(decimalValue, displayUnit, system, unitCode));
   }
 
   /**

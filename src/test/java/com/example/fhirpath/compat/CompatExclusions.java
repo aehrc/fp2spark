@@ -109,25 +109,11 @@ public final class CompatExclusions {
                   .scope(CombiningOperatorsDslTest.class)
                   .expressions("dt1 | dt4"),
 
-              // --- convertsTo*(unitCode): calendar duration differences ---
-              group("convertsTo*(unitCode): calendar duration conversion differences")
+              // --- Calendar-to-UCUM: only second/millisecond bridge allowed ---
+              group("Calendar-to-UCUM: non-bridge calendar duration conversion")
                   .scope(ConversionFunctionsDslTest.class)
                   .expressions(
-                      "'4 days'.convertsToQuantity('days')",
-                      "'1 day'.convertsToQuantity('seconds')",
-                      "'1 day'.convertsToQuantity('milliseconds')",
-                      "'2 minutes'.convertsToQuantity('s')"),
-
-              // --- toQuantity: calendar duration unit naming ---
-              group("toQuantity: calendar duration unit naming differences")
-                  .scope(ConversionFunctionsDslTest.class)
-                  .expressions(
-                      "'4 days'.toQuantity()",
-                      "'3 months'.toQuantity()",
-                      "'4 days'.toQuantity('days')",
-                      "'1 day'.toQuantity('seconds')",
-                      "'1 day'.toQuantity('milliseconds')",
-                      "'2 minutes'.toQuantity('s')"),
+                      "'2 minutes'.toQuantity('s')", "'2 minutes'.convertsToQuantity('s')"),
 
               // --- Type functions: as operator on where()-filtered collections ---
               group("Strict typing: as operator requires singleton input")

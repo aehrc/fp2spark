@@ -111,6 +111,20 @@ public record QuantityValue(
   }
 
   /**
+   * Returns the canonical (singular) calendar code for a keyword, or the keyword unchanged if it is
+   * not a calendar duration keyword.
+   *
+   * @param keyword the keyword to normalize (e.g. {@code "days"}, {@code "day"}, {@code "s"})
+   * @return the canonical calendar code (e.g. {@code "day"}) or the original keyword for
+   *     non-calendar
+   */
+  @Nonnull
+  public static String canonicalCalendarCode(@Nonnull final String keyword) {
+    final String code = CALENDAR_KEYWORDS.get(keyword);
+    return code != null ? code : keyword;
+  }
+
+  /**
    * Resolves a Quantity subfield specification by name.
    *
    * @param fieldName the field name (e.g. "value", "unit", "system", "code")

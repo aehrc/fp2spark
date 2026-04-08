@@ -33,10 +33,11 @@ class TypeAdapter {
   /**
    * Adapt expected value to match the type of actual value.
    *
-   * <p>This method recursively adapts collections and their elements.
+   * <p>This method recursively adapts collections and their elements. The actual value must already
+   * be converted via {@link #convertScalaToJava} before calling this method.
    *
    * @param expected The expected value from the test
-   * @param actual The actual value returned by Spark
+   * @param actual The actual value, already converted to Java types
    * @return The adapted expected value, or original if no adaptation needed
    */
   @Nullable
@@ -45,11 +46,8 @@ class TypeAdapter {
       return expected;
     }
 
-    // Convert Scala collections and Rows to Java equivalents for comparison
-    final Object convertedActual = convertScalaToJava(actual);
-
     // Handle lists: adapt each element by position (zip expected with actual)
-    if (expected instanceof List<?> expectedList && convertedActual instanceof List<?> actualList) {
+    if (expected instanceof List<?> expectedList && actual instanceof List<?> actualList) {
       final int actualSize = actualList.size();
       return IntStream.range(0, expectedList.size())
           .mapToObj(
@@ -61,15 +59,15 @@ class TypeAdapter {
     }
 
     // Adapt CodingValue/QuantityValue to Map only when actual is also a Map (from Row conversion)
-    if (expected instanceof CodingValue cv && convertedActual instanceof Map) {
+    if (expected instanceof CodingValue cv && actual instanceof Map) {
       return codingValueToMap(cv);
     }
-    if (expected instanceof QuantityValue qv && convertedActual instanceof Map) {
+    if (expected instanceof QuantityValue qv && actual instanceof Map) {
       return quantityValueToMap(qv);
     }
 
     // Handle scalar values: adapt to actual type
-    return adaptValue(expected, convertedActual.getClass());
+    return adaptValue(expected, actual.getClass());
   }
 
   /**
@@ -84,10 +82,13 @@ class TypeAdapter {
       return null;
     }
 
-    // Convert Scala Seq to Java List
+    // Convert Scala Seq to Java List, then recurse via the List branch below
     if (value instanceof scala.collection.Seq<?> scalaSeq) {
-      final List<?> javaList = CollectionConverters.asJava(scalaSeq);
-      // Recursively convert nested collections
+      return convertScalaToJava(CollectionConverters.asJava(scalaSeq));
+    }
+
+    // Recurse into Java Lists to convert nested Rows/Scala collections
+    if (value instanceof List<?> javaList) {
       return javaList.stream().map(this::convertScalaToJava).toList();
     }
 

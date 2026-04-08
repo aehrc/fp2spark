@@ -34,7 +34,8 @@ public final class CompatExclusions {
       Stream.of(
 
               // --- resolve() function not implemented ---
-              group("resolve() function not implemented").expressions("resolve()"),
+              group("resolve() function not implemented")
+                  .pattern("resolve\\(\\).*=> (?!Exception)"),
 
               // --- Strict typing: Boolean operators reject non-Boolean input ---
               // fp2sql enforces Boolean-only operands for not/and/or/xor;
@@ -50,10 +51,7 @@ public final class CompatExclusions {
                       "stringArray.where($this='value1').not()",
                       "choiceField.value.not()",
                       "choiceField.value.ofType(string).not()",
-                      "choiceField.value.ofType(integer).not()",
-                      "stringArray.not()",
-                      "boolArray.not()",
-                      "people.active.not()")
+                      "choiceField.value.ofType(integer).not()")
                   .scope(SystemDslTest.class)
                   // empty evaluation for functions
                   .expressions(
@@ -86,19 +84,10 @@ public final class CompatExclusions {
                       "stringArray.where($this='value1') and true",
                       "choiceField.value and true",
                       "choiceField.value.ofType(string) or false")
-                  // collections with many elements
-                  .expressions(
-                      "booleanArray.not()",
-                      "stringArray.not()",
-                      "stringArray.where($this.exists()).not()",
-                      "booleanArray and true",
-                      "false or stringArray",
-                      "true and stringArray.where($this.exists())")
-                  // boolean evaluation in boolean expressions
+                  // boolean evaluation in boolean expressions (where with non-Boolean)
                   .expressions(
                       "complex.where($this.singularString).id",
-                      "complex.where($this.oneString).id",
-                      "complex.where($this.manyStrings).id"),
+                      "complex.where($this.oneString).id"),
 
               // --- Strict typing: where()/exists() rejects non-Boolean criteria ---
               group("Strict typing: where()/exists() rejects non-Boolean criteria expression")
@@ -115,28 +104,81 @@ public final class CompatExclusions {
                   .scope(MembershipOperatorsDslTest.class)
                   .expressions("name in name"),
 
-              // --- Union operator: struct/type representation mismatch ---
-              group("Union operator: struct/type representation mismatch")
+              // --- Union operator: Coding struct mismatch ---
+              group("Union operator: Coding struct representation mismatch")
                   .scope(CombiningOperatorsDslTest.class)
-                  .pattern("\\[Coding union")
-                  .pattern("\\[Quantity union")
-                  .pattern("\\[Decimal union")
-                  .pattern("\\[DateTime union"),
+                  .pattern("=> CodingValue\\["),
 
-              // --- convertsTo*: non-convertible and empty input differences ---
-              group("convertsTo*: returns false instead of empty for non-convertible/empty input")
+              // --- Union operator: Quantity struct mismatch ---
+              group("Union operator: Quantity struct representation mismatch")
+                  .scope(CombiningOperatorsDslTest.class)
+                  .pattern("=> QuantityValue\\["),
+
+              // --- Union operator: Decimal type/precision mismatch ---
+              group("Union operator: Decimal type/precision mismatch")
+                  .scope(CombiningOperatorsDslTest.class)
+                  .expressions(
+                      "2.5 | {}",
+                      "{} | 2.5",
+                      "2.5 | emptyDec",
+                      "emptyDec | 2.5",
+                      "2.5 | 2.5",
+                      "1.0 | 1")
+                  .pattern("\\[Decimal union - precision"),
+
+              // --- Union operator: DateTime timezone dedup ---
+              group("Union operator: DateTime timezone dedup difference")
+                  .scope(CombiningOperatorsDslTest.class)
+                  .expressions("dt1 | dt4"),
+
+              // --- convertsTo*: empty input returns false instead of empty ---
+              // Only cross-type conversions fail; same-type (e.g., emptyBool.convertsToBoolean)
+              // pass
+              group("convertsTo*: returns false instead of empty for empty input")
                   .scope(ConversionFunctionsDslTest.class)
-                  .pattern("\\[convertsTo\\w+\\(\\) with (non-convertible|empty)")
-                  .pattern(
-                      "\\[convertsTo\\w+\\(\\) - (Non-convertible|Empty|String sources \\(invalid)")
-                  .pattern("\\[convertsToString\\(\\) with empty")
-                  .pattern("\\[convertsToQuantity\\(unitCode\\)"),
+                  .expressions(
+                      "emptyBool.convertsToBoolean()",
+                      "emptyDate.convertsToBoolean()",
+                      "emptyDate.convertsToDate()",
+                      "emptyInt.convertsToDate()",
+                      "emptyDateTime.convertsToDateTime()",
+                      "emptyInt.convertsToDateTime()",
+                      "emptyDec.convertsToDecimal()",
+                      "emptyInt.convertsToDecimal()",
+                      "emptyDate.convertsToDecimal()",
+                      "emptyInt.convertsToInteger()",
+                      "emptyBool.convertsToInteger()",
+                      "emptyDate.convertsToInteger()",
+                      "emptyBool.convertsToQuantity()",
+                      "emptyInt.convertsToQuantity()",
+                      "emptyDate.convertsToQuantity()",
+                      "emptyStr.convertsToString()",
+                      "emptyInt.convertsToString()",
+                      "emptyDate.convertsToString()",
+                      "emptyTime.convertsToTime()",
+                      "emptyInt.convertsToTime()",
+                      "emptyStr.convertsToQuantity('mg')"),
+
+              // --- convertsTo*(unitCode): calendar duration differences ---
+              group("convertsTo*(unitCode): calendar duration conversion differences")
+                  .scope(ConversionFunctionsDslTest.class)
+                  .expressions(
+                      "'4 days'.convertsToQuantity('days')",
+                      "'1 day'.convertsToQuantity('seconds')",
+                      "'1 day'.convertsToQuantity('milliseconds')",
+                      "'2 minutes'.convertsToQuantity('s')",
+                      "emptyStr.convertsToQuantity('mg')"),
 
               // --- toQuantity: calendar duration unit naming ---
               group("toQuantity: calendar duration unit naming differences")
                   .scope(ConversionFunctionsDslTest.class)
-                  .pattern("\\[toQuantity\\(\\) - String sources \\(calendar")
-                  .pattern("\\[toQuantity\\(unitCode\\)"),
+                  .expressions(
+                      "'4 days'.toQuantity()",
+                      "'3 months'.toQuantity()",
+                      "'4 days'.toQuantity('days')",
+                      "'1 day'.toQuantity('seconds')",
+                      "'1 day'.toQuantity('milliseconds')",
+                      "'2 minutes'.toQuantity('s')"),
 
               // --- Type functions: as operator on where()-filtered collections ---
               group("Strict typing: as operator requires singleton input")
@@ -155,13 +197,17 @@ public final class CompatExclusions {
               // --- ofType() for non-resource types ---
               group("ofType() non-resource type differences")
                   .scope(FilteringAndProjectionFunctionsDslTest.class)
-                  .pattern("\\[ofType\\(\\) function with non-resource types\\]")
-                  .pattern("\\[ofType\\(\\) on polymorphic collections with System types\\]"),
+                  .expressions(
+                      "heteroComplex.test.ofType(Coding) =>",
+                      "monoCode.value.ofType(String)",
+                      "polyStrings.value.ofType(System.String)",
+                      "polyStrings.value.ofType(System.Decimal)"
+                          + " + polyStrings.value.ofType(FHIR.decimal)"),
 
-              // --- getReferenceKey on non-Reference elements ---
-              group("getReferenceKey() strict Reference element check")
+              // --- getReferenceKey on collection inputs ---
+              group("getReferenceKey() rejects collection input")
                   .scope(JoinKeyFunctionsDslTest.class)
-                  .expressions("getReferenceKey()"))
+                  .expressions("multipleReferences.getReferenceKey"))
           .flatMap(g -> g.build().stream())
           .toList();
 
@@ -185,19 +231,20 @@ public final class CompatExclusions {
    * <p>The test still runs. If it fails (expected), the failure is absorbed and the test passes. If
    * it unexpectedly passes, the test fails with a message to remove the exclusion.
    */
-  @SuppressWarnings("java:S2221") // Catching Exception is intentional: XFAIL must absorb all
-  // test failures (AssertionError) and runtime errors (e.g., UnsupportedFeatureException)
   static DynamicTest wrapXFail(@Nonnull DynamicTest test, @Nonnull ExclusionRule rule) {
     return DynamicTest.dynamicTest(
         "[XFAIL] " + test.getDisplayName(),
         () -> {
+          boolean passed = false;
           try {
             test.getExecutable().execute();
-            // Test unexpectedly passed — flag for exclusion removal
-            fail("XFAIL test unexpectedly passed. Remove this exclusion. Reason: " + rule.reason());
+            passed = true;
           } catch (AssertionError | Exception e) {
             // Expected failure — absorb it
             log.info("[XFAIL] {} — {}", test.getDisplayName(), rule.reason());
+          }
+          if (passed) {
+            fail("XFAIL test unexpectedly passed. Remove this exclusion. Reason: " + rule.reason());
           }
         });
   }

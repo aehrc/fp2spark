@@ -24,15 +24,16 @@ public record EqualsAssertion(@Nullable Object expected) implements Assertion {
 
   @Override
   public void assertResult(@Nullable Object actual) {
-    // Adapt expected value to match actual value's type
-    // This also converts Scala collections to Java collections
-    Object adaptedExpected = TYPE_ADAPTER.adaptToActualType(expected, actual);
-    Object adaptedActual = TYPE_ADAPTER.convertScalaToJava(actual);
+    // Convert Scala collections and Spark Rows to Java equivalents first
+    Object convertedActual = TYPE_ADAPTER.convertScalaToJava(actual);
 
     // Normalize single-element collections to scalars.
     // In FHIRPath a collection of one IS a singular value, so [x] == x.
-    adaptedExpected = unwrapSingleton(adaptedExpected);
-    adaptedActual = unwrapSingleton(adaptedActual);
+    Object adaptedExpected = unwrapSingleton(expected);
+    Object adaptedActual = unwrapSingleton(convertedActual);
+
+    // Adapt expected value to match actual value's type (e.g., CodingValue → Map)
+    adaptedExpected = TYPE_ADAPTER.adaptToActualType(adaptedExpected, adaptedActual);
 
     // Compare adapted values
     if (adaptedExpected instanceof List<?> expectedList
@@ -57,24 +58,20 @@ public record EqualsAssertion(@Nullable Object expected) implements Assertion {
   }
 
   /**
-   * Assert that two lists are equal element-by-element. Recursively handles nested collections and
-   * Scala/Java type conversions.
+   * Assert that two lists are equal element-by-element. Both lists must already be converted to
+   * Java types via {@link TypeAdapter#convertScalaToJava}.
    *
    * @param expected The expected list
-   * @param actual The actual list
+   * @param actual The actual list (already converted)
    */
   private void assertListEquals(@Nonnull List<?> expected, @Nonnull List<?> actual) {
     assertEquals(expected.size(), actual.size(), "List sizes don't match");
     for (int i = 0; i < expected.size(); i++) {
-      Object expectedElement = expected.get(i);
-      Object actualElement = actual.get(i);
-
-      // Recursively adapt and compare nested elements
-      Object adaptedExpected = TYPE_ADAPTER.adaptToActualType(expectedElement, actualElement);
-      Object adaptedActual = TYPE_ADAPTER.convertScalaToJava(actualElement);
+      final Object actualElement = actual.get(i);
+      final Object adaptedExpected = TYPE_ADAPTER.adaptToActualType(expected.get(i), actualElement);
 
       assertValuesEqual(
-          adaptedExpected, adaptedActual, "List element at index " + i + " doesn't match");
+          adaptedExpected, actualElement, "List element at index " + i + " doesn't match");
     }
   }
 

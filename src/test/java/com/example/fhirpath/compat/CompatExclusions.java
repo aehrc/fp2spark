@@ -104,27 +104,10 @@ public final class CompatExclusions {
                   .scope(MembershipOperatorsDslTest.class)
                   .expressions("name in name"),
 
-              // --- Union operator: Coding struct mismatch ---
-              group("Union operator: Coding struct representation mismatch")
+              // --- Union operator: Decimal/Double type mismatch in array_union ---
+              group("Union operator: Decimal/Double type mismatch")
                   .scope(CombiningOperatorsDslTest.class)
-                  .pattern("=> CodingValue\\["),
-
-              // --- Union operator: Quantity struct mismatch ---
-              group("Union operator: Quantity struct representation mismatch")
-                  .scope(CombiningOperatorsDslTest.class)
-                  .pattern("=> QuantityValue\\["),
-
-              // --- Union operator: Decimal type/precision mismatch ---
-              group("Union operator: Decimal type/precision mismatch")
-                  .scope(CombiningOperatorsDslTest.class)
-                  .expressions(
-                      "2.5 | {}",
-                      "{} | 2.5",
-                      "2.5 | emptyDec",
-                      "emptyDec | 2.5",
-                      "2.5 | 2.5",
-                      "1.0 | 1")
-                  .pattern("\\[Decimal union - precision"),
+                  .expressions("2.5 | emptyDec", "emptyDec | 2.5"),
 
               // --- Union operator: DateTime timezone dedup ---
               group("Union operator: DateTime timezone dedup difference")

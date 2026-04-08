@@ -16,12 +16,16 @@ import static org.apache.spark.sql.functions.not;
 import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
+import com.example.fhirpath.codegen.spark.SparkTypeMapper;
+import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
 import java.util.function.BiFunction;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.functions;
+import org.apache.spark.sql.types.ArrayType;
+import org.apache.spark.sql.types.DataTypes;
 
 /**
  * Set operation registrations: {@code union}, {@code distinct}, {@code isDistinct}, {@code
@@ -36,6 +40,9 @@ import org.apache.spark.sql.functions;
  * aggregate} with type-aware comparators are used instead.
  */
 public final class SetOps {
+
+  private static final ArrayType DECIMAL_ARRAY_TYPE =
+      DataTypes.createArrayType(SparkTypeMapper.DECIMAL_TYPE);
 
   private SetOps() {}
 
@@ -63,6 +70,21 @@ public final class SetOps {
   @Nonnull
   private static Type effectiveType(@Nonnull final Type leftType, @Nonnull final Type rightType) {
     return leftType == Types.NULL ? rightType : leftType;
+  }
+
+  /**
+   * Normalizes a DECIMAL array to the canonical {@link SparkTypeMapper#DECIMAL_TYPE} element type.
+   *
+   * <p>FHIR data columns may use {@code DOUBLE} while codegen literals use {@code DECIMAL(38,6)}.
+   * Spark's built-in array functions ({@code array_union}, {@code array_intersect}, etc.) require
+   * matching element types, so we cast to the canonical type before calling them.
+   */
+  @Nonnull
+  private static Column normalizeArray(@Nonnull final Column arr, @Nonnull final Type type) {
+    if (type == SystemType.DECIMAL) {
+      return arr.cast(DECIMAL_ARRAY_TYPE);
+    }
+    return arr;
   }
 
   // ========== distinct / isDistinct ==========
@@ -123,9 +145,9 @@ public final class SetOps {
               + rightType.getName());
     }
 
-    final Column leftArr = ctx.collectionArg(0).asArray();
-    final Column rightArr = ctx.collectionArg(1).asArray();
     final Type type = effectiveType(leftType, rightType);
+    final Column leftArr = normalizeArray(ctx.collectionArg(0).asArray(), type);
+    final Column rightArr = normalizeArray(ctx.collectionArg(1).asArray(), type);
 
     if (type == Types.NULL || EqualityOps.usesDefaultEquality(type)) {
       return CollectionValue.nullIfEmpty(array_union(leftArr, rightArr));
@@ -147,9 +169,9 @@ public final class SetOps {
       return lit(null);
     }
 
-    final Column leftArr = ctx.collectionArg(0).asArray();
-    final Column rightArr = ctx.collectionArg(1).asArray();
     final Type type = effectiveType(leftType, rightType);
+    final Column leftArr = normalizeArray(ctx.collectionArg(0).asArray(), type);
+    final Column rightArr = normalizeArray(ctx.collectionArg(1).asArray(), type);
 
     if (type == Types.NULL || EqualityOps.usesDefaultEquality(type)) {
       return CollectionValue.nullIfEmpty(array_intersect(leftArr, rightArr));
@@ -172,9 +194,9 @@ public final class SetOps {
       return CollectionValue.nullIfEmpty(ctx.collectionArg(0).asArray());
     }
 
-    final Column leftArr = ctx.collectionArg(0).asArray();
-    final Column rightArr = ctx.collectionArg(1).asArray();
     final Type type = effectiveType(leftType, rightType);
+    final Column leftArr = normalizeArray(ctx.collectionArg(0).asArray(), type);
+    final Column rightArr = normalizeArray(ctx.collectionArg(1).asArray(), type);
 
     if (type == Types.NULL || EqualityOps.usesDefaultEquality(type)) {
       return CollectionValue.nullIfEmpty(array_except(leftArr, rightArr));
@@ -198,9 +220,9 @@ public final class SetOps {
       return lit(false);
     }
 
-    final Column subArr = ctx.collectionArg(subIdx).asArray();
-    final Column superArr = ctx.collectionArg(superIdx).asArray();
     final Type type = effectiveType(subType, superType);
+    final Column subArr = normalizeArray(ctx.collectionArg(subIdx).asArray(), type);
+    final Column superArr = normalizeArray(ctx.collectionArg(superIdx).asArray(), type);
 
     if (type == Types.NULL || EqualityOps.usesDefaultEquality(type)) {
       return functions.size(array_except(subArr, superArr)).equalTo(lit(0));

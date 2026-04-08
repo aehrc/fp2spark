@@ -104,11 +104,6 @@ public final class CompatExclusions {
                   .scope(MembershipOperatorsDslTest.class)
                   .expressions("name in name"),
 
-              // --- Union operator: Decimal/Double type mismatch in array_union ---
-              group("Union operator: Decimal/Double type mismatch")
-                  .scope(CombiningOperatorsDslTest.class)
-                  .expressions("2.5 | emptyDec", "emptyDec | 2.5"),
-
               // --- Union operator: DateTime timezone dedup ---
               group("Union operator: DateTime timezone dedup difference")
                   .scope(CombiningOperatorsDslTest.class)

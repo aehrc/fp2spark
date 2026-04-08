@@ -105,9 +105,7 @@ public final class ConversionOps {
       }
       final Column input = ctx.arg(0);
       final Column result = validationFn.validate(sourceType, input);
-      // Propagate null at runtime: if the input value is null (empty collection),
-      // the result must be empty per FHIRPath spec §5.7, not true/false.
-      return when(input.isNotNull(), result);
+      return nullPropagate(input, result);
     };
   }
 
@@ -161,8 +159,7 @@ public final class ConversionOps {
       final Column result =
           when(unitArg.isNotNull(), when(canConvert, converted.isNotNull()).otherwise(lit(false)))
               .otherwise(canConvert);
-      // Propagate null at runtime: empty input → empty result per FHIRPath spec §5.7
-      return when(input.isNotNull(), result);
+      return nullPropagate(input, result);
     };
   }
 
@@ -388,6 +385,15 @@ public final class ConversionOps {
   }
 
   // ========== Helper Methods ==========
+
+  /**
+   * Wraps a result column with null propagation: returns null when the input is null, ensuring
+   * empty FHIRPath collections produce empty results per spec §5.7.
+   */
+  @Nonnull
+  private static Column nullPropagate(@Nonnull final Column input, @Nonnull final Column result) {
+    return when(input.isNotNull(), result);
+  }
 
   /**
    * Converts a decimal value to string, stripping trailing zeros and any resulting trailing dot.

@@ -183,6 +183,34 @@ class SetOperationsTest extends FhirPathTestBase {
         .build();
   }
 
+  // ========== Decimal field type normalization ==========
+
+  @TestFactory
+  Stream<DynamicTest> testSetOpsWithDecimalFields() {
+    return builder()
+        .withSubject(
+            "Test",
+            sb ->
+                sb.decimalArray("dec12", 1.1, 2.2)
+                    .decimalArray("dec23", 2.2, 3.3)
+                    .decimalEmpty("emptyDec"))
+        .group("union: decimal literal vs field")
+        .testEquals(2.5, "2.5 | emptyDec", "Literal union empty decimal field")
+        .testEquals(2.5, "emptyDec | 2.5", "Empty decimal field union literal")
+        .testEmpty("emptyDec | emptyDec", "Empty decimal fields")
+        .testEquals(List.of(1.1, 2.2, 3.3), "dec12 | dec23", "Decimal field union with overlap")
+        .group("intersect: decimal field")
+        .testEquals(2.2, "dec12.intersect(dec23)", "Decimal field intersection")
+        .testEmpty("dec12.intersect(emptyDec)", "Decimal field intersect empty")
+        .group("exclude: decimal field")
+        .testEquals(1.1, "dec12.exclude(dec23)", "Decimal field exclusion")
+        .testEquals(List.of(1.1, 2.2), "dec12.exclude(emptyDec)", "Decimal field exclude empty")
+        .group("subsetOf/supersetOf: decimal field")
+        .testTrue("emptyDec.subsetOf(dec12)", "Empty is subset of decimal field")
+        .testTrue("dec12.supersetOf(emptyDec)", "Decimal field is superset of empty")
+        .build();
+  }
+
   // ========== Quantity equality in set operations ==========
 
   @TestFactory

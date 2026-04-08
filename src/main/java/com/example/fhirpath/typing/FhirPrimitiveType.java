@@ -92,6 +92,7 @@ public final class FhirPrimitiveType implements Type {
     return FHIR_TO_SYSTEM.entrySet().stream()
         .filter(e -> e.getValue() == systemType)
         .map(Map.Entry::getKey)
+        .sorted()
         .toList();
   }
 

@@ -158,7 +158,9 @@ public final class TypeSpecifier {
    *
    * <p>For FHIR namespace, returns a single-element list with the type name. For System namespace,
    * returns all FHIR primitive types that map to the corresponding System type (e.g., {@code
-   * System.String} → {@code ["string", "uri", "code", "id", ...]}).
+   * System.String} → {@code ["string", "uri", "code", "id", ...]}). For complex System types like
+   * {@code System.Quantity} and {@code System.Coding} that have no FHIR primitive mappings, falls
+   * back to the canonical FHIR variant name from {@link #SYSTEM_TO_FHIR_VARIANT}.
    *
    * @return all matching FHIR variant names
    */
@@ -171,7 +173,14 @@ public final class TypeSpecifier {
     if (systemType == null) {
       return List.of();
     }
-    return FhirPrimitiveType.allFhirNamesFor(systemType);
+    final List<String> primitiveNames = FhirPrimitiveType.allFhirNamesFor(systemType);
+    if (!primitiveNames.isEmpty()) {
+      return primitiveNames;
+    }
+    // Complex System types (Quantity, Coding) have no FHIR primitive entries;
+    // fall back to the canonical FHIR variant name.
+    final String canonical = SYSTEM_TO_FHIR_VARIANT.get(typeName);
+    return canonical != null ? List.of(canonical) : List.of();
   }
 
   /**

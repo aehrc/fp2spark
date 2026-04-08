@@ -788,11 +788,11 @@ public class Analyzer {
 
     // Plural parent: per-element coalesce via transform + filter
     // Args: [parentNode, lit("field1"), lit("field2"), ...]
-    final List<IRNode> args = new ArrayList<>();
-    args.add(parentNode);
-    for (final FieldSpec v : variants) {
-      args.add(new Literal(v.getName(), Types.STRING));
-    }
+    final List<IRNode> args =
+        Stream.concat(
+                Stream.of(parentNode),
+                variants.stream().map(v -> (IRNode) new Literal(v.getName(), Types.STRING)))
+            .toList();
     final ResolvedSignature sig =
         new ResolvedSignature(
             args.stream().map(IRNode::getType).toList(), Shape.of(resultType, Cardinality.MANY));

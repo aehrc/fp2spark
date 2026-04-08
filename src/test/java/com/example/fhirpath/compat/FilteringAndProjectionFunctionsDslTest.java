@@ -212,7 +212,7 @@ public class FilteringAndProjectionFunctionsDslTest extends CompatTestBase {
             "ofType() returns Coding value when filtering for Coding type")
         .testEmpty(
             "heteroComplex.test.ofType(string)",
-            "ofType() returns empty when filtering for Quantity type in complex type")
+            "ofType() returns empty when filtering for string type on Coding choice element")
         // traversing into complex types
         .testEquals(
             "mg",

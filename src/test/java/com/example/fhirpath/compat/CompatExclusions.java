@@ -143,13 +143,10 @@ public final class CompatExclusions {
                       "name.ofType(FHIR.HumanName) = name",
                       "address.ofType(FHIR.Address) = address"),
 
-              // --- ofType() for non-resource types ---
-              group("ofType() non-resource type differences")
+              // --- ofType() cardinality: + operator requires singleton ---
+              group("Strict typing: ofType on plural returns MANY, + requires singleton")
                   .scope(FilteringAndProjectionFunctionsDslTest.class)
                   .expressions(
-                      "heteroComplex.test.ofType(Coding) =>",
-                      "monoCode.value.ofType(String)",
-                      "polyStrings.value.ofType(System.String)",
                       "polyStrings.value.ofType(System.Decimal)"
                           + " + polyStrings.value.ofType(FHIR.decimal)"))
           .flatMap(g -> g.build().stream())

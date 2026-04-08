@@ -717,8 +717,16 @@ public class Analyzer {
       @Nonnull final ChoiceTypeLike choiceType,
       @Nonnull final IRNode targetIr,
       @Nonnull final TypeSpecifier typeSpec) {
-    final Optional<FieldSpec> variant = choiceType.resolveVariant(typeSpec.toFhirVariantName());
-    if (variant.isEmpty()) {
+
+    // For ofType with System types, resolve all FHIR variants that map to that System type.
+    // E.g., System.String matches valueString, valueCode, valueId, etc.
+    final List<FieldSpec> matchingVariants =
+        typeSpec.toAllFhirVariantNames().stream()
+            .map(choiceType::resolveVariant)
+            .flatMap(Optional::stream)
+            .toList();
+
+    if (matchingVariants.isEmpty()) {
       // Unknown variant — return empty for ofType/as, false for is
       if ("is".equals(operation)) {
         return new Literal(false, Types.BOOLEAN);
@@ -731,7 +739,14 @@ public class Analyzer {
     //        not Traversal(Traversal(resource, "value"), "valueQuantity")
     final IRNode parentNode =
         (targetIr instanceof Traversal choiceTraversal) ? choiceTraversal.target() : targetIr;
-    final Traversal variantTraversal = new Traversal(parentNode, variant.get());
+
+    // Multiple matching variants (e.g., System.String → valueString, valueCode, valueId):
+    // coalesce them so that any non-null variant value is returned.
+    if (matchingVariants.size() > 1 && "ofType".equals(operation)) {
+      return resolveMultiVariantOfType(parentNode, matchingVariants, targetIr);
+    }
+
+    final Traversal variantTraversal = new Traversal(parentNode, matchingVariants.get(0));
 
     return switch (operation) {
       case "ofType", "as" -> variantTraversal;
@@ -743,6 +758,45 @@ public class Analyzer {
       }
       default -> throw new IllegalStateException("Unexpected type operation: " + operation);
     };
+  }
+
+  /**
+   * Resolves ofType() when multiple FHIR variants match a System type on a choice element.
+   *
+   * <p>For singular parents: creates a "coalesce" operation across all variant columns. For plural
+   * parents: creates a "coalesceFields" operation that does per-element coalescing with null
+   * filtering (equivalent to {@code filter(transform(arr, x -> coalesce(x.f1, x.f2, ...)), y -> y
+   * IS NOT NULL)}).
+   */
+  @Nonnull
+  private IRNode resolveMultiVariantOfType(
+      @Nonnull final IRNode parentNode,
+      @Nonnull final List<FieldSpec> variants,
+      @Nonnull final IRNode targetIr) {
+    final Type resultType = variants.get(0).getType();
+
+    if (parentNode.isSingular()) {
+      // Singular parent: coalesce(parent.variant1, parent.variant2, ...)
+      final List<IRNode> args =
+          variants.stream().map(v -> (IRNode) new Traversal(parentNode, v)).toList();
+      final Cardinality resultCard = targetIr.getCardinality();
+      final ResolvedSignature sig =
+          new ResolvedSignature(
+              args.stream().map(IRNode::getType).toList(), Shape.of(resultType, resultCard));
+      return new Operation("coalesce", args, sig);
+    }
+
+    // Plural parent: per-element coalesce via transform + filter
+    // Args: [parentNode, lit("field1"), lit("field2"), ...]
+    final List<IRNode> args = new ArrayList<>();
+    args.add(parentNode);
+    for (final FieldSpec v : variants) {
+      args.add(new Literal(v.getName(), Types.STRING));
+    }
+    final ResolvedSignature sig =
+        new ResolvedSignature(
+            args.stream().map(IRNode::getType).toList(), Shape.of(resultType, Cardinality.MANY));
+    return new Operation("coalesceFields", args, sig);
   }
 
   /**

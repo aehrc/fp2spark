@@ -130,7 +130,7 @@ public class FilteringAndProjectionFunctionsDslTest extends CompatTestBase {
                         val1 ->
                             val1.choice("test")
                                 .coding(
-                                    "testCoding", "http://example.org/codesystem|code1|display1")
+                                    "testCoding", "http://example.org/codesystem|code1||display1")
                                 .stringEmpty("testString"))
                     .element(
                         "heteroQuantity",

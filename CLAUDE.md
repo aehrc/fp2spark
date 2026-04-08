@@ -32,6 +32,12 @@ Test classes MUST be named by capability: `StringFunctionsTest` (not `Stage14Tes
 - **Specs are ground truth** — trust the spec over your mental model
 - See [TESTING.md](TESTING.md) for test DSL and guidelines, [CONTRIBUTING.md](CONTRIBUTING.md) for workflow
 
+### Pathling Compatibility Tests
+
+Compat tests in `src/test/java/com/example/fhirpath/compat/` validate behavior against Pathling. Test classes are mirrors of Pathling's tests and should not be modified for fp2sql-specific exclusions.
+
+Expected failures (due to intentional design differences like strict typing) are defined separately in `CompatExclusions.java` using the XFAIL mechanism. Add new exclusions there, not in test classes.
+
 ### FHIRPath Test Writer Agent
 
 For writing unit tests for FHIRPath functions/operators, use the `fhirpath-test-writer` agent:

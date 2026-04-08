@@ -40,6 +40,6 @@ public abstract class CompatTestBase {
   @Nonnull
   protected CompatTestBuilder builder() {
     final FhirPathTestExecutor executor = new FhirPathTestExecutor(spark);
-    return new CompatTestBuilder(new FhirPathTestBuilder(executor));
+    return new CompatTestBuilder(new FhirPathTestBuilder(executor), getClass());
   }
 }

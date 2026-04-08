@@ -360,6 +360,71 @@ public class ResourceDataBuilder {
     return CodingValue.parse(literal);
   }
 
+  // --- Typed empty fields ---
+
+  /**
+   * Add a typed empty field. The field value is null but preserves type information for correct
+   * type inference.
+   *
+   * @param name Field name
+   * @param typedNull The typed null marker
+   * @return This builder for chaining
+   */
+  @Nonnull
+  public ResourceDataBuilder typedEmpty(
+      @Nonnull final String name, @Nonnull final TypedNull typedNull) {
+    data.put(name, typedNull);
+    return this;
+  }
+
+  /** Add an empty Boolean field. */
+  @Nonnull
+  public ResourceDataBuilder boolEmpty(@Nonnull final String name) {
+    return typedEmpty(name, TypedNull.BOOLEAN);
+  }
+
+  /** Add an empty Integer field. */
+  @Nonnull
+  public ResourceDataBuilder integerEmpty(@Nonnull final String name) {
+    return typedEmpty(name, TypedNull.INTEGER);
+  }
+
+  /** Add an empty Decimal field. */
+  @Nonnull
+  public ResourceDataBuilder decimalEmpty(@Nonnull final String name) {
+    return typedEmpty(name, TypedNull.DECIMAL);
+  }
+
+  /** Add an empty String field. */
+  @Nonnull
+  public ResourceDataBuilder stringEmpty(@Nonnull final String name) {
+    return typedEmpty(name, TypedNull.STRING);
+  }
+
+  /** Add an empty Date field. */
+  @Nonnull
+  public ResourceDataBuilder dateEmpty(@Nonnull final String name) {
+    return typedEmpty(name, TypedNull.DATE);
+  }
+
+  /** Add an empty DateTime field. */
+  @Nonnull
+  public ResourceDataBuilder dateTimeEmpty(@Nonnull final String name) {
+    return typedEmpty(name, TypedNull.DATE_TIME);
+  }
+
+  /** Add an empty Time field. */
+  @Nonnull
+  public ResourceDataBuilder timeEmpty(@Nonnull final String name) {
+    return typedEmpty(name, TypedNull.TIME);
+  }
+
+  /** Add an empty Quantity field. */
+  @Nonnull
+  public ResourceDataBuilder quantityEmpty(@Nonnull final String name) {
+    return typedEmpty(name, TypedNull.QUANTITY);
+  }
+
   /**
    * Build the Map representation of the resource data.
    *

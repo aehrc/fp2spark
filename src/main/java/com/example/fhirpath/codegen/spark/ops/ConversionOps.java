@@ -104,7 +104,8 @@ public final class ConversionOps {
         return lit(null);
       }
       final Column input = ctx.arg(0);
-      return validationFn.validate(sourceType, input);
+      final Column result = validationFn.validate(sourceType, input);
+      return nullPropagate(input, result);
     };
   }
 
@@ -155,9 +156,10 @@ public final class ConversionOps {
       // when present, also check that unit conversion succeeds
       final Column converted =
           QuantityConvertToUnit.UDF.apply(asQuantity(sourceType, input), unitArg);
-      return when(
-              unitArg.isNotNull(), when(canConvert, converted.isNotNull()).otherwise(lit(false)))
-          .otherwise(canConvert);
+      final Column result =
+          when(unitArg.isNotNull(), when(canConvert, converted.isNotNull()).otherwise(lit(false)))
+              .otherwise(canConvert);
+      return nullPropagate(input, result);
     };
   }
 
@@ -298,11 +300,7 @@ public final class ConversionOps {
       case BOOLEAN -> lit(true);
       case STRING -> {
         final Column lower = functions.lower(value);
-        yield value
-            .isNotNull()
-            .and(
-                lower.isin(
-                    "true", "t", "yes", "y", "1", "1.0", "false", "f", "no", "n", "0", "0.0"));
+        yield lower.isin("true", "t", "yes", "y", "1", "1.0", "false", "f", "no", "n", "0", "0.0");
       }
       case INTEGER -> value.equalTo(lit(0)).or(value.equalTo(lit(1)));
       case DECIMAL -> value.equalTo(lit(0.0)).or(value.equalTo(lit(1.0)));
@@ -387,6 +385,15 @@ public final class ConversionOps {
   }
 
   // ========== Helper Methods ==========
+
+  /**
+   * Wraps a result column with null propagation: returns null when the input is null, ensuring
+   * empty FHIRPath collections produce empty results per spec §5.7.
+   */
+  @Nonnull
+  private static Column nullPropagate(@Nonnull final Column input, @Nonnull final Column result) {
+    return when(input.isNotNull(), result);
+  }
 
   /**
    * Converts a decimal value to string, stripping trailing zeros and any resulting trailing dot.

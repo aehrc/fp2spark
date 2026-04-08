@@ -439,6 +439,71 @@ public class TypeConversionTest extends FhirPathTestBase {
         .build();
   }
 
+  // ========== convertsTo*() - field-based empty propagation ==========
+
+  /**
+   * Tests that convertsTo*() returns empty for typed empty fields (null column values at runtime).
+   * This covers a different code path from literal empty ({}) which is resolved at compile time.
+   */
+  @TestFactory
+  Stream<DynamicTest> testConvertsToFieldBasedEmptyPropagation() {
+    return builder()
+        .withSubject(
+            "Basic",
+            sb ->
+                sb.boolEmpty("emptyBool")
+                    .integerEmpty("emptyInt")
+                    .decimalEmpty("emptyDec")
+                    .stringEmpty("emptyStr")
+                    .dateEmpty("emptyDate")
+                    .dateTimeEmpty("emptyDateTime")
+                    .timeEmpty("emptyTime")
+                    .quantityEmpty("emptyQty"))
+        .group("convertsToBoolean - typed empty fields")
+        .testEmpty("emptyBool.convertsToBoolean()", "Empty Boolean → empty")
+        .testEmpty("emptyStr.convertsToBoolean()", "Empty String → empty")
+        .testEmpty("emptyInt.convertsToBoolean()", "Empty Integer → empty")
+        .testEmpty("emptyDate.convertsToBoolean()", "Empty Date → empty")
+        .group("convertsToInteger - typed empty fields")
+        .testEmpty("emptyInt.convertsToInteger()", "Empty Integer → empty")
+        .testEmpty("emptyBool.convertsToInteger()", "Empty Boolean → empty")
+        .testEmpty("emptyStr.convertsToInteger()", "Empty String → empty")
+        .testEmpty("emptyDate.convertsToInteger()", "Empty Date → empty")
+        .group("convertsToDecimal - typed empty fields")
+        .testEmpty("emptyDec.convertsToDecimal()", "Empty Decimal → empty")
+        .testEmpty("emptyInt.convertsToDecimal()", "Empty Integer → empty")
+        .testEmpty("emptyStr.convertsToDecimal()", "Empty String → empty")
+        .testEmpty("emptyDate.convertsToDecimal()", "Empty Date → empty")
+        .group("convertsToString - typed empty fields")
+        .testEmpty("emptyStr.convertsToString()", "Empty String → empty")
+        .testEmpty("emptyInt.convertsToString()", "Empty Integer → empty")
+        .testEmpty("emptyBool.convertsToString()", "Empty Boolean → empty")
+        .testEmpty("emptyDate.convertsToString()", "Empty Date → empty")
+        .group("convertsToDate - typed empty fields")
+        .testEmpty("emptyDate.convertsToDate()", "Empty Date → empty")
+        .testEmpty("emptyDateTime.convertsToDateTime()", "Empty DateTime → empty")
+        .testEmpty("emptyStr.convertsToDate()", "Empty String → empty")
+        .testEmpty("emptyInt.convertsToDate()", "Empty Integer → empty")
+        .group("convertsToDateTime - typed empty fields")
+        .testEmpty("emptyDateTime.convertsToDateTime()", "Empty DateTime → empty")
+        .testEmpty("emptyDate.convertsToDateTime()", "Empty Date → empty")
+        .testEmpty("emptyStr.convertsToDateTime()", "Empty String → empty")
+        .testEmpty("emptyInt.convertsToDateTime()", "Empty Integer → empty")
+        .group("convertsToTime - typed empty fields")
+        .testEmpty("emptyTime.convertsToTime()", "Empty Time → empty")
+        .testEmpty("emptyStr.convertsToTime()", "Empty String → empty")
+        .testEmpty("emptyInt.convertsToTime()", "Empty Integer → empty")
+        .group("convertsToQuantity - typed empty fields")
+        .testEmpty("emptyQty.convertsToQuantity()", "Empty Quantity → empty")
+        .testEmpty("emptyInt.convertsToQuantity()", "Empty Integer → empty")
+        .testEmpty("emptyStr.convertsToQuantity()", "Empty String → empty")
+        .testEmpty("emptyDate.convertsToQuantity()", "Empty Date → empty")
+        .group("convertsToQuantity(unit) - typed empty fields")
+        .testEmpty("emptyQty.convertsToQuantity('kg')", "Empty Quantity → empty")
+        .testEmpty("emptyStr.convertsToQuantity('mg')", "Empty String → empty")
+        .build();
+  }
+
   // ========== Implicit Type Coercions (FHIRPath Spec 6.2) ==========
 
   @TestFactory

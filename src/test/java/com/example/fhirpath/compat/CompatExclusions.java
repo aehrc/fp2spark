@@ -131,34 +131,6 @@ public final class CompatExclusions {
                   .scope(CombiningOperatorsDslTest.class)
                   .expressions("dt1 | dt4"),
 
-              // --- convertsTo*: empty input returns false instead of empty ---
-              // Only cross-type conversions fail; same-type (e.g., emptyBool.convertsToBoolean)
-              // pass
-              group("convertsTo*: returns false instead of empty for empty input")
-                  .scope(ConversionFunctionsDslTest.class)
-                  .expressions(
-                      "emptyBool.convertsToBoolean()",
-                      "emptyDate.convertsToBoolean()",
-                      "emptyDate.convertsToDate()",
-                      "emptyInt.convertsToDate()",
-                      "emptyDateTime.convertsToDateTime()",
-                      "emptyInt.convertsToDateTime()",
-                      "emptyDec.convertsToDecimal()",
-                      "emptyInt.convertsToDecimal()",
-                      "emptyDate.convertsToDecimal()",
-                      "emptyInt.convertsToInteger()",
-                      "emptyBool.convertsToInteger()",
-                      "emptyDate.convertsToInteger()",
-                      "emptyBool.convertsToQuantity()",
-                      "emptyInt.convertsToQuantity()",
-                      "emptyDate.convertsToQuantity()",
-                      "emptyStr.convertsToString()",
-                      "emptyInt.convertsToString()",
-                      "emptyDate.convertsToString()",
-                      "emptyTime.convertsToTime()",
-                      "emptyInt.convertsToTime()",
-                      "emptyStr.convertsToQuantity('mg')"),
-
               // --- convertsTo*(unitCode): calendar duration differences ---
               group("convertsTo*(unitCode): calendar duration conversion differences")
                   .scope(ConversionFunctionsDslTest.class)
@@ -166,8 +138,7 @@ public final class CompatExclusions {
                       "'4 days'.convertsToQuantity('days')",
                       "'1 day'.convertsToQuantity('seconds')",
                       "'1 day'.convertsToQuantity('milliseconds')",
-                      "'2 minutes'.convertsToQuantity('s')",
-                      "emptyStr.convertsToQuantity('mg')"),
+                      "'2 minutes'.convertsToQuantity('s')"),
 
               // --- toQuantity: calendar duration unit naming ---
               group("toQuantity: calendar duration unit naming differences")

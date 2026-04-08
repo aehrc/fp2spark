@@ -104,7 +104,10 @@ public final class ConversionOps {
         return lit(null);
       }
       final Column input = ctx.arg(0);
-      return validationFn.validate(sourceType, input);
+      final Column result = validationFn.validate(sourceType, input);
+      // Propagate null at runtime: if the input value is null (empty collection),
+      // the result must be empty per FHIRPath spec §5.7, not true/false.
+      return when(input.isNotNull(), result);
     };
   }
 
@@ -155,9 +158,11 @@ public final class ConversionOps {
       // when present, also check that unit conversion succeeds
       final Column converted =
           QuantityConvertToUnit.UDF.apply(asQuantity(sourceType, input), unitArg);
-      return when(
-              unitArg.isNotNull(), when(canConvert, converted.isNotNull()).otherwise(lit(false)))
-          .otherwise(canConvert);
+      final Column result =
+          when(unitArg.isNotNull(), when(canConvert, converted.isNotNull()).otherwise(lit(false)))
+              .otherwise(canConvert);
+      // Propagate null at runtime: empty input → empty result per FHIRPath spec §5.7
+      return when(input.isNotNull(), result);
     };
   }
 
@@ -298,11 +303,7 @@ public final class ConversionOps {
       case BOOLEAN -> lit(true);
       case STRING -> {
         final Column lower = functions.lower(value);
-        yield value
-            .isNotNull()
-            .and(
-                lower.isin(
-                    "true", "t", "yes", "y", "1", "1.0", "false", "f", "no", "n", "0", "0.0"));
+        yield lower.isin("true", "t", "yes", "y", "1", "1.0", "false", "f", "no", "n", "0", "0.0");
       }
       case INTEGER -> value.equalTo(lit(0)).or(value.equalTo(lit(1)));
       case DECIMAL -> value.equalTo(lit(0.0)).or(value.equalTo(lit(1.0)));

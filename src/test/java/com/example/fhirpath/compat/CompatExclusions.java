@@ -1,6 +1,8 @@
 package com.example.fhirpath.compat;
 
+import static com.example.fhirpath.compat.ExclusionGroup.bug;
 import static com.example.fhirpath.compat.ExclusionGroup.expectedDifference;
+import static com.example.fhirpath.compat.ExclusionGroup.notImplemented;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import jakarta.annotation.Nonnull;
@@ -120,7 +122,80 @@ public final class CompatExclusions {
                   .scope(FilteringAndProjectionFunctionsDslTest.class)
                   .expressions(
                       "polyStrings.value.ofType(System.Decimal)"
-                          + " + polyStrings.value.ofType(FHIR.decimal)"))
+                          + " + polyStrings.value.ofType(FHIR.decimal)"),
+
+              // --- repeat() function not implemented ---
+              notImplemented("repeat() function not implemented")
+                  .scope(RepeatFunctionDslTest.class)
+                  .pattern("^(?!.*=> Exception)"),
+
+              // --- repeatAll() function not implemented ---
+              notImplemented("repeatAll() function not implemented")
+                  .scope(RepeatAllFunctionDslTest.class)
+                  .pattern("^(?!.*=> Exception)"),
+
+              // --- Equality: integer/decimal array type mismatch in Spark ---
+              bug("Array equality fails with BINARY_OP_DIFF_TYPES for mixed numeric types")
+                  .scope(EqualityOperatorsDslTest.class)
+                  .expressions(
+                      "decArray1 = 1.0",
+                      "intArray1 = decArray1",
+                      "intArray1 != decArray1",
+                      "intArray1 != decArray2"),
+
+              // --- Equality: date/time array with incomparable precision ---
+              expectedDifference(
+                      "Array equality with mixed precision returns empty instead of false/true")
+                  .scope(EqualityOperatorsDslTest.class)
+                  .expressions(
+                      "dateArray3 = dateArray4",
+                      "dateArray3 != dateArray2",
+                      "timeArray3 = timeArray4",
+                      "timeArray3 != timeArray2"),
+
+              // --- Equality: date vs dateTime cross-type array comparison ---
+              expectedDifference("Date vs DateTime array cross-type comparison returns empty")
+                  .scope(EqualityOperatorsDslTest.class)
+                  .expressions("dateArray1 = dtArray1", "dtArray2 != dateArray1"),
+
+              // --- Equality: uncomparable types with empty operand ---
+              expectedDifference(
+                      "Uncomparable types with empty operand return false instead of empty")
+                  .scope(EqualityOperatorsDslTest.class)
+                  .expressions(
+                      "intVal = dateVal.where(false)", "intArray.where(false) != dateArray"),
+
+              // --- Equality: quantity literal vs empty collection ---
+              bug("Quantity equality with empty collection throws INVALID_EXTRACT_BASE_FIELD_TYPE")
+                  .scope(EqualityOperatorsDslTest.class)
+                  .pattern("\\[Quantity equality: quantity literal vs empty collection\\]"),
+
+              // --- Comparison: empty with uncomparable types throws instead of empty ---
+              expectedDifference("Comparison with empty uncomparable type throws instead of empty")
+                  .scope(ComparisonOperatorsDslTest.class)
+                  .expressions("true > {}", "{} >= codingVal"),
+
+              // --- Comparison: date/dateTime cross-precision comparison ---
+              expectedDifference("Date/DateTime comparison with different precision returns empty")
+                  .scope(ComparisonOperatorsDslTest.class)
+                  .expressions(
+                      "@2020-03-01 >= @2020-02",
+                      "@2020-01-01T12:00 >= @2020-01-01T11",
+                      "@2020-01-02 > @2020-01-01T10:00:00Z",
+                      "@2020-02-01T10 <= @2020-01",
+                      "@2018-03-01 < @2018-03-02T00:00:00 =>",
+                      "@2018-03-01 < @2018-03-02T00:00:00Z",
+                      "@2018-03-01 < @2018-03-02T00:00:00-01:00"),
+
+              // --- Comparison: time with different precision ---
+              expectedDifference("Time comparison with different precision returns empty")
+                  .scope(ComparisonOperatorsDslTest.class)
+                  .expressions(
+                      "@T10 < @T11:30",
+                      "@T11:45 < @T10",
+                      "@T12:31:45 >= @T12:30",
+                      "@T13:15 > @T14:15:30",
+                      "@T23:59:59.999999999 > @T00:00"))
           .flatMap(g -> g.build().stream())
           .toList();
 

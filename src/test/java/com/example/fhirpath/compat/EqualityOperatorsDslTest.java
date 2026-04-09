@@ -18,12 +18,10 @@
 package com.example.fhirpath.compat;
 
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 public class EqualityOperatorsDslTest extends CompatTestBase {
 
-  @Disabled("Behavior difference: boolean equality")
   @FhirPathTest
   public Stream<DynamicTest> testBooleanEquality() {
     return builder()
@@ -59,7 +57,6 @@ public class EqualityOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Behavior difference: string equality")
   @FhirPathTest
   public Stream<DynamicTest> testStringEquality() {
     return builder()
@@ -96,7 +93,6 @@ public class EqualityOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Behavior difference: numeric equality")
   @FhirPathTest
   public Stream<DynamicTest> testNumericEquality() {
     return builder()
@@ -165,7 +161,6 @@ public class EqualityOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Behavior difference: time equality")
   @FhirPathTest
   public Stream<DynamicTest> testTimeEquality() {
     return builder()
@@ -217,7 +212,6 @@ public class EqualityOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Behavior difference: date/dateTime equality")
   @FhirPathTest
   public Stream<DynamicTest> testDateAndDateTimeEquality() {
     return builder()
@@ -401,7 +395,6 @@ public class EqualityOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Behavior difference: uncomparable types equality")
   @FhirPathTest
   public Stream<DynamicTest> testMinimalUncomparableTypesEquality() {
     return builder()
@@ -426,7 +419,6 @@ public class EqualityOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Behavior difference: quantity equality")
   @FhirPathTest
   public Stream<DynamicTest> testQuantityEquality() {
     return builder()

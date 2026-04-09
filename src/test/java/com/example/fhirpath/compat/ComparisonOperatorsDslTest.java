@@ -18,12 +18,10 @@
 package com.example.fhirpath.compat;
 
 import java.util.stream.Stream;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 public class ComparisonOperatorsDslTest extends CompatTestBase {
 
-  @Disabled("Behavior difference: uncomparable types comparison")
   @FhirPathTest
   public Stream<DynamicTest> testUncomparableTypesComparison() {
     return builder()
@@ -135,7 +133,6 @@ public class ComparisonOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Behavior difference: calendar quantity comparison")
   @FhirPathTest
   public Stream<DynamicTest> testCalendarComparison() {
     return builder()
@@ -177,7 +174,6 @@ public class ComparisonOperatorsDslTest extends CompatTestBase {
         .build();
   }
 
-  @Disabled("Behavior difference: time comparison")
   @FhirPathTest
   public Stream<DynamicTest> testTimeComparison() {
     return builder()

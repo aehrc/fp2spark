@@ -241,10 +241,15 @@ public class TypeConversionTest extends FhirPathTestBase {
             "'500 milliseconds'.toQuantity('ms') = 500 'ms'",
             "Calendar millisecond bridges to UCUM 'ms'")
         .testEmpty("'2 minutes'.toQuantity('s')", "Non-bridge calendar duration to UCUM → empty")
+        .group("toQuantity(unit) - plural non-calendar target unit")
+        .testEmpty("'10 kg'.toQuantity('kgs')", "Plural non-calendar target not recognized → empty")
         .group("toQuantity(unit) - plural target calendar unit")
         .testTrue(
             "'4 days'.toQuantity('days') = 4 day",
             "Plural target unit normalized to singular for matching")
+        .testTrue(
+            "'4 days'.toQuantity('days').unit = 'days'",
+            "Plural target unit preserved in display unit")
         .group("toQuantity(unit) - string with plural calendar unit")
         .testTrue(
             "'10 years'.toQuantity('month') = 120 month",

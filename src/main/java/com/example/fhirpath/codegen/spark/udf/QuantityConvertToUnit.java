@@ -161,9 +161,10 @@ public final class QuantityConvertToUnit {
   }
 
   /**
-   * Calendar → UCUM conversion. Only possible for definite durations via the bridge: second → 's',
-   * millisecond → 'ms'. Calendar conversion factors are defined within the calendar domain; only
-   * these two units have exact UCUM equivalents.
+   * Calendar → UCUM conversion. Bridges via {@link UcumService#toUcumCode}, which only maps {@code
+   * second} → {@code 's'} and {@code millisecond} → {@code 'ms'}. All other calendar durations
+   * (year, month, week, day, hour, minute) return {@code null} because they have no exact UCUM
+   * equivalent. Once bridged, delegates to {@link #convertUcumToUcum}.
    */
   @Nullable
   private static Row convertCalendarToUcum(

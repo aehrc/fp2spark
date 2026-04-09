@@ -34,10 +34,6 @@ public final class CompatExclusions {
   private static final List<ExclusionRule> RULES =
       Stream.of(
 
-              // --- resolve() function not implemented ---
-              notImplemented("resolve() function not implemented")
-                  .pattern("resolve\\(\\).*=> (?!Exception)"),
-
               // --- Strict typing: Boolean operators reject non-Boolean input ---
               // fp2sql enforces Boolean-only operands for not/and/or/xor;
               // Pathling coerces non-Boolean singletons to Boolean

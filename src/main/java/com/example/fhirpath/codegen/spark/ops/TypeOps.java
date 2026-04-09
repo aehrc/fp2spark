@@ -9,30 +9,33 @@ import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
+import com.example.fhirpath.typing.ResolvedReferenceType;
 import org.apache.spark.sql.Column;
+import org.apache.spark.sql.functions;
 
 /**
  * Spark code generation for type testing and reflection operations.
  *
- * <p>The {@code is} operator has two forms:
+ * <p>The {@code is} operator has three forms, dispatched by argument count and input type:
  *
  * <ul>
- *   <li><b>Unary (choice type):</b> checks whether a variant column is non-null. Created by {@code
- *       Analyzer.resolveChoiceTypeOperation()}.
- *   <li><b>Binary (non-choice type):</b> null-propagating static type match. The first argument is
- *       the value, the second is a boolean literal indicating the static match result. Created by
- *       {@code Analyzer.resolveNonChoiceTypeOperation()}.
+ *   <li><b>Unary (choice type):</b> checks whether a variant column is non-null.
+ *   <li><b>Binary with static result (non-choice):</b> null-propagating static type match. The
+ *       second argument is a boolean literal indicating the compile-time match result.
+ *   <li><b>Binary with resolved reference:</b> runtime type comparison. The second argument is a
+ *       string literal type name, compared against the extracted type string.
  * </ul>
+ *
+ * <p>The {@code as} and {@code ofType} operators are normally resolved to {@link
+ * com.example.fhirpath.ir.Traversal} nodes by the Analyzer (choice types) or static literals
+ * (non-choice types). For resolved references, they are emitted as runtime operations that filter
+ * by type name string comparison.
  *
  * <p>The {@code type} function (non-choice) takes 4 args: [target, namespace, name, baseType] and
  * returns a constant TypeInfo struct for each non-null element.
  *
  * <p>The {@code typeChoice} function takes 4n args in groups: [variantCol, namespace, name,
  * baseType, ...] and builds a CASE WHEN chain checking which variant is non-null.
- *
- * <p>The {@code ofType} and {@code as} operators are resolved to {@link
- * com.example.fhirpath.ir.Traversal} nodes by the Analyzer, so they use existing traversal code
- * generation and don't need Spark operation registrations.
  */
 public final class TypeOps {
 
@@ -53,12 +56,30 @@ public final class TypeOps {
     registry.register(
         "is",
         ctx -> {
-          if (ctx.args().size() == 2) {
-            // Non-choice: CASE WHEN value IS NOT NULL THEN match_result ELSE NULL END
-            return when(ctx.arg(0).isNotNull(), ctx.arg(1));
+          if (ctx.args().size() == 1) {
+            // Choice type: variant column null check
+            return ctx.arg(0).isNotNull();
           }
-          // Choice type: variant column null check
-          return ctx.arg(0).isNotNull();
+          if (ctx.argType(0) instanceof ResolvedReferenceType) {
+            // Resolved reference: runtime type string comparison
+            return when(ctx.arg(0).isNotNull(), ctx.arg(0).equalTo(ctx.arg(1)));
+          }
+          // Non-choice: CASE WHEN value IS NOT NULL THEN match_result ELSE NULL END
+          return when(ctx.arg(0).isNotNull(), ctx.arg(1));
+        });
+
+    // Resolved reference as: returns typeString if it matches, null otherwise
+    registry.register("as", ctx -> when(ctx.arg(0).equalTo(ctx.arg(1)), ctx.arg(0)));
+
+    // Resolved reference ofType: filters collection keeping only matching type strings
+    registry.register(
+        "ofType",
+        ctx -> {
+          final CollectionValue coll = ctx.collectionArg(0);
+          final Column typeName = ctx.arg(1);
+          return coll.apply(
+              arr -> CollectionValue.nullIfEmpty(functions.filter(arr, t -> t.equalTo(typeName))),
+              col -> when(col.equalTo(typeName), col));
         });
 
     // Non-choice type(): static type info applied to each non-null element

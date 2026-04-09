@@ -1,17 +1,21 @@
 package com.example.fhirpath.codegen.spark.ops;
 
 import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
+import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.col;
 import static org.apache.spark.sql.functions.concat;
 import static org.apache.spark.sql.functions.lit;
+import static org.apache.spark.sql.functions.regexp_extract;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.ir.Resource;
+import org.apache.spark.sql.Column;
 
 /**
- * FHIR-specific function registrations (getValue, hasValue, getResourceKey, getReferenceKey).
+ * FHIR-specific function registrations (getValue, hasValue, getResourceKey, getReferenceKey,
+ * resolve).
  *
  * <p>These functions are defined in the FHIR-specific FHIRPath binding and the SQL on FHIR v2
  * specification.
@@ -20,6 +24,16 @@ public final class FhirOps {
 
   /** Pathling flat schema: resource logical id column. */
   private static final String RESOURCE_ID_COLUMN = "id";
+
+  /**
+   * Regex pattern for extracting resource type from reference strings. Matches resource types in
+   * relative ("Patient/123"), absolute ("http://example.org/fhir/Patient/123"), and canonical
+   * ("http://hl7.org/fhir/ValueSet/my-valueset|1.0") reference formats.
+   */
+  private static final String REFERENCE_TYPE_PATTERN = "(?:^|/)([A-Z][a-zA-Z]+)(?:/|$|\\|)";
+
+  /** Regex pattern for validating FHIR resource type names. */
+  private static final String FHIR_TYPE_NAME_PATTERN = "^[A-Z][a-zA-Z]+$";
 
   private FhirOps() {}
 
@@ -62,5 +76,35 @@ public final class FhirOps {
               .filterNulls()
               .column();
         });
+
+    // resolve() — extracts type information from Reference elements
+    registry.register(
+        "resolve",
+        ctx -> {
+          final CollectionValue ref = ctx.collectionArg(0);
+          return ref.map(FhirOps::extractTypeFromReference).filterNulls().column();
+        });
+  }
+
+  /**
+   * Extracts resource type from a Reference struct element.
+   *
+   * <p>Uses {@code coalesce(Reference.type, regexp_extract(Reference.reference, pattern))} with
+   * validation that the result is a valid FHIR resource type name. Following Pathling's approach.
+   *
+   * @param refStruct a column representing a Reference struct element
+   * @return a column containing the extracted type string, or null if unresolvable
+   */
+  private static Column extractTypeFromReference(final Column refStruct) {
+    final Column referenceField = refStruct.getField("reference");
+    final Column typeField = refStruct.getField("type");
+    // regexp_extract returns "" on no-match (not null); normalize to null before coalescing
+    final Column parsedType = regexp_extract(referenceField, REFERENCE_TYPE_PATTERN, 1);
+    final Column parsedTypeOrNull = when(parsedType.notEqual(lit("")), parsedType);
+    final Column extractedType = coalesce(typeField, parsedTypeOrNull);
+    // Validate type field values (parsedType is already constrained by the regex capture group)
+    final Column isValid =
+        extractedType.isNotNull().and(extractedType.rlike(FHIR_TYPE_NAME_PATTERN));
+    return when(isValid, extractedType).otherwise(lit(null));
   }
 }

@@ -195,9 +195,7 @@
                         --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
                         -Djava.security.manager=allow
                     </argLine>
-                    <excludes>
-                        <exclude>com/example/fhirpath/compat/**</exclude>
-                    </excludes>
+                    <!-- Use -Pcompat to run only compat tests -->
                 </configuration>
             </plugin>
         </plugins>

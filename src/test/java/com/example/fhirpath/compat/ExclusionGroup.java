@@ -64,9 +64,8 @@ final class ExclusionGroup {
     return group(reason).category(ExclusionCategory.SPEC_AMBIGUITY);
   }
 
-  /** Set the category for this exclusion group. */
   @Nonnull
-  ExclusionGroup category(@Nonnull ExclusionCategory category) {
+  private ExclusionGroup category(@Nonnull ExclusionCategory category) {
     this.category = category;
     return this;
   }

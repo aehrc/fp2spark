@@ -1,6 +1,8 @@
 package com.example.fhirpath.compat;
 
-import static com.example.fhirpath.compat.ExclusionGroup.*;
+import static com.example.fhirpath.compat.ExclusionGroup.expectedDifference;
+import static com.example.fhirpath.compat.ExclusionGroup.notImplemented;
+import static com.example.fhirpath.compat.ExclusionGroup.specAmbiguity;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import jakarta.annotation.Nonnull;

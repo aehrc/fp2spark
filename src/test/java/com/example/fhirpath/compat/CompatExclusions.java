@@ -2,7 +2,6 @@ package com.example.fhirpath.compat;
 
 import static com.example.fhirpath.compat.ExclusionGroup.expectedDifference;
 import static com.example.fhirpath.compat.ExclusionGroup.notImplemented;
-import static com.example.fhirpath.compat.ExclusionGroup.specAmbiguity;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import jakarta.annotation.Nonnull;
@@ -106,11 +105,6 @@ public final class CompatExclusions {
               notImplemented("Membership operator accepts complex types")
                   .scope(MembershipOperatorsDslTest.class)
                   .expressions("name in name"),
-
-              // --- Union operator: DateTime timezone dedup ---
-              specAmbiguity("Union operator: DateTime timezone dedup difference")
-                  .scope(CombiningOperatorsDslTest.class)
-                  .expressions("dt1 | dt4"),
 
               // --- Calendar-to-UCUM: only second/millisecond bridge allowed ---
               expectedDifference("Calendar-to-UCUM: non-bridge calendar duration conversion")

@@ -179,6 +179,7 @@
                 <version>3.2.5</version>
                 <configuration>
                     <argLine>
+                        -Duser.timezone=UTC
                         --add-opens=java.base/java.lang=ALL-UNNAMED
                         --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
                         --add-opens=java.base/java.lang.reflect=ALL-UNNAMED

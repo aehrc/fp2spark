@@ -275,15 +275,12 @@ public final class OperationRegistry {
         // Phase 1: Use ANY for generic types (Phase 2 will add type variables)
         register("iif", Signatures.conditionalIif(ANY, ANY)),
 
-        // SQL ON FHIR KEY FUNCTIONS (intercepted by Analyzer.resolveKeyFunction())
-        // These registrations are never reached by OverloadResolver — the intercept fires first.
-        // They exist so that the "unknown function" guard in resolveFunctionCall() does not reject
-        // the operation name. Spark code generation is registered separately in FhirOps.
+        // ANALYZER-INTERCEPTED FUNCTIONS
+        // These registrations are never reached by OverloadResolver — the Analyzer intercept
+        // fires first. They exist so that the "unknown function" guard in resolveFunctionCall()
+        // does not reject the operation name. Spark code generation is registered in FhirOps.
         register("getResourceKey", Signatures.unaryFunc(ANY, STRING)),
         register("getReferenceKey", Signatures.unaryFunc(ANY, STRING)),
-
-        // FHIR-SPECIFIC FUNCTIONS (intercepted by Analyzer)
-        // resolve() is intercepted by Analyzer before normal signature resolution.
         register("resolve", Signatures.unaryFunc(ANY, ANY)),
 
         // STRING FUNCTIONS (FHIRPath Spec 5.7)

@@ -983,8 +983,8 @@ public class Analyzer {
    */
   @Nonnull
   private IRNode resolveResolveFunction(
-      @Nonnull final AstFunctionCall call, @Nonnull final IRNode targetIr) {
-    if (!call.arguments().isEmpty()) {
+      @Nonnull final AstFunctionCall resolvedCall, @Nonnull final IRNode targetIr) {
+    if (!resolvedCall.arguments().isEmpty()) {
       throw new InvalidExpressionException("resolve() takes no arguments", null);
     }
     if (!"Reference".equals(targetIr.getType().getName())) {

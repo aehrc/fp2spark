@@ -12,6 +12,7 @@ import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.ir.Resource;
 import org.apache.spark.sql.Column;
+import org.apache.spark.sql.functions;
 
 /**
  * FHIR-specific function registrations (getValue, hasValue, getResourceKey, getReferenceKey,
@@ -102,9 +103,7 @@ public final class FhirOps {
             return when(coll.column().equalTo(typeName), coll.column());
           }
           final CollectionValue filtered =
-              new CollectionValue(
-                  org.apache.spark.sql.functions.filter(coll.column(), t -> t.equalTo(typeName)),
-                  false);
+              new CollectionValue(functions.filter(coll.column(), t -> t.equalTo(typeName)), false);
           return CollectionValue.nullIfEmpty(filtered.column());
         });
   }
@@ -121,9 +120,11 @@ public final class FhirOps {
   private static Column extractTypeFromReference(final Column refStruct) {
     final Column referenceField = refStruct.getField("reference");
     final Column typeField = refStruct.getField("type");
+    // regexp_extract returns "" on no-match (not null); normalize to null before coalescing
     final Column parsedType = regexp_extract(referenceField, REFERENCE_TYPE_PATTERN, 1);
-    final Column extractedType = coalesce(typeField, parsedType);
-    // Validate: must be a valid FHIR type name (starts with uppercase, letters only)
+    final Column parsedTypeOrNull = when(parsedType.notEqual(lit("")), parsedType);
+    final Column extractedType = coalesce(typeField, parsedTypeOrNull);
+    // Validate type field values (parsedType is already constrained by the regex capture group)
     final Column isValid =
         extractedType.isNotNull().and(extractedType.rlike(FHIR_TYPE_NAME_PATTERN));
     return when(isValid, extractedType).otherwise(lit(null));

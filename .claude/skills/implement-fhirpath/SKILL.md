@@ -52,10 +52,7 @@ Branch naming format: `issue/<number>-<kebab-case-description>` (e.g., `issue/42
 
 ### Step 3: Research the FHIRPath Specification
 
-Before writing any code, understand the feature's requirements from the spec. Use the `fhirpath-spec` skill or search the spec files directly:
-
-- Search `specs/FHIRPath.md` for the feature definition, semantics, and examples
-- Check `specs/FHIR_FHIRpath.md` for FHIR-specific bindings if relevant
+Before writing any code, understand the feature's requirements from the spec. Use the `fhirpath-spec` skill to look up the feature definition, semantics, examples, and any FHIR-specific bindings.
 
 Gather:
 - Function/operator signature(s)
@@ -168,13 +165,7 @@ EOF
 
 Follow the commit format in CONTRIBUTING.md: type prefix, short summary, optional body explaining what and why.
 
-### Step 9: Code Review
-
-Use the `review-branch` skill (`/review-branch`) to review all code changes in the current branch compared to `main`. Fix all high-priority issues identified by the reviewer.
-
-If fixes are needed, commit them separately and re-run `mvn test` to confirm no regressions.
-
-### Step 10: Push and Create PR
+### Step 9: Push and Create PR
 
 ```bash
 git push -u origin issue/<NUMBER>-<short-description>
@@ -193,12 +184,21 @@ Closes #<NUMBER>
 ## Test plan
 - [ ] New unit tests for <feature> pass
 - [ ] Full test suite passes (no regressions)
-- [ ] Code reviewed
+- [ ] Code reviewed and simplified
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
 ```
+
+### Step 10: Simplify and Review
+
+After the PR is created, run these two skills in order:
+
+1. **Simplify** — use the `simplify` skill (`/simplify`) to clean up and simplify the code changes.
+2. **Review** — use the `review` skill (`/review`) to review the code. Fix all high-priority issues identified by the reviewer.
+
+If either step produces fixes, commit them separately, re-run `mvn test` to confirm no regressions, and push to update the PR.
 
 ## Key Reminders
 

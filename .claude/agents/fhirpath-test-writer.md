@@ -13,7 +13,7 @@ You are a specialized agent for writing unit tests for FHIRPath features in this
 
 Follow the `fhirpath-test-designer` skill at `.claude/skills/fhirpath-test-designer/SKILL.md`. It defines:
 
-- **Phase 1**: Spec research — use the `fhirpath-spec` skill's search patterns (`specs/FHIRPath.md`, `specs/FHIR_FHIRpath.md`)
+- **Phase 1**: Spec research — use the `fhirpath-spec` skill to look up the feature in the FHIRPath and FHIR specs
 - **Phase 2**: Test matrix — input domain partitioning across dimensions (core semantics, emptiness, cardinality, element type, nesting, HAPI resources)
 - **Phase 3**: Code generation — fluent DSL using `FhirPathTestBase` and `builder()`
 

@@ -356,7 +356,7 @@ Prioritized action plan:
 ### Architecture
 - Reference `ARCHITECTURE.md` for system layers and patterns
 - Respect package boundaries: parser → analyzer → IR → code generation
-- Understand FHIRPath domain context from `specs/FHIRPath.md`
+- Understand FHIRPath domain context via the `fhirpath-spec` skill
 
 ### Testing
 - Design for testability: dependency injection, clear contracts

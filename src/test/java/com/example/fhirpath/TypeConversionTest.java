@@ -235,6 +235,21 @@ public class TypeConversionTest extends FhirPathTestBase {
         .testTrue("1 day.toQuantity('hour') = 24 hour", "Day to hours")
         .testTrue("60 minute.toQuantity('hour') = 1 hour", "Minutes to hours")
         .testTrue("1 hour.toQuantity('minute') = 60 minute", "Hours to minutes")
+        .group("toQuantity(unit) - calendar to UCUM bridge (second/millisecond only)")
+        .testTrue("'120 seconds'.toQuantity('s') = 120 's'", "Calendar second bridges to UCUM 's'")
+        .testTrue(
+            "'500 milliseconds'.toQuantity('ms') = 500 'ms'",
+            "Calendar millisecond bridges to UCUM 'ms'")
+        .testEmpty("'2 minutes'.toQuantity('s')", "Non-bridge calendar duration to UCUM → empty")
+        .group("toQuantity(unit) - plural non-calendar target unit")
+        .testEmpty("'10 kg'.toQuantity('kgs')", "Plural non-calendar target not recognized → empty")
+        .group("toQuantity(unit) - plural target calendar unit")
+        .testTrue(
+            "'4 days'.toQuantity('days') = 4 day",
+            "Plural target unit normalized to singular for matching")
+        .testTrue(
+            "'4 days'.toQuantity('days').unit = 'days'",
+            "Plural target unit preserved in display unit")
         .group("toQuantity(unit) - string with plural calendar unit")
         .testTrue(
             "'10 years'.toQuantity('month') = 120 month",
@@ -430,6 +445,12 @@ public class TypeConversionTest extends FhirPathTestBase {
         .group("convertsToQuantity(unit) - calendar duration")
         .testTrue("1 year.convertsToQuantity('month')", "Year to months")
         .testTrue("1 day.convertsToQuantity('hour')", "Day to hours")
+        .group("convertsToQuantity(unit) - calendar to UCUM bridge")
+        .testTrue("'120 seconds'.convertsToQuantity('s')", "Calendar second bridges to UCUM 's'")
+        .testTrue("'500 milliseconds'.convertsToQuantity('ms')", "Calendar ms bridges to UCUM 'ms'")
+        .testFalse("'2 minutes'.convertsToQuantity('s')", "Non-bridge calendar to UCUM → false")
+        .group("convertsToQuantity(unit) - plural target calendar unit")
+        .testTrue("'4 days'.convertsToQuantity('days')", "Plural target unit accepted")
         .group("convertsToQuantity(unit) - non-convertible input type")
         .testFalse("@2023-06-15.convertsToQuantity('kg')", "Date → false")
         .group("convertsToQuantity(unit) - non-quantity input with unit")

@@ -79,25 +79,39 @@ public final class QuantityConvertToUnit {
       return null;
     }
 
+    // Normalize target unit: resolve plural calendar keywords to canonical singular form
+    final String normalizedTarget = QuantityValue.canonicalCalendarCode(targetUnit);
+
     // Exact match — no conversion needed
-    if (code.equals(targetUnit)) {
-      return quantityRow;
+    if (code.equals(normalizedTarget)) {
+      return buildQuantityRow(value, targetUnit, system, normalizedTarget);
     }
 
     // Determine the target unit's system
-    final boolean targetIsCalendar = QuantityValue.isCalendarKeyword(targetUnit);
+    final boolean targetIsCalendar = QuantityValue.isCalendarKeyword(normalizedTarget);
 
-    return switch (system) {
-      case QuantityValue.UCUM_SYSTEM ->
-          targetIsCalendar
-              ? convertUcumToCalendar(value, code, targetUnit)
-              : convertUcumToUcum(value, code, targetUnit);
-      case QuantityValue.CALENDAR_SYSTEM ->
-          targetIsCalendar
-              ? convertCalendarToCalendar(value, code, targetUnit)
-              : convertCalendarToUcum(value, code, targetUnit);
-      default -> null;
-    };
+    final Row result =
+        switch (system) {
+          case QuantityValue.UCUM_SYSTEM ->
+              targetIsCalendar
+                  ? convertUcumToCalendar(value, code, normalizedTarget)
+                  : convertUcumToUcum(value, code, normalizedTarget);
+          case QuantityValue.CALENDAR_SYSTEM ->
+              targetIsCalendar
+                  ? convertCalendarToCalendar(value, code, normalizedTarget)
+                  : convertCalendarToUcum(value, code, normalizedTarget);
+          default -> null;
+        };
+
+    // Replace the canonical display unit with the original target unit string
+    if (result != null && !targetUnit.equals(normalizedTarget)) {
+      return buildQuantityRow(
+          result.getDecimal(SparkTypeMapper.Q_VALUE),
+          targetUnit,
+          result.getString(SparkTypeMapper.Q_SYSTEM),
+          result.getString(SparkTypeMapper.Q_CODE));
+    }
+    return result;
   }
 
   /** UCUM → UCUM conversion via UcumService. */
@@ -147,21 +161,20 @@ public final class QuantityConvertToUnit {
   }
 
   /**
-   * Calendar → UCUM conversion. Only possible for definite durations via the bridge: second → 's',
-   * millisecond → 'ms'.
+   * Calendar → UCUM conversion. Bridges via {@link UcumService#toUcumCode}, which only maps {@code
+   * second} → {@code 's'} and {@code millisecond} → {@code 'ms'}. All other calendar durations
+   * (year, month, week, day, hour, minute) return {@code null} because they have no exact UCUM
+   * equivalent. Once bridged, delegates to {@link #convertUcumToUcum}.
    */
   @Nullable
   private static Row convertCalendarToUcum(
       @Nonnull final BigDecimal value,
       @Nonnull final String calendarCode,
       @Nonnull final String ucumTarget) {
-    // Convert calendar to definite UCUM intermediate first
     final String ucumCode = UcumService.toUcumCode(QuantityValue.CALENDAR_SYSTEM, calendarCode);
     if (ucumCode == null) {
-      // Non-definite calendar durations (year, month, etc.) cannot convert to UCUM
       return null;
     }
-    // Now convert UCUM → UCUM
     return convertUcumToUcum(value, ucumCode, ucumTarget);
   }
 
@@ -199,5 +212,14 @@ public final class QuantityConvertToUnit {
       @Nonnull final String unitCode,
       @Nonnull final String system) {
     return RowFactory.create(value, unitCode, system, unitCode);
+  }
+
+  @Nonnull
+  private static Row buildQuantityRow(
+      @Nonnull final BigDecimal value,
+      @Nonnull final String displayUnit,
+      @Nonnull final String system,
+      @Nonnull final String code) {
+    return RowFactory.create(value, displayUnit, system, code);
   }
 }

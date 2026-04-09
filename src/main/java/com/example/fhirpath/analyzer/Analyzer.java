@@ -33,6 +33,7 @@ import com.example.fhirpath.typing.FieldSpec;
 import com.example.fhirpath.typing.InlineResourceType;
 import com.example.fhirpath.typing.LambdaType;
 import com.example.fhirpath.typing.QuantityValue;
+import com.example.fhirpath.typing.ResolvedReferenceType;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.TimeValue;
@@ -318,6 +319,11 @@ public class Analyzer {
     final Optional<IRNode> keyOp = resolveKeyFunction(resolvedCall, targetIr);
     if (keyOp.isPresent()) {
       return keyOp.get();
+    }
+
+    // Check for resolve() function — extracts type info from References
+    if ("resolve".equals(resolvedCall.functionName())) {
+      return resolveResolveFunction(resolvedCall, targetIr);
     }
 
     // Get all signatures for this function
@@ -819,6 +825,11 @@ public class Analyzer {
       return new Literal(null, Types.NULL);
     }
 
+    // ResolvedReferenceType: dynamic type checking at runtime (the type is in the data)
+    if (targetIr.getType() instanceof ResolvedReferenceType) {
+      return resolveResolvedReferenceTypeOp(operation, targetIr, typeSpec);
+    }
+
     final boolean matches = typeSpec.matchesType(targetIr.getType());
 
     return switch (operation) {
@@ -830,6 +841,63 @@ public class Analyzer {
         yield new Operation("is", List.of(targetIr, new Literal(matches, Types.BOOLEAN)), sig);
       }
       case "as", "ofType" -> matches ? targetIr : new Literal(null, Types.NULL);
+      default -> throw new IllegalStateException("Unexpected type operation: " + operation);
+    };
+  }
+
+  /**
+   * Resolves type operations ({@code is}, {@code as}, {@code ofType}) on resolved references.
+   *
+   * <p>Unlike static type checking, resolved references carry their type as a runtime string value.
+   * Type operations are emitted as runtime comparison operations that compare the extracted type
+   * string against the requested type name.
+   */
+  @Nonnull
+  private IRNode resolveResolvedReferenceTypeOp(
+      @Nonnull final String operation,
+      @Nonnull final IRNode targetIr,
+      @Nonnull final TypeSpecifier typeSpec) {
+    // Only FHIR resource types make sense for resolve() type checking
+    if (!typeSpec.isFhirType()) {
+      return switch (operation) {
+        case "is" -> {
+          final ResolvedSignature sig =
+              new ResolvedSignature(
+                  List.of(targetIr.getType(), Types.BOOLEAN), Shape.single(Types.BOOLEAN));
+          yield new Operation("is", List.of(targetIr, new Literal(false, Types.BOOLEAN)), sig);
+        }
+        case "as", "ofType" -> new Literal(null, Types.NULL);
+        default -> throw new IllegalStateException("Unexpected type operation: " + operation);
+      };
+    }
+
+    final String requestedType = typeSpec.getTypeName();
+    final Literal typeNameLiteral = new Literal(requestedType, Types.STRING);
+
+    return switch (operation) {
+      case "is" -> {
+        // Runtime: CASE WHEN typeString IS NOT NULL THEN typeString = 'RequestedType' ELSE NULL END
+        final ResolvedSignature sig =
+            new ResolvedSignature(
+                List.of(targetIr.getType(), Types.STRING), Shape.single(Types.BOOLEAN));
+        yield new Operation("resolvedIs", List.of(targetIr, typeNameLiteral), sig);
+      }
+      case "as" -> {
+        // Runtime: CASE WHEN typeString = 'RequestedType' THEN typeString ELSE NULL END
+        final ResolvedSignature sig =
+            new ResolvedSignature(
+                List.of(targetIr.getType(), Types.STRING),
+                Shape.single(ResolvedReferenceType.INSTANCE));
+        yield new Operation("resolvedAs", List.of(targetIr, typeNameLiteral), sig);
+      }
+      case "ofType" -> {
+        // Runtime: filter array keeping only elements where typeString = 'RequestedType'
+        final Shape resultShape =
+            Shape.of(ResolvedReferenceType.INSTANCE, targetIr.getShape().cardinality());
+        final ResolvedSignature sig =
+            new ResolvedSignature(List.of(targetIr.getType(), Types.STRING), resultShape);
+        yield new Operation("resolvedOfType", List.of(targetIr, typeNameLiteral), sig);
+      }
       default -> throw new IllegalStateException("Unexpected type operation: " + operation);
     };
   }
@@ -904,6 +972,31 @@ public class Analyzer {
         "getReferenceKey",
         List.of(targetIr, new Literal(typeSpec.getTypeName(), Types.STRING)),
         sig);
+  }
+
+  /**
+   * Resolves {@code resolve()} — extracts type information from Reference elements.
+   *
+   * <p>Must be called on a Reference element with no arguments. Returns a {@link
+   * ResolvedReferenceType} that supports {@code is}/{@code as}/{@code ofType} for dynamic type
+   * checking but does not support field traversal.
+   */
+  @Nonnull
+  private IRNode resolveResolveFunction(
+      @Nonnull final AstFunctionCall call, @Nonnull final IRNode targetIr) {
+    if (!call.arguments().isEmpty()) {
+      throw new InvalidExpressionException("resolve() takes no arguments", null);
+    }
+    if (!"Reference".equals(targetIr.getType().getName())) {
+      throw new InvalidExpressionException(
+          "resolve() can only be called on Reference elements, got: "
+              + targetIr.getType().getName(),
+          null);
+    }
+    final Shape resultShape =
+        Shape.of(ResolvedReferenceType.INSTANCE, targetIr.getShape().cardinality());
+    final ResolvedSignature sig = new ResolvedSignature(List.of(targetIr.getType()), resultShape);
+    return new Operation("resolve", List.of(targetIr), sig);
   }
 
   private Type inferType(final Object value) {

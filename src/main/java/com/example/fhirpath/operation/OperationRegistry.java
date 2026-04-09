@@ -282,6 +282,10 @@ public final class OperationRegistry {
         register("getResourceKey", Signatures.unaryFunc(ANY, STRING)),
         register("getReferenceKey", Signatures.unaryFunc(ANY, STRING)),
 
+        // FHIR-SPECIFIC FUNCTIONS (intercepted by Analyzer)
+        // resolve() is intercepted by Analyzer before normal signature resolution.
+        register("resolve", Signatures.unaryFunc(ANY, ANY)),
+
         // STRING FUNCTIONS (FHIRPath Spec 5.7)
 
         register("length", Signatures.unaryFunc(STRING, INTEGER)),

@@ -1,6 +1,7 @@
 package com.example.fhirpath.codegen.spark;
 
 import com.example.fhirpath.typing.FhirPrimitiveType;
+import com.example.fhirpath.typing.ResolvedReferenceType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Type;
@@ -61,6 +62,10 @@ public final class SparkTypeMapper {
   }
 
   private static DataType toSparkElementType(final Type t) {
+    if (t instanceof ResolvedReferenceType) {
+      // Resolved references are represented as type name strings at runtime
+      return DataTypes.StringType;
+    }
     if (t instanceof FhirPrimitiveType fpt) {
       return toSparkElementType(fpt.getSystemType());
     }

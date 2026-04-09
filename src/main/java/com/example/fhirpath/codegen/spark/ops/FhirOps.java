@@ -12,7 +12,6 @@ import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.ir.Resource;
 import org.apache.spark.sql.Column;
-import org.apache.spark.sql.functions;
 
 /**
  * FHIR-specific function registrations (getValue, hasValue, getResourceKey, getReferenceKey,
@@ -84,27 +83,6 @@ public final class FhirOps {
         ctx -> {
           final CollectionValue ref = ctx.collectionArg(0);
           return ref.map(FhirOps::extractTypeFromReference).filterNulls().column();
-        });
-
-    // resolvedIs — runtime type check: typeString = 'RequestedType'
-    registry.register(
-        "resolvedIs", ctx -> when(ctx.arg(0).isNotNull(), ctx.arg(0).equalTo(ctx.arg(1))));
-
-    // resolvedAs — returns typeString if it matches, null otherwise (singular)
-    registry.register("resolvedAs", ctx -> when(ctx.arg(0).equalTo(ctx.arg(1)), ctx.arg(0)));
-
-    // resolvedOfType — filters collection keeping only matching type strings
-    registry.register(
-        "resolvedOfType",
-        ctx -> {
-          final CollectionValue coll = ctx.collectionArg(0);
-          final Column typeName = ctx.arg(1);
-          if (coll.isSingular()) {
-            return when(coll.column().equalTo(typeName), coll.column());
-          }
-          final CollectionValue filtered =
-              new CollectionValue(functions.filter(coll.column(), t -> t.equalTo(typeName)), false);
-          return CollectionValue.nullIfEmpty(filtered.column());
         });
   }
 

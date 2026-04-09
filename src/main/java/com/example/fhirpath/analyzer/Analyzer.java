@@ -880,7 +880,7 @@ public class Analyzer {
         final ResolvedSignature sig =
             new ResolvedSignature(
                 List.of(targetIr.getType(), Types.STRING), Shape.single(Types.BOOLEAN));
-        yield new Operation("resolvedIs", List.of(targetIr, typeNameLiteral), sig);
+        yield new Operation("is", List.of(targetIr, typeNameLiteral), sig);
       }
       case "as" -> {
         // Runtime: CASE WHEN typeString = 'RequestedType' THEN typeString ELSE NULL END
@@ -888,7 +888,7 @@ public class Analyzer {
             new ResolvedSignature(
                 List.of(targetIr.getType(), Types.STRING),
                 Shape.single(ResolvedReferenceType.INSTANCE));
-        yield new Operation("resolvedAs", List.of(targetIr, typeNameLiteral), sig);
+        yield new Operation("as", List.of(targetIr, typeNameLiteral), sig);
       }
       case "ofType" -> {
         // Runtime: filter array keeping only elements where typeString = 'RequestedType'
@@ -896,7 +896,7 @@ public class Analyzer {
             Shape.of(ResolvedReferenceType.INSTANCE, targetIr.getShape().cardinality());
         final ResolvedSignature sig =
             new ResolvedSignature(List.of(targetIr.getType(), Types.STRING), resultShape);
-        yield new Operation("resolvedOfType", List.of(targetIr, typeNameLiteral), sig);
+        yield new Operation("ofType", List.of(targetIr, typeNameLiteral), sig);
       }
       default -> throw new IllegalStateException("Unexpected type operation: " + operation);
     };

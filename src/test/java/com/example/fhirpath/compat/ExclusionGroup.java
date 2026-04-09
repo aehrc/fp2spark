@@ -28,6 +28,7 @@ final class ExclusionGroup {
   private final String reason;
   private final List<ExclusionMatcher> matchers = new ArrayList<>();
   @Nullable private Class<?> currentScope;
+  @Nullable private ExclusionCategory category;
 
   private ExclusionGroup(@Nonnull String reason) {
     this.reason = reason;
@@ -37,6 +38,36 @@ final class ExclusionGroup {
   @Nonnull
   static ExclusionGroup group(@Nonnull String reason) {
     return new ExclusionGroup(reason);
+  }
+
+  /** Create a group classified as an expected design difference. */
+  @Nonnull
+  static ExclusionGroup expectedDifference(@Nonnull String reason) {
+    return group(reason).category(ExclusionCategory.EXPECTED_DIFFERENCE);
+  }
+
+  /** Create a group classified as a not-yet-implemented feature. */
+  @Nonnull
+  static ExclusionGroup notImplemented(@Nonnull String reason) {
+    return group(reason).category(ExclusionCategory.NOT_IMPLEMENTED);
+  }
+
+  /** Create a group classified as a known or suspected bug. */
+  @Nonnull
+  static ExclusionGroup bug(@Nonnull String reason) {
+    return group(reason).category(ExclusionCategory.BUG);
+  }
+
+  /** Create a group classified as a spec ambiguity. */
+  @Nonnull
+  static ExclusionGroup specAmbiguity(@Nonnull String reason) {
+    return group(reason).category(ExclusionCategory.SPEC_AMBIGUITY);
+  }
+
+  @Nonnull
+  private ExclusionGroup category(@Nonnull ExclusionCategory category) {
+    this.category = category;
+    return this;
   }
 
   /**
@@ -81,7 +112,10 @@ final class ExclusionGroup {
   /** Build the flat list of {@link ExclusionRule} instances, one per matcher. */
   @Nonnull
   List<ExclusionRule> build() {
-    return matchers.stream().map(m -> new ExclusionRule(m, reason)).toList();
+    if (category == null) {
+      throw new IllegalStateException("ExclusionGroup must have a category: " + reason);
+    }
+    return matchers.stream().map(m -> new ExclusionRule(m, reason, category)).toList();
   }
 
   private void addMatcher(@Nonnull ExclusionMatcher baseMatcher) {

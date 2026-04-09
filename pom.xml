@@ -179,6 +179,7 @@
                 <version>3.2.5</version>
                 <configuration>
                     <argLine>
+                        -Duser.timezone=UTC
                         --add-opens=java.base/java.lang=ALL-UNNAMED
                         --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
                         --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
@@ -195,9 +196,7 @@
                         --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
                         -Djava.security.manager=allow
                     </argLine>
-                    <excludes>
-                        <exclude>com/example/fhirpath/compat/**</exclude>
-                    </excludes>
+                    <!-- Use -Pcompat to run only compat tests -->
                 </configuration>
             </plugin>
         </plugins>

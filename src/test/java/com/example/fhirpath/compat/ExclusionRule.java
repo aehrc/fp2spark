@@ -8,7 +8,10 @@ import jakarta.annotation.Nonnull;
  * @param matcher Predicate that tests whether a given test matches this rule
  * @param reason Human-readable reason why this test is an expected failure
  */
-record ExclusionRule(@Nonnull ExclusionMatcher matcher, @Nonnull String reason) {
+record ExclusionRule(
+    @Nonnull ExclusionMatcher matcher,
+    @Nonnull String reason,
+    @Nonnull ExclusionCategory category) {
 
   /** Returns true if this rule matches the given test. */
   boolean matches(@Nonnull String displayName, @Nonnull Class<?> testClass) {

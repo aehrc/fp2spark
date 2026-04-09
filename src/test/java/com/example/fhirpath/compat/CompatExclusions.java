@@ -1,6 +1,6 @@
 package com.example.fhirpath.compat;
 
-import static com.example.fhirpath.compat.ExclusionGroup.group;
+import static com.example.fhirpath.compat.ExclusionGroup.*;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import jakarta.annotation.Nonnull;
@@ -34,13 +34,13 @@ public final class CompatExclusions {
       Stream.of(
 
               // --- resolve() function not implemented ---
-              group("resolve() function not implemented")
+              notImplemented("resolve() function not implemented")
                   .pattern("resolve\\(\\).*=> (?!Exception)"),
 
               // --- Strict typing: Boolean operators reject non-Boolean input ---
               // fp2sql enforces Boolean-only operands for not/and/or/xor;
               // Pathling coerces non-Boolean singletons to Boolean
-              group("Strict typing: Boolean operators reject non-Boolean input")
+              expectedDifference("Strict typing: Boolean operators reject non-Boolean input")
                   .scope(BooleanLogicFunctionsDslTest.class)
                   .expressions(
                       "emptyString.not()",
@@ -90,47 +90,49 @@ public final class CompatExclusions {
                       "complex.where($this.oneString).id"),
 
               // --- Strict typing: where()/exists() rejects non-Boolean criteria ---
-              group("Strict typing: where()/exists() rejects non-Boolean criteria expression")
+              expectedDifference(
+                      "Strict typing: where()/exists() rejects non-Boolean criteria expression")
                   .scope(ExistenceFunctionsDslTest.class)
                   .expressions("people.exists(name)"),
 
               // --- Strict typing: comparison with incompatible empty types ---
-              group("Strict typing: comparison rejects incompatible types")
+              expectedDifference("Strict typing: comparison rejects incompatible types")
                   .scope(ComparisonOperatorsDslTest.class)
                   .expressions("str1 < boolEmpty"),
 
               // --- Membership operator: complex type ---
-              group("Membership operator accepts complex types")
+              notImplemented("Membership operator accepts complex types")
                   .scope(MembershipOperatorsDslTest.class)
                   .expressions("name in name"),
 
               // --- Union operator: DateTime timezone dedup ---
-              group("Union operator: DateTime timezone dedup difference")
+              specAmbiguity("Union operator: DateTime timezone dedup difference")
                   .scope(CombiningOperatorsDslTest.class)
                   .expressions("dt1 | dt4"),
 
               // --- Calendar-to-UCUM: only second/millisecond bridge allowed ---
-              group("Calendar-to-UCUM: non-bridge calendar duration conversion")
+              expectedDifference("Calendar-to-UCUM: non-bridge calendar duration conversion")
                   .scope(ConversionFunctionsDslTest.class)
                   .expressions(
                       "'2 minutes'.toQuantity('s')", "'2 minutes'.convertsToQuantity('s')"),
 
               // --- Type functions: as operator on where()-filtered collections ---
-              group("Strict typing: as operator requires singleton input")
+              expectedDifference("Strict typing: as operator requires singleton input")
                   .scope(TypeFunctionsDslTest.class)
                   .expressions(
                       "component.where(value.is(String)).value.as(String)",
                       "component.where(value.is(Boolean)).value.as(Boolean)"),
 
               // --- Type functions: ofType equality on complex types ---
-              group("Type functions: ofType equality on FHIR complex types")
+              notImplemented("Type functions: ofType equality on FHIR complex types")
                   .scope(TypeFunctionsDslTest.class)
                   .expressions(
                       "name.ofType(FHIR.HumanName) = name",
                       "address.ofType(FHIR.Address) = address"),
 
               // --- ofType() cardinality: + operator requires singleton ---
-              group("Strict typing: ofType on plural returns MANY, + requires singleton")
+              expectedDifference(
+                      "Strict typing: ofType on plural returns MANY, + requires singleton")
                   .scope(FilteringAndProjectionFunctionsDslTest.class)
                   .expressions(
                       "polyStrings.value.ofType(System.Decimal)"
@@ -159,8 +161,9 @@ public final class CompatExclusions {
    * it unexpectedly passes, the test fails with a message to remove the exclusion.
    */
   static DynamicTest wrapXFail(@Nonnull DynamicTest test, @Nonnull ExclusionRule rule) {
+    String tag = "[XFAIL:" + rule.category().label() + "]";
     return DynamicTest.dynamicTest(
-        "[XFAIL] " + test.getDisplayName(),
+        tag + " " + test.getDisplayName(),
         () -> {
           boolean passed = false;
           try {
@@ -168,7 +171,7 @@ public final class CompatExclusions {
             passed = true;
           } catch (AssertionError | Exception e) {
             // Expected failure — absorb it
-            log.info("[XFAIL] {} — {}", test.getDisplayName(), rule.reason());
+            log.info("{} {} — {}", tag, test.getDisplayName(), rule.reason());
           }
           if (passed) {
             fail("XFAIL test unexpectedly passed. Remove this exclusion. Reason: " + rule.reason());

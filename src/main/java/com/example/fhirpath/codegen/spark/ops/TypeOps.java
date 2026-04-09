@@ -77,12 +77,9 @@ public final class TypeOps {
         ctx -> {
           final CollectionValue coll = ctx.collectionArg(0);
           final Column typeName = ctx.arg(1);
-          if (coll.isSingular()) {
-            return when(coll.column().equalTo(typeName), coll.column());
-          }
-          final CollectionValue filtered =
-              new CollectionValue(functions.filter(coll.column(), t -> t.equalTo(typeName)), false);
-          return CollectionValue.nullIfEmpty(filtered.column());
+          return coll.apply(
+              arr -> CollectionValue.nullIfEmpty(functions.filter(arr, t -> t.equalTo(typeName))),
+              col -> when(col.equalTo(typeName), col));
         });
 
     // Non-choice type(): static type info applied to each non-null element

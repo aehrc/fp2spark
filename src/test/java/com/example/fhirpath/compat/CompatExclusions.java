@@ -1,7 +1,6 @@
 package com.example.fhirpath.compat;
 
 import static com.example.fhirpath.compat.ExclusionGroup.expectedDifference;
-import static com.example.fhirpath.compat.ExclusionGroup.notImplemented;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import jakarta.annotation.Nonnull;
@@ -97,8 +96,8 @@ public final class CompatExclusions {
                   .scope(ComparisonOperatorsDslTest.class)
                   .expressions("str1 < boolEmpty"),
 
-              // --- Membership operator: complex type ---
-              notImplemented("Membership operator accepts complex types")
+              // --- Membership operator: complex type (spec-correct, Pathling throws) ---
+              expectedDifference("Membership operator: complex type equality is spec-correct")
                   .scope(MembershipOperatorsDslTest.class)
                   .expressions("name in name"),
 
@@ -114,13 +113,6 @@ public final class CompatExclusions {
                   .expressions(
                       "component.where(value.is(String)).value.as(String)",
                       "component.where(value.is(Boolean)).value.as(Boolean)"),
-
-              // --- Type functions: ofType equality on complex types ---
-              notImplemented("Type functions: ofType equality on FHIR complex types")
-                  .scope(TypeFunctionsDslTest.class)
-                  .expressions(
-                      "name.ofType(FHIR.HumanName) = name",
-                      "address.ofType(FHIR.Address) = address"),
 
               // --- ofType() cardinality: + operator requires singleton ---
               expectedDifference(

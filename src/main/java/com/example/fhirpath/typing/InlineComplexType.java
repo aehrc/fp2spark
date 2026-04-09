@@ -82,6 +82,18 @@ public non-sealed class InlineComplexType implements ComplexType {
   }
 
   @Override
+  public boolean equals(final Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    return name.equals(((InlineComplexType) o).name);
+  }
+
+  @Override
+  public int hashCode() {
+    return name.hashCode();
+  }
+
+  @Override
   public String toString() {
     return name;
   }

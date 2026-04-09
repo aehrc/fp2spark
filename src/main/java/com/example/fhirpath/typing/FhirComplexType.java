@@ -143,6 +143,18 @@ public non-sealed class FhirComplexType implements ComplexType {
   }
 
   @Override
+  public boolean equals(final Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    return definition.getName().equals(((FhirComplexType) o).definition.getName());
+  }
+
+  @Override
+  public int hashCode() {
+    return definition.getName().hashCode();
+  }
+
+  @Override
   public String toString() {
     return getName();
   }

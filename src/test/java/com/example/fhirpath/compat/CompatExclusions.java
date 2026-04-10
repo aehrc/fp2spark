@@ -155,11 +155,6 @@ public final class CompatExclusions {
                   .expressions(
                       "intVal = dateVal.where(false)", "intArray.where(false) != dateArray"),
 
-              // --- Equality: quantity literal vs empty collection (#140) ---
-              bug("Quantity equality with empty collection throws INVALID_EXTRACT_BASE_FIELD_TYPE")
-                  .scope(EqualityOperatorsDslTest.class)
-                  .pattern("\\[Quantity equality: quantity literal vs empty collection\\]"),
-
               // --- Comparison: empty with uncomparable types throws instead of empty ---
               expectedDifference("Comparison with empty uncomparable type throws instead of empty")
                   .scope(ComparisonOperatorsDslTest.class)

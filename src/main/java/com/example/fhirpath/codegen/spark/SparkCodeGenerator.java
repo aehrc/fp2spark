@@ -129,9 +129,15 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   @Override
   @Nonnull
   public Column visitLiteral(@Nonnull final Literal lit) {
-    // Empty literal {} should be NULL, not an empty array
-    if (lit.type() == Types.NULL || lit.value() == null) {
-      return lit(null);
+    // Empty literal {} should be NULL, not an empty array.
+    // When the type is known (e.g., NULL promoted to QUANTITY by overload resolver),
+    // produce a typed null so struct field access works correctly downstream.
+    if (lit.value() == null) {
+      if (lit.type() == Types.NULL) {
+        return lit(null);
+      }
+      final DataType sparkType = toSparkDataType(lit.getShape());
+      return lit(null).cast(sparkType);
     }
     if (lit.value() instanceof QuantityValue qv) {
       return quantityStruct(

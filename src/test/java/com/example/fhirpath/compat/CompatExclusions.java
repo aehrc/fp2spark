@@ -134,15 +134,6 @@ public final class CompatExclusions {
                   .scope(RepeatAllFunctionDslTest.class)
                   .pattern("^(?!.*=> Exception)"),
 
-              // --- Equality: integer/decimal array type mismatch in Spark (#139) ---
-              bug("Array equality fails with BINARY_OP_DIFF_TYPES for mixed numeric types")
-                  .scope(EqualityOperatorsDslTest.class)
-                  .expressions(
-                      "decArray1 = 1.0",
-                      "intArray1 = decArray1",
-                      "intArray1 != decArray1",
-                      "intArray1 != decArray2"),
-
               // --- Equality: date/time array with incomparable precision (#138) ---
               bug("Array equality with mixed precision returns empty instead of false/true")
                   .scope(EqualityOperatorsDslTest.class)

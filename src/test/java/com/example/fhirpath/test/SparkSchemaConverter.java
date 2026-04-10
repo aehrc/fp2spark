@@ -26,7 +26,7 @@ import org.apache.spark.sql.types.StructType;
  *
  * <ul>
  *   <li>SystemType.INTEGER → IntegerType
- *   <li>SystemType.DECIMAL → DoubleType
+ *   <li>SystemType.DECIMAL → DecimalType(38,6)
  *   <li>SystemType.BOOLEAN → BooleanType
  *   <li>SystemType.STRING → StringType
  *   <li>SystemType.NULL → NullType
@@ -108,7 +108,7 @@ class SparkSchemaConverter {
     if (type instanceof SystemType systemType) {
       return switch (systemType) {
         case INTEGER -> DataTypes.IntegerType;
-        case DECIMAL -> DataTypes.DoubleType;
+        case DECIMAL -> SparkTypeMapper.DECIMAL_TYPE;
         case BOOLEAN -> DataTypes.BooleanType;
         case STRING -> DataTypes.StringType;
         case DATE, DATE_TIME, TIME -> DataTypes.StringType;

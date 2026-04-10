@@ -134,20 +134,6 @@ public final class CompatExclusions {
                   .scope(RepeatAllFunctionDslTest.class)
                   .pattern("^(?!.*=> Exception)"),
 
-              // --- Equality: date/time array with incomparable precision (#138) ---
-              bug("Array equality with mixed precision returns empty instead of false/true")
-                  .scope(EqualityOperatorsDslTest.class)
-                  .expressions(
-                      "dateArray3 = dateArray4",
-                      "dateArray3 != dateArray2",
-                      "timeArray3 = timeArray4",
-                      "timeArray3 != timeArray2"),
-
-              // --- Equality: date vs dateTime cross-type array comparison (#138) ---
-              bug("Date vs DateTime array cross-type comparison returns empty")
-                  .scope(EqualityOperatorsDslTest.class)
-                  .expressions("dateArray1 = dtArray1", "dtArray2 != dateArray1"),
-
               // --- Equality: uncomparable types with empty operand ---
               expectedDifference(
                       "Uncomparable types with empty operand return false instead of empty")

@@ -1,6 +1,7 @@
 package com.example.fhirpath.codegen.spark.ops;
 
-import static org.apache.spark.sql.functions.exists;
+import static org.apache.spark.sql.functions.coalesce;
+import static org.apache.spark.sql.functions.forall;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 import static org.apache.spark.sql.functions.zip_with;
@@ -94,8 +95,9 @@ public final class EqualityOps {
    * Compares two collections element-by-element using a custom equality comparator.
    *
    * <p>Returns {@code false} if sizes differ. For same-size collections, uses {@code zip_with} for
-   * pairwise comparison. Propagates {@code null} if any element comparison returns null (e.g.,
-   * different Quantity units or different DateTime precisions).
+   * pairwise comparison. Per the FHIRPath spec, for multi-element collections "each item must be
+   * equal, otherwise equals returns false" — element-level null (incomparable) is treated as not
+   * equal, resulting in {@code false} (not null).
    */
   @Nonnull
   private static Column collectionEqualWithCustomEquality(
@@ -113,11 +115,10 @@ public final class EqualityOps {
     // zip_with produces array<boolean?> of pairwise comparison results
     final Column pairResults = zip_with(leftArray, rightArray, eq::apply);
 
-    // Three-valued logic: false if any pair is false, null if any pair is null, true otherwise
-    final Column anyFalse = exists(pairResults, x -> x.equalTo(lit(false)));
-    final Column anyNull = exists(pairResults, Column::isNull);
-    final Column allMatch =
-        when(anyFalse, lit(false)).when(anyNull, lit(null)).otherwise(lit(true));
+    // Per the FHIRPath spec, multi-element collection equality requires ALL elements to be equal.
+    // forall returns true only if all elements are true; null elements make it return false.
+    // coalesce ensures that if forall itself returns null, the result is false (not empty).
+    final Column allMatch = coalesce(forall(pairResults, x -> x), lit(false));
 
     // Different sizes → false; same size → check elements
     return when(sameSize, allMatch).otherwise(lit(false));

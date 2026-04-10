@@ -8,8 +8,6 @@ import static org.apache.spark.sql.functions.zip_with;
 import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
-import com.example.fhirpath.ir.IRNode;
-import com.example.fhirpath.ir.Literal;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
@@ -54,12 +52,7 @@ public final class EqualityOps {
     final Type rightType = ctx.argType(1);
 
     // Empty collection: equality with {} always returns {} (null)
-    // Check both type-level NULL and null literals (overload resolver may have
-    // typed an empty collection to a concrete type, e.g., Literal(null, QUANTITY))
-    if (leftType == Types.NULL
-        || rightType == Types.NULL
-        || isNullLiteral(ctx.argNode(0))
-        || isNullLiteral(ctx.argNode(1))) {
+    if (leftType == Types.NULL || rightType == Types.NULL) {
       return functions.lit(null);
     }
 
@@ -128,13 +121,6 @@ public final class EqualityOps {
 
     // Different sizes → false; same size → check elements
     return when(sameSize, allMatch).otherwise(lit(false));
-  }
-
-  /**
-   * Returns whether the IR node is a null literal (empty collection typed by overload resolver).
-   */
-  private static boolean isNullLiteral(@Nonnull final IRNode node) {
-    return node instanceof Literal lit && lit.value() == null;
   }
 
   /**

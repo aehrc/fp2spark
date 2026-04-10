@@ -193,10 +193,10 @@ EOF
 
 ### Step 10: Simplify and Review
 
-After the PR is created, run these two skills in order:
+After the PR is created, run these two steps in order:
 
 1. **Simplify** — use the `simplify` skill (`/simplify`) to clean up and simplify the code changes.
-2. **Review** — use the `review` skill (`/review`) to review the code. Fix all high-priority issues identified by the reviewer.
+2. **Review** — use the built-in CLI `/review` command (NOT a skill — just output `/review` as text so the user can invoke it, or describe the review inline). Fix all high-priority issues identified by the reviewer.
 
 If either step produces fixes, commit them separately, re-run `mvn test` to confirm no regressions, and push to update the PR.
 

@@ -37,7 +37,6 @@ import org.hl7.fhir.r4.model.QuestionnaireResponse.QuestionnaireResponseItemAnsw
 import org.hl7.fhir.r4.model.QuestionnaireResponse.QuestionnaireResponseItemComponent;
 import org.hl7.fhir.r4.model.QuestionnaireResponse.QuestionnaireResponseStatus;
 import org.hl7.fhir.r4.model.StringType;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 
 /**
@@ -46,7 +45,6 @@ import org.junit.jupiter.api.DynamicTest;
  * <p>Focuses on the differences from repeatAll(): equality-based deduplication and handling of
  * self-referential primitive traversal.
  */
-@Disabled("Requires repeat() function")
 public class RepeatFunctionDslTest extends CompatTestBase {
 
   /**

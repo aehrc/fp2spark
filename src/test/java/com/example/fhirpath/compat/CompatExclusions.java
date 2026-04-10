@@ -134,7 +134,7 @@ public final class CompatExclusions {
                   .scope(RepeatAllFunctionDslTest.class)
                   .pattern("^(?!.*=> Exception)"),
 
-              // --- Equality: integer/decimal array type mismatch in Spark ---
+              // --- Equality: integer/decimal array type mismatch in Spark (#139) ---
               bug("Array equality fails with BINARY_OP_DIFF_TYPES for mixed numeric types")
                   .scope(EqualityOperatorsDslTest.class)
                   .expressions(
@@ -143,9 +143,8 @@ public final class CompatExclusions {
                       "intArray1 != decArray1",
                       "intArray1 != decArray2"),
 
-              // --- Equality: date/time array with incomparable precision ---
-              expectedDifference(
-                      "Array equality with mixed precision returns empty instead of false/true")
+              // --- Equality: date/time array with incomparable precision (#138) ---
+              bug("Array equality with mixed precision returns empty instead of false/true")
                   .scope(EqualityOperatorsDslTest.class)
                   .expressions(
                       "dateArray3 = dateArray4",
@@ -153,8 +152,8 @@ public final class CompatExclusions {
                       "timeArray3 = timeArray4",
                       "timeArray3 != timeArray2"),
 
-              // --- Equality: date vs dateTime cross-type array comparison ---
-              expectedDifference("Date vs DateTime array cross-type comparison returns empty")
+              // --- Equality: date vs dateTime cross-type array comparison (#138) ---
+              bug("Date vs DateTime array cross-type comparison returns empty")
                   .scope(EqualityOperatorsDslTest.class)
                   .expressions("dateArray1 = dtArray1", "dtArray2 != dateArray1"),
 
@@ -165,7 +164,7 @@ public final class CompatExclusions {
                   .expressions(
                       "intVal = dateVal.where(false)", "intArray.where(false) != dateArray"),
 
-              // --- Equality: quantity literal vs empty collection ---
+              // --- Equality: quantity literal vs empty collection (#140) ---
               bug("Quantity equality with empty collection throws INVALID_EXTRACT_BASE_FIELD_TYPE")
                   .scope(EqualityOperatorsDslTest.class)
                   .pattern("\\[Quantity equality: quantity literal vs empty collection\\]"),
@@ -175,8 +174,8 @@ public final class CompatExclusions {
                   .scope(ComparisonOperatorsDslTest.class)
                   .expressions("true > {}", "{} >= codingVal"),
 
-              // --- Comparison: date/dateTime cross-precision comparison ---
-              expectedDifference("Date/DateTime comparison with different precision returns empty")
+              // --- Comparison: date/dateTime cross-precision comparison (#137) ---
+              bug("Date/DateTime comparison with different precision returns empty")
                   .scope(ComparisonOperatorsDslTest.class)
                   .expressions(
                       "@2020-03-01 >= @2020-02",
@@ -187,8 +186,8 @@ public final class CompatExclusions {
                       "@2018-03-01 < @2018-03-02T00:00:00Z",
                       "@2018-03-01 < @2018-03-02T00:00:00-01:00"),
 
-              // --- Comparison: time with different precision ---
-              expectedDifference("Time comparison with different precision returns empty")
+              // --- Comparison: time with different precision (#137) ---
+              bug("Time comparison with different precision returns empty")
                   .scope(ComparisonOperatorsDslTest.class)
                   .expressions(
                       "@T10 < @T11:30",

@@ -85,6 +85,15 @@
             <version>5.10.0</version>
             <scope>test</scope>
         </dependency>
+        <!-- SnakeYAML: used by the YAML-based FHIRPath reference compatibility suite
+             (src/test/java/com/example/fhirpath/compat/yaml) to parse test definitions
+             and exclusion config.yaml. -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

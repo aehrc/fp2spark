@@ -1,17 +1,12 @@
 package com.example.fhirpath.compat.yaml;
 
-import au.csiro.pathling.encoders.FhirEncoders;
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.context.RuntimeResourceDefinition;
-import ca.uhn.fhir.parser.IParser;
-import com.example.fhirpath.typing.FhirResourceType;
+import com.example.fhirpath.test.FhirTestEncoders;
 import com.example.fhirpath.typing.ResourceType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
@@ -35,23 +30,13 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
  */
 public final class YamlSubjectFactory {
 
-  private static final FhirContext FHIR_CONTEXT = FhirContext.forR4Cached();
-  // Extensions + standard open types so tests that reference extensions / value[x] fields can load
-  // the flat schema produced by Pathling's encoders.
-  private static final FhirEncoders FHIR_ENCODERS =
-      FhirEncoders.forR4()
-          .withExtensionsEnabled(true)
-          .withOpenTypes(FhirEncoders.STANDARD_OPEN_TYPES)
-          .getOrCreate();
   private static final ObjectMapper JSON = new ObjectMapper();
 
   private YamlSubjectFactory() {}
 
   /** A resolved subject: the input dataset plus the FHIRPath resource type (may be null). */
   public record ResolvedSubject(
-      @Nonnull Dataset<Row> dataset,
-      @Nullable ResourceType resourceType,
-      @Nonnull String resourceTypeName) {}
+      @Nonnull Dataset<Row> dataset, @Nullable ResourceType resourceType) {}
 
   /**
    * Resolves a subject for a YAML test case.
@@ -73,8 +58,7 @@ public final class YamlSubjectFactory {
     if (defaultSubject != null && defaultSubject.get("resourceType") instanceof String) {
       return loadFhirSubject(spark, defaultSubject);
     }
-    // No subject (or arbitrary non-FHIR subject): return a dummy single-row dataset.
-    return new ResolvedSubject(spark.range(1).toDF(), null, "none");
+    return new ResolvedSubject(spark.range(1).toDF(), null);
   }
 
   @Nonnull
@@ -113,13 +97,9 @@ public final class YamlSubjectFactory {
   @Nonnull
   private static ResolvedSubject parseAndBuild(
       @Nonnull final SparkSession spark, @Nonnull final String json) {
-    final IParser parser = FHIR_CONTEXT.newJsonParser();
-    final IBaseResource resource = parser.parseResource(json);
-    final RuntimeResourceDefinition definition = FHIR_CONTEXT.getResourceDefinition(resource);
-    final String resourceTypeName = definition.getName();
-    @SuppressWarnings("unchecked")
-    final var encoder = FHIR_ENCODERS.of((Class<IBaseResource>) resource.getClass());
-    final Dataset<Row> dataset = spark.createDataset(List.of(resource), encoder).toDF();
-    return new ResolvedSubject(dataset, new FhirResourceType(definition), resourceTypeName);
+    final IBaseResource resource =
+        FhirTestEncoders.FHIR_CONTEXT.newJsonParser().parseResource(json);
+    return new ResolvedSubject(
+        FhirTestEncoders.toDataset(spark, resource), FhirTestEncoders.resourceTypeOf(resource));
   }
 }

@@ -39,7 +39,7 @@ public class YamlTestArgumentProvider implements ArgumentsProvider {
     final YamlTestFormat format =
         configPath.isEmpty()
             ? YamlTestFormat.getDefault()
-            : YamlTestFormat.fromYaml(loadResource(configPath));
+            : YamlTestFormat.cached(configPath, () -> loadResourceUnchecked(configPath));
 
     return definition.cases().stream()
         .filter(tc -> !tc.disable())
@@ -59,6 +59,15 @@ public class YamlTestArgumentProvider implements ArgumentsProvider {
         throw new IllegalArgumentException("YAML resource not found on classpath: " + path);
       }
       return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+    }
+  }
+
+  @Nonnull
+  private static String loadResourceUnchecked(@Nonnull final String path) {
+    try {
+      return loadResource(path);
+    } catch (final IOException e) {
+      throw new IllegalStateException("Failed to load YAML resource: " + path, e);
     }
   }
 }

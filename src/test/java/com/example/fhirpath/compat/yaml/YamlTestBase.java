@@ -81,7 +81,6 @@ public abstract class YamlTestBase {
       throw e;
     }
 
-    // If we get here the excluded test passed.
     if (!ExcludeRule.OUTCOME_PASS.equals(outcome)) {
       throw new AssertionError(
           "Excluded test passed unexpectedly (expected outcome="

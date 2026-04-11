@@ -7,7 +7,6 @@ import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
 
 /**
  * A named group of exclusion rules scoped by a file-name glob.
@@ -21,6 +20,9 @@ public class ExcludeSet {
   @Nullable private String comment;
   @Nullable private String glob;
   @Nullable private List<ExcludeRule> exclude;
+
+  // Compiled lazily on first call to matchesFile so SnakeYAML's setters can populate glob first.
+  @Nullable private volatile PathMatcher compiledGlob;
 
   @Nullable
   public String getTitle() {
@@ -66,9 +68,13 @@ public class ExcludeSet {
     if (glob == null || glob.isEmpty()) {
       return true;
     }
-    final PathMatcher matcher = FileSystems.getDefault().getPathMatcher("glob:" + glob);
+    PathMatcher matcher = compiledGlob;
+    if (matcher == null) {
+      matcher = FileSystems.getDefault().getPathMatcher("glob:" + glob);
+      compiledGlob = matcher;
+    }
     // Match the basename rather than the full classpath path so "*.yaml" works as expected.
-    return matcher.matches(Paths.get(Paths.get(testFilePath).getFileName().toString()));
+    return matcher.matches(Paths.get(testFilePath).getFileName());
   }
 
   /** Finds the first rule in this set that matches the given test case. */
@@ -77,8 +83,7 @@ public class ExcludeSet {
       return Optional.empty();
     }
     for (final ExcludeRule rule : exclude) {
-      final Predicate<TestCase> predicate = rule.toPredicate();
-      if (predicate.test(testCase)) {
+      if (rule.toPredicate().test(testCase)) {
         return Optional.of(rule);
       }
     }

@@ -44,6 +44,10 @@ public class ExcludeRule {
   @Nullable private List<String> any;
   @Nullable private List<String> spel;
 
+  // Lazily compiled from the matcher fields above the first time toPredicate() is called;
+  // SnakeYAML calls the setters before any matching happens so this is safe.
+  @Nullable private volatile Predicate<TestCase> compiledPredicate;
+
   @Nullable
   public String getId() {
     return id;
@@ -145,9 +149,18 @@ public class ExcludeRule {
   /**
    * Builds a combined matcher predicate for this rule. The predicate returns {@code true} when the
    * rule has at least one matcher and any of them match the test case. A disabled rule never
-   * matches.
+   * matches. Result is memoised so regex patterns compile once per rule per run.
    */
   Predicate<TestCase> toPredicate() {
+    Predicate<TestCase> cached = compiledPredicate;
+    if (cached == null) {
+      cached = buildPredicate();
+      compiledPredicate = cached;
+    }
+    return cached;
+  }
+
+  private Predicate<TestCase> buildPredicate() {
     if (disabled) {
       return tc -> false;
     }

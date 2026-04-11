@@ -6,6 +6,8 @@ import jakarta.annotation.Nullable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
@@ -17,6 +19,8 @@ import org.yaml.snakeyaml.constructor.Constructor;
  * fields with setters are required for SnakeYAML's JavaBean deserialization.
  */
 public class YamlTestFormat {
+
+  private static final ConcurrentMap<String, YamlTestFormat> CACHE = new ConcurrentHashMap<>();
 
   @Nullable private List<ExcludeSet> excludeSet;
 
@@ -59,6 +63,17 @@ public class YamlTestFormat {
     final Constructor constructor = new Constructor(YamlTestFormat.class, options);
     final YamlTestFormat loaded = new Yaml(constructor).loadAs(yamlData, YamlTestFormat.class);
     return loaded != null ? loaded : getDefault();
+  }
+
+  /**
+   * Returns a cached {@link YamlTestFormat} for {@code cacheKey}. {@code loader} is invoked only on
+   * the first call per key — subsequent lookups share the parsed rules so the per-method JUnit
+   * argument provider does not re-parse a 600-line config file 27 times per run.
+   */
+  @Nonnull
+  public static YamlTestFormat cached(
+      @Nonnull final String cacheKey, @Nonnull final java.util.function.Supplier<String> loader) {
+    return CACHE.computeIfAbsent(cacheKey, k -> fromYaml(loader.get()));
   }
 
   @Nonnull

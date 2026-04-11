@@ -115,9 +115,8 @@ public final class EqualityOps {
     // zip_with produces array<boolean?> of pairwise comparison results
     final Column pairResults = zip_with(leftArray, rightArray, eq::apply);
 
-    // Per the FHIRPath spec, multi-element collection equality requires ALL elements to be equal.
-    // forall returns true only if all elements are true; null elements make it return false.
-    // coalesce ensures that if forall itself returns null, the result is false (not empty).
+    // forall returns null when all non-null elements match but some are null;
+    // coalesce collapses that to false per the spec (incomparable elements → not equal).
     final Column allMatch = coalesce(forall(pairResults, x -> x), lit(false));
 
     // Different sizes → false; same size → check elements

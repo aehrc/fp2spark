@@ -111,15 +111,8 @@ public final class EqualityOps {
         right.apply(UnaryOperator.identity(), c -> when(c.isNotNull(), functions.array(c)));
 
     final Column sameSize = functions.size(leftArray).equalTo(functions.size(rightArray));
-
-    // zip_with produces array<boolean?> of pairwise comparison results
     final Column pairResults = zip_with(leftArray, rightArray, eq::apply);
-
-    // forall returns null when all non-null elements match but some are null;
-    // coalesce collapses that to false per the spec (incomparable elements → not equal).
     final Column allMatch = coalesce(forall(pairResults, x -> x), lit(false));
-
-    // Different sizes → false; same size → check elements
     return when(sameSize, allMatch).otherwise(lit(false));
   }
 

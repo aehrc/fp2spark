@@ -270,9 +270,9 @@ class EqualityOperatorsTest extends FhirPathTestBase {
             "(2 second ; 2 year) != (2 seconds ; 2 years)", "Not-equals singular/plural forms")
         .testFalse("(1 hour ; 2 minute) = (1 hours ; 3 minutes)", "Different values not equal")
         .group("Quantity collection equality: order matters")
-        .testEmpty(
+        .testFalse(
             "(2 year ; 2 second) = (2 seconds ; 2 years)",
-            "Different units at same position returns empty")
+            "Different units at same position returns false")
         .group("Quantity collection equality: different sizes")
         .testFalse("(1 day) = (1 day ; 2 days)", "Different sizes")
         .group("Quantity collection equality: different unit, same dimension")
@@ -307,13 +307,15 @@ class EqualityOperatorsTest extends FhirPathTestBase {
                 + " != (@2017-11-05T00:30:00.0-05:00 ; @2014-01-25)",
             "Not-equals same instants")
         .group("DateTime collection equality: different precision")
-        .testEmpty("(@2014 ; @2015) = (@2014-01 ; @2015-01)", "Different precision returns empty")
+        .testFalse(
+            "(@2014 ; @2015) = (@2014-01 ; @2015-01)",
+            "Different precision returns false for multi-element collections")
         .group("DateTime collection equality: order matters")
         .testFalse("(@2014-01-25 ; @2014-01-26) = (@2014-01-26 ; @2014-01-25)", "Order matters")
         .group("DateTime collection equality: three-valued logic")
-        .testEmpty(
+        .testFalse(
             "(@2014-01-25 ; @2014) = (@2014-01-25 ; @2014-01)",
-            "true + empty → empty (first pair equal, second different precision)")
+            "true + empty → false (first pair equal, second different precision)")
         .testFalse(
             "(@2014-01-26 ; @2014) = (@2014-01-25 ; @2014-01)",
             "false + empty → false (first pair unequal, second different precision)")

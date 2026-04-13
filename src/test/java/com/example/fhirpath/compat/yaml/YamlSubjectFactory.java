@@ -99,14 +99,16 @@ public final class YamlSubjectFactory {
       @Nonnull final SparkSession spark,
       @Nonnull final String resourceTypeName,
       @Nonnull final Map<Object, Object> subject) {
-    // Convert Map<Object, Object> (from SnakeYAML) to Map<String, Object>
+    // SnakeYAML produces Map<Object, Object>; convert to String keys for type inference
     final Map<String, Object> stringKeyedMap = toStringKeyedMap(subject);
-    // Remove the resourceType key — it's metadata, not a data field
     stringKeyedMap.remove("resourceType");
 
     final ResourceTestData testData = ResourceTestData.of(resourceTypeName, stringKeyedMap);
     final ResourceType resourceType = testData.inferResourceType();
-    final Dataset<Row> dataset = ResourceDatasetConverter.toDataset(spark, testData);
+    // Use the explicit-type factory so toDataset() reuses the already-inferred ResourceType
+    final Dataset<Row> dataset =
+        ResourceDatasetConverter.toDataset(
+            spark, ResourceTestData.of(resourceType, stringKeyedMap));
     return new ResolvedSubject(dataset, resourceType);
   }
 

@@ -1,13 +1,17 @@
 package com.example.fhirpath.compat.yaml;
 
 import com.example.fhirpath.test.FhirTestEncoders;
+import com.example.fhirpath.test.ResourceDatasetConverter;
+import com.example.fhirpath.test.ResourceTestData;
 import com.example.fhirpath.typing.ResourceType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -16,21 +20,28 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 /**
  * Builds a Spark dataset + FHIRPath {@link ResourceType} for a YAML test case subject.
  *
- * <p>Supports three inputs:
+ * <p>Supports four inputs:
  *
  * <ul>
  *   <li>{@code inputfile:} — a classpath JSON resource parsed as a HAPI FHIR resource
- *   <li>An embedded subject map with a {@code resourceType} field — serialised then HAPI-parsed
+ *   <li>An embedded subject map with a valid FHIR {@code resourceType} — serialised then
+ *       HAPI-parsed
+ *   <li>An embedded subject map with a non-FHIR {@code resourceType} — schema inferred from the
+ *       YAML map values, Dataset built via Spark JSON reader
  *   <li>No subject — a single-row dummy dataset with {@code null} resource type (literal-only
  *       evaluation)
  * </ul>
- *
- * <p>Arbitrary (non-FHIR) subjects used by a handful of Pathling YAML tests are not supported —
- * those cases must be excluded via {@code config.yaml}.
  */
 public final class YamlSubjectFactory {
 
   private static final ObjectMapper JSON = new ObjectMapper();
+
+  /**
+   * Non-FHIR resource types for which arbitrary subject loading is enabled. Other non-FHIR types
+   * will fall through to HAPI parsing which fails with a {@code TestAbortedException}, preserving
+   * the previous skip behavior until those files are explicitly triaged.
+   */
+  private static final Set<String> ENABLED_ARBITRARY_SUBJECTS = Set.of("MathTestData");
 
   private YamlSubjectFactory() {}
 
@@ -55,10 +66,57 @@ public final class YamlSubjectFactory {
     if (inputFile != null) {
       return loadInputFile(spark, inputFile, resourceBase);
     }
-    if (defaultSubject != null && defaultSubject.get("resourceType") instanceof String) {
+    if (defaultSubject != null && defaultSubject.get("resourceType") instanceof final String rt) {
+      if (isFhirResourceType(rt)) {
+        return loadFhirSubject(spark, defaultSubject);
+      }
+      if (ENABLED_ARBITRARY_SUBJECTS.contains(rt)) {
+        return loadArbitrarySubject(spark, rt, defaultSubject);
+      }
+      // Fall through to FHIR parsing which will fail — the exception is caught by
+      // DefaultYamlTestExecutor and converted to TestAbortedException (skip).
       return loadFhirSubject(spark, defaultSubject);
     }
     return new ResolvedSubject(spark.range(1).toDF(), null);
+  }
+
+  /** Returns true if the given name is a known FHIR R4 resource type. */
+  private static boolean isFhirResourceType(@Nonnull final String resourceTypeName) {
+    try {
+      FhirTestEncoders.FHIR_CONTEXT.getResourceDefinition(resourceTypeName);
+      return true;
+    } catch (final Exception e) {
+      return false;
+    }
+  }
+
+  /**
+   * Loads an arbitrary (non-FHIR) subject by inferring the schema from the YAML map values and
+   * creating a Spark Dataset via JSON.
+   */
+  @Nonnull
+  private static ResolvedSubject loadArbitrarySubject(
+      @Nonnull final SparkSession spark,
+      @Nonnull final String resourceTypeName,
+      @Nonnull final Map<Object, Object> subject) {
+    // Convert Map<Object, Object> (from SnakeYAML) to Map<String, Object>
+    final Map<String, Object> stringKeyedMap = toStringKeyedMap(subject);
+    // Remove the resourceType key — it's metadata, not a data field
+    stringKeyedMap.remove("resourceType");
+
+    final ResourceTestData testData = ResourceTestData.of(resourceTypeName, stringKeyedMap);
+    final ResourceType resourceType = testData.inferResourceType();
+    final Dataset<Row> dataset = ResourceDatasetConverter.toDataset(spark, testData);
+    return new ResolvedSubject(dataset, resourceType);
+  }
+
+  @Nonnull
+  private static Map<String, Object> toStringKeyedMap(@Nonnull final Map<Object, Object> map) {
+    final Map<String, Object> result = new LinkedHashMap<>();
+    for (final Map.Entry<Object, Object> entry : map.entrySet()) {
+      result.put(String.valueOf(entry.getKey()), entry.getValue());
+    }
+    return result;
   }
 
   @Nonnull

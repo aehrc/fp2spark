@@ -80,7 +80,10 @@ public final class YamlSubjectFactory {
     return new ResolvedSubject(spark.range(1).toDF(), null);
   }
 
-  /** Returns true if the given name is a known FHIR R4 resource type. */
+  /**
+   * Returns true if the given name is a known FHIR R4 resource type. Uses a broad catch because
+   * HAPI may throw different exception types depending on the context version and input.
+   */
   private static boolean isFhirResourceType(@Nonnull final String resourceTypeName) {
     try {
       FhirTestEncoders.FHIR_CONTEXT.getResourceDefinition(resourceTypeName);
@@ -101,6 +104,7 @@ public final class YamlSubjectFactory {
       @Nonnull final Map<Object, Object> subject) {
     // SnakeYAML produces Map<Object, Object>; convert to String keys for type inference
     final Map<String, Object> stringKeyedMap = toStringKeyedMap(subject);
+    // resourceType is schema metadata, not a data field for FHIRPath evaluation
     stringKeyedMap.remove("resourceType");
 
     final ResourceTestData testData = ResourceTestData.of(resourceTypeName, stringKeyedMap);

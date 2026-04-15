@@ -70,7 +70,7 @@ import java.util.stream.Collectors;
  * // }
  * }</pre>
  */
-public class ResourceTypeInference {
+class ResourceTypeInference {
 
   /** Maximum nesting depth for type inference to prevent stack overflow. */
   private static final int MAX_DEPTH = 20;

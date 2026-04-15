@@ -239,12 +239,18 @@ excludeSet:
       - title: Time plus incompatible duration
         type: new-feature
         id: "#160"
+        comment: |
+          Adding years to a Time literal should error per the FHIRPath spec, but
+          fp2sql returns null instead.
         outcome: failure
         any:
           - "@T09:45:23 + 2 years"
       - title: Unary minus on Quantity not supported
         type: new-feature
         id: "#160"
+        comment: |
+          The expression produces a negative Quantity via subtraction, but fp2sql
+          has no overload for unary minus on Quantity type.
         outcome: error
         desc:
           - "Can subtract a UCUM time-valued quantity from a calendar duration quantity less than or equal to seconds"

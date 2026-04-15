@@ -257,9 +257,11 @@ The port deliberately skips a few Pathling capabilities:
 - **`spel:` matchers** — Spring Expression Language rules in `config.yaml` are ignored.
 - **YAML-level `variables:`** — fp2sql has no public hook for injecting variables into the
   compiler, so cases that declare `variables:` are skipped at the executor level.
-- **Arbitrary (non-FHIR) subjects** — the subject factory only supports FHIR resources parsed
-  through HAPI; synthetic top-level subject types (e.g. `Functions`, `MathTestData`) are
-  skipped when HAPI rejects them.
+- **Arbitrary (non-FHIR) subjects** — most synthetic top-level subject types (e.g. `Functions`,
+  `Math`) are skipped when HAPI rejects them. Specific types can be opted-in via the
+  `ENABLED_ARBITRARY_SUBJECTS` allowlist in `YamlSubjectFactory`, which uses
+  `ResourceTypeInference` to infer a schema from the YAML map values (currently enabled:
+  `MathTestData`).
 
 ## Troubleshooting
 

@@ -304,6 +304,39 @@ excludeSet:
           # Word-boundary match to avoid false positives on e.g. n20
           - "\\bn2\\b"
   # ---------------------------------------------------------------------------
+  # fp2sql — 3.2_paths.yaml exclusions
+  # ---------------------------------------------------------------------------
+  - title: fp2sql — 3.2_paths.yaml exclusions
+    glob: "3.2_paths.yaml"
+    exclude:
+      - title: Choice type polymorphism — Observation.value
+        type: design
+        comment: |
+          Observation.value is a choice type; fp2sql requires ofType() to resolve it.
+          The global choice-type rule's regex misses bare end-of-string expressions.
+          See SPEC_DIVERGENCES.md D1.
+        outcome: error
+        expression:
+          - "^Observation\\.value$"
+      - title: Contained resources not supported
+        type: design
+        comment: |
+          Traversal into contained resources is not supported.
+          See SPEC_DIVERGENCES.md D2.
+        any:
+          - "contained"
+      - title: Custom non-FHIR fields not in encoded schema
+        type: feature
+        id: "#170"
+        comment: |
+          The YAML subject defines a CustomField field not present in the FHIR
+          Observation schema. Pathling encoders only serialize FHIR-defined fields,
+          so CustomField is absent from the encoded dataset. Traversal to undefined
+          fields should return an empty collection.
+        outcome: failure
+        any:
+          - "CustomField"
+  # ---------------------------------------------------------------------------
   # fp2sql — 6.5_boolean_logic.yaml exclusions
   # ---------------------------------------------------------------------------
   - title: fp2sql — 6.5_boolean_logic.yaml exclusions
@@ -340,16 +373,6 @@ excludeSet:
   # The `any: [""]` matcher matches every test case in the target file; omitting `outcome`
   # turns the match into a plain skip (TestAbortedException).
   # ---------------------------------------------------------------------------
-  - title: fp2sql — skip entire 3.2_paths.yaml
-    glob: "3.2_paths.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Mix of choice-type polymorphism, non-FHIR subjects, and analyzer gaps. Needs
-          per-case review in a follow-up issue.
-        any:
-          - ""
   - title: fp2sql — skip entire 5.5_conversion.yaml
     glob: "5.5_conversion.yaml"
     exclude:

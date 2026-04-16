@@ -3,6 +3,7 @@ package com.example.fhirpath.compat.yaml.format;
 import com.example.fhirpath.compat.yaml.YamlTestDefinition.TestCase;
 import jakarta.annotation.Nullable;
 import java.nio.file.FileSystems;
+import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
 import java.util.List;
@@ -75,7 +76,7 @@ public class ExcludeSet {
       matcher = FileSystems.getDefault().getPathMatcher("glob:" + glob);
       compiledGlob = matcher;
     }
-    final java.nio.file.Path path = Paths.get(testFilePath);
+    final Path path = Paths.get(testFilePath);
     return matcher.matches(path) || matcher.matches(path.getFileName());
   }
 

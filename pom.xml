@@ -205,6 +205,10 @@
                         --add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED
                         -Djava.security.manager=allow
                     </argLine>
+                    <!-- Use JUnit 5 display names in surefire XML and console output -->
+                    <statelessTestsetReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5Xml30StatelessReporter">
+                        <usePhrasedTestCaseMethodName>true</usePhrasedTestCaseMethodName>
+                    </statelessTestsetReporter>
                     <!-- Use -Pcompat to run only compat tests -->
                 </configuration>
             </plugin>

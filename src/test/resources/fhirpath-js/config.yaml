@@ -384,17 +384,6 @@ excludeSet:
           follow-up.
         any:
           - ""
-  - title: fp2sql — skip entire 6.2_comparision.yaml
-    glob: "6.2_comparision.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Mostly arbitrary-subject tests that reference non-FHIR fields on Observation /
-          Patient. Parses via HAPI but the extra fields are dropped, so path references
-          return empty.
-        any:
-          - ""
   - title: fp2sql — skip entire fhir-r4.yaml
     glob: "fhir-r4.yaml"
     exclude:
@@ -499,15 +488,6 @@ excludeSet:
         type: feature
         comment: |
           Distinct / intersect / exclude semantics and edge cases around boolean combine().
-        any:
-          - ""
-  - title: fp2sql — skip entire 6.1_equality.yaml
-    glob: "6.1_equality.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Several edge cases around empty-collection equality and mixed-cardinality inputs.
         any:
           - ""
   - title: fp2sql — skip entire 5.2_filtering_and_projection.yaml

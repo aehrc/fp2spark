@@ -61,8 +61,10 @@ public class ExcludeSet {
   }
 
   /**
-   * Returns {@code true} when this set's glob matches the basename of the given test file path.
-   * Unset or empty globs match everything.
+   * Returns {@code true} when this set's glob matches the given test file path. Tries the full path
+   * first (so {@code "fhirpath-js/cases/6.1_equality.yaml"} works), then falls back to basename
+   * matching (so {@code "6.1_equality.yaml"} and {@code "*.yaml"} also work). Unset or empty globs
+   * match everything.
    */
   boolean matchesFile(final String testFilePath) {
     if (glob == null || glob.isEmpty()) {
@@ -73,8 +75,8 @@ public class ExcludeSet {
       matcher = FileSystems.getDefault().getPathMatcher("glob:" + glob);
       compiledGlob = matcher;
     }
-    // Match the basename rather than the full classpath path so "*.yaml" works as expected.
-    return matcher.matches(Paths.get(testFilePath).getFileName());
+    final java.nio.file.Path path = Paths.get(testFilePath);
+    return matcher.matches(path) || matcher.matches(path.getFileName());
   }
 
   /** Finds the first rule in this set that matches the given test case. */

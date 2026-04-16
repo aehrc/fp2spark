@@ -735,6 +735,44 @@ excludeSet:
         any:
           - "1 year != 1 'a'"
           - "1 month != 1 'mo'"
+      - title: Arbitrary (non-FHIR) subject fields in comparison tests
+        type: feature
+        comment: |
+          These tests use synthetic single-letter fields (a, c, e) on the YAML subject
+          which are not FHIR resource fields. fp2sql only supports real FHIR resources
+          through Pathling's encoders, so these fields trigger CardinalityMismatchException.
+        outcome: error
+        any:
+          - "with empty value"
+      - title: Different-precision temporal comparison
+        type: new-feature
+        comment: |
+          FHIRPath comparison of date/time/dateTime values at different precisions
+          should compare based on the lesser precision. fp2sql returns empty instead.
+        outcome: failure
+        any:
+          - "@2018 > @2017-01"
+          - "@2018-12-20T12 > @2018-12-20T11:01"
+          - "@T12:02:34.324 > @T12:01"
+          - "@2020 >= date.toDate()"
+          - "@2018 >= date.toDate()"
+      - title: Choice type polymorphism for DiagnosticReport.effective
+        type: design
+        comment: |
+          DiagnosticReport.effectiveDateTime is a typed accessor for the effective[x]
+          choice element. fp2sql requires ofType() for choice elements.
+          See SPEC_DIVERGENCES.md D1.
+        outcome: error
+        expression:
+          - "DiagnosticReport\\.effectiveDateTime"
+      - title: Instant to dateTime literal comparison bug
+        type: bug
+        comment: |
+          Comparing FHIR.instant field to a dateTime literal causes a ClassCastException
+          (Timestamp cannot be cast to String) in Spark UDF execution.
+        outcome: error
+        any:
+          - "DiagnosticReport.issued = @2005-01-27T06:40:01Z"
   - title: Types exclusions
     glob: "fhirpath-js/cases/6.3_types.yaml"
     exclude:

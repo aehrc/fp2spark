@@ -27,7 +27,6 @@ excludeSet:
           Pathling's encoders. Skipping these cases until an arbitrary-subject adapter is added.
         # outcome omitted -> test is skipped (TestAbortedException)
         expression:
-          - "^Functions"
           - "^Tree"
           - "^TypeExamples"
           - "^TypeInfoExample"
@@ -270,6 +269,32 @@ excludeSet:
         outcome: failure
         desc:
           - "Do not convert a resource node value to Date without model"
+  # ---------------------------------------------------------------------------
+  # fp2sql — 5.6_string_manipulation.yaml exclusions
+  # ---------------------------------------------------------------------------
+  - title: fp2sql — 5.6_string_manipulation.yaml exclusions
+    glob: "5.6_string_manipulation.yaml"
+    exclude:
+      - title: Array subject field Functions.str has MANY cardinality
+        type: design
+        comment: |
+          The YAML subject defines str as a one-element array, giving it MANY cardinality.
+          String functions require singleton input (? cardinality), so all expressions
+          traversing Functions.str.* fail with CardinalityMismatchException at compile time.
+          This is D1 (static typing) — fp2sql rejects MANY-cardinality operands statically.
+          See SPEC_DIVERGENCES.md D1.
+        outcome: error
+        expression:
+          - "^Functions\\.str\\."
+      - title: matches() does not enable dotAll mode
+        type: bug
+        comment: |
+          FHIRPath spec says matches() uses dotAll semantics (. matches any character
+          including newlines). fp2sql's implementation does not enable Pattern.DOTALL,
+          so multiline tests fail.
+        outcome: failure
+        desc:
+          - "matches with dotAll"
   # ---------------------------------------------------------------------------
   # fp2sql — per-file "skip entirely" sets, awaiting triage
   #

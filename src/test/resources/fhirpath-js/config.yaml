@@ -82,16 +82,6 @@ excludeSet:
           - min
           - max
           - avg
-          - exp
-          - ln
-          - log
-          - power
-          - sqrt
-          - abs
-          - ceiling
-          - floor
-          - truncate
-          - round
           - intersect
           - exclude
           - distinct
@@ -295,6 +285,22 @@ excludeSet:
         outcome: failure
         desc:
           - "matches with dotAll"
+  # ---------------------------------------------------------------------------
+  # fp2sql — 5.7_math.yaml exclusions
+  # ---------------------------------------------------------------------------
+  - title: fp2sql — 5.7_math.yaml exclusions
+    glob: "5.7_math.yaml"
+    exclude:
+      - title: Empty list [] inferred as MANY cardinality
+        type: bug
+        id: "#156"
+        comment: |
+          YAML subject field n2: [] is inferred as MANY cardinality by
+          ResourceTypeInference, causing compile-time CardinalityMismatchException.
+          Same root cause as the 6.6_math.yaml n4 exclusion.
+        outcome: error
+        any:
+          - "n2"
   # ---------------------------------------------------------------------------
   # fp2sql — per-file "skip entirely" sets, awaiting triage
   #

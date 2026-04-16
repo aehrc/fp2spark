@@ -44,6 +44,9 @@ public final class YamlSubjectFactory {
   private static final Set<String> ENABLED_ARBITRARY_SUBJECTS =
       Set.of("Functions", "Math", "MathTestData");
 
+  /** Synthetic resource type name used for subjects that have no {@code resourceType} field. */
+  private static final String ANONYMOUS_SUBJECT_TYPE = "AnonymousSubject";
+
   private YamlSubjectFactory() {}
 
   /** A resolved subject: the input dataset plus the FHIRPath resource type (may be null). */
@@ -67,16 +70,20 @@ public final class YamlSubjectFactory {
     if (inputFile != null) {
       return loadInputFile(spark, inputFile, resourceBase);
     }
-    if (defaultSubject != null && defaultSubject.get("resourceType") instanceof final String rt) {
-      if (isFhirResourceType(rt)) {
+    if (defaultSubject != null) {
+      if (defaultSubject.get("resourceType") instanceof final String rt) {
+        if (isFhirResourceType(rt)) {
+          return loadFhirSubject(spark, defaultSubject);
+        }
+        if (ENABLED_ARBITRARY_SUBJECTS.contains(rt)) {
+          return loadArbitrarySubject(spark, rt, defaultSubject);
+        }
+        // Fall through to FHIR parsing which will fail — the exception is caught by
+        // DefaultYamlTestExecutor and converted to TestAbortedException (skip).
         return loadFhirSubject(spark, defaultSubject);
       }
-      if (ENABLED_ARBITRARY_SUBJECTS.contains(rt)) {
-        return loadArbitrarySubject(spark, rt, defaultSubject);
-      }
-      // Fall through to FHIR parsing which will fail — the exception is caught by
-      // DefaultYamlTestExecutor and converted to TestAbortedException (skip).
-      return loadFhirSubject(spark, defaultSubject);
+      // Subject with no resourceType — load as anonymous arbitrary subject
+      return loadArbitrarySubject(spark, ANONYMOUS_SUBJECT_TYPE, defaultSubject);
     }
     return new ResolvedSubject(spark.range(1).toDF(), null);
   }

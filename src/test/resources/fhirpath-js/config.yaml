@@ -304,6 +304,32 @@ excludeSet:
           # Word-boundary match to avoid false positives on e.g. n20
           - "\\bn2\\b"
   # ---------------------------------------------------------------------------
+  # fp2sql — 6.5_boolean_logic.yaml exclusions
+  # ---------------------------------------------------------------------------
+  - title: fp2sql — 6.5_boolean_logic.yaml exclusions
+    glob: "6.5_boolean_logic.yaml"
+    exclude:
+      - title: Empty list [] inferred as MANY cardinality
+        type: bug
+        id: "#156"
+        comment: |
+          YAML subject field emp: [] is inferred as MANY cardinality by
+          ResourceTypeInference, causing compile-time CardinalityMismatchException
+          for boolean operators that require ? cardinality operands.
+          Same root cause as the 5.7_math.yaml n2 and 6.6_math.yaml n4 exclusions.
+        outcome: error
+        any:
+          - "emp"
+      - title: Strict typing rejects not() on Integer
+        type: design
+        comment: |
+          FHIRPath spec allows not() on any singleton via implicit boolean coercion.
+          fp2sql's static type system requires Boolean input — (0).not() fails
+          overload resolution because 0 is Integer. See SPEC_DIVERGENCES.md D1.
+        outcome: error
+        expression:
+          - "\\(0\\)\\.not\\(\\)"
+  # ---------------------------------------------------------------------------
   # fp2sql — per-file "skip entirely" sets, awaiting triage
   #
   # These files contain a mix of semi-synthetic subjects, choice types, FHIRPath features
@@ -344,15 +370,6 @@ excludeSet:
           Mostly arbitrary-subject tests that reference non-FHIR fields on Observation /
           Patient. Parses via HAPI but the extra fields are dropped, so path references
           return empty.
-        any:
-          - ""
-  - title: fp2sql — skip entire 6.5_boolean_logic.yaml
-    glob: "6.5_boolean_logic.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Strict-typing differences plus many arbitrary-subject tests. Needs per-case review.
         any:
           - ""
   - title: fp2sql — skip entire fhir-r4.yaml

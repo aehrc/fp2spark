@@ -41,7 +41,8 @@ public final class YamlSubjectFactory {
    * will fall through to HAPI parsing which fails with a {@code TestAbortedException}, preserving
    * the previous skip behavior until those files are explicitly triaged.
    */
-  private static final Set<String> ENABLED_ARBITRARY_SUBJECTS = Set.of("MathTestData");
+  private static final Set<String> ENABLED_ARBITRARY_SUBJECTS =
+      Set.of("Functions", "Math", "MathTestData");
 
   private YamlSubjectFactory() {}
 

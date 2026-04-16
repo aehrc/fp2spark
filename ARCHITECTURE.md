@@ -119,24 +119,8 @@ This design enables clean overload resolution: the `OverloadResolver` can indepe
 
 ## Key Design Decisions
 
-### Empty Collection Handling
-
-**Decision**: Empty collections represented as SQL `NULL`
-
-**Rationale**:
-- Leverages Spark's Catalyst optimizer for NULL propagation
-- Uses Spark 3.x non-ANSI functions (return NULL on error, not exceptions)
-- Matches FHIRPath empty semantics naturally
-
-### Cardinality Enforcement
-
-**Decision**: Compile-time cardinality checking in Analyzer
-
-**FHIRPath Spec Requirements**:
-- Math operators require **single elements** (§3559-3566)
-- Comparison operators require **single values** (§3196-3197)
-
-**Implementation**: `OverloadResolver` validates argument cardinality against parameter requirements, throws `CardinalityMismatchException` on violations.
+For architectural decisions that affect FHIRPath specification compliance, see
+**[SPEC_DIVERGENCES.md](SPEC_DIVERGENCES.md)**.
 
 ### Visitor Pattern for Multi-Target
 

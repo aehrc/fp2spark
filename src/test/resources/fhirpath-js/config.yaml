@@ -136,20 +136,19 @@ excludeSet:
         any:
           - ".iif("
       - title: Choice type polymorphism
-        type: feature
+        type: design
         comment: |
-          Expressions that compare or operate directly on a FHIR choice element (e.g.
-          Observation.value) fail analyzer overload resolution in fp2sql — use ofType() is
-          required instead. This is a known gap with the Pathling-style polymorphism.
+          D1. Expressions that operate directly on a FHIR choice element (e.g.
+          Observation.value) fail analyzer overload resolution — ofType() is required.
+          See SPEC_DIVERGENCES.md D1 (static typing).
         expression:
           - "Observation\\.value[^\\.]"
           - "MedicationRequest\\.medication[^\\.]"
-      - title: Path analyzer gaps
-        type: bug
+      - title: Contained resources not supported
+        type: design
         comment: |
-          Expressions that should resolve within standard FHIR resources but throw analyzer
-          errors (e.g. UNRESOLVED_COLUMN for value, contained). Tracked as potential fp2sql bugs
-          — excluded until the underlying schema / analyzer question is resolved.
+          D2. Traversal into contained resources is not supported.
+          See SPEC_DIVERGENCES.md D2.
         outcome: failure
         any:
           - "Patient.contained"

@@ -161,6 +161,117 @@ excludeSet:
         any:
           - "patient-bundle.json"
   # ---------------------------------------------------------------------------
+  # fp2sql — 6.6_math.yaml exclusions
+  # ---------------------------------------------------------------------------
+  - title: fp2sql — 6.6_math.yaml exclusions
+    glob: "6.6_math.yaml"
+    exclude:
+      - title: Empty list [] inferred as MANY cardinality
+        type: bug
+        id: "#156"
+        comment: |
+          YAML subject field n4: [] is inferred as MANY cardinality by
+          ResourceTypeInference, causing compile-time CardinalityMismatchException.
+        outcome: error
+        expression:
+          - "^(s5 \\+ n4|n4 \\+ |n4 \\* |\\w+ \\* n4|n4 & |s5 & n4|n1 - n4)"
+      - title: Special UCUM unit 'B' not treated as empty
+        type: bug
+        id: "#157"
+        comment: |
+          Arithmetic on quantities with special UCUM units like 'B' (bel) should
+          return empty per the FHIRPath spec.
+        outcome: failure
+        any:
+          - "1 'B' * 2"
+          - "1 'B' + 1 'B'"
+          - "1 'B' - 1 'B'"
+      - title: UCUM quantity literals in date/time arithmetic
+        type: bug
+        id: "#158"
+        comment: |
+          FHIRPath date arithmetic requires calendar duration keywords, not UCUM
+          literals ('a', 'mo', 'd', 'wk'). Pathling has the same behavior (#2391).
+        outcome: failure
+        any:
+          - "1 'a' = @2019"
+          - "@2018-02 + 1 'mo'"
+          - "+ 29 'd'"
+          - "+ 30 'd'"
+          - "+ 1 'wk'"
+          - "+ 1.5 'wk'"
+      - title: Calendar duration quantity arithmetic gaps
+        type: new-feature
+        id: "#159"
+        comment: |
+          Operations mixing calendar durations with UCUM quantities or between
+          calendar duration types return incorrect results. Similar to Pathling #2494.
+        outcome: failure
+        any:
+          - ".toQuantity('s') * (1 year).toQuantity('seconds')"
+          - "1 'mo' / (1 year).toQuantity('seconds')"
+          - "1 'kg' / (3 months).toQuantity('seconds')"
+          - "3 month / 2 year"
+          - "1 year / 2 = 6 months"
+          - "(1 year + 6 months).toQuantity('seconds')"
+          - "2 years + 6 months = 2.5 year"
+          - "3 year - 1 year = 2 year"
+          - "1 year - 6 months - 1 year + 18 months"
+          - "1 year * 2 = 2 year"
+          - "2 * 5 months = 10 months"
+          - "1 year / 6 months = 2"
+      - title: Date/time arithmetic precision and timezone gaps
+        type: new-feature
+        id: "#160"
+        comment: |
+          Sub-day precision arithmetic on dates, timezone normalization, and
+          fractional week calculations.
+        outcome: failure
+        any:
+          - "@2016-01 + 1 hour"
+          - "@2016-01-01 + 24 hours"
+          - "@2016-01-01 + 47 hours"
+          - "@2018-02-18T12:23:45-05:00 + 2 years"
+          - "@2016-02-28 + 1.5 weeks"
+          - "@2016-02-28 - 1.5 weeks"
+          - "@2018-02-18T12 + 59 minutes"
+          - "@2018-02-18T12 + 60 minutes"
+      - title: Time plus incompatible duration
+        type: new-feature
+        id: "#160"
+        comment: |
+          Adding years to a Time literal should error per the FHIRPath spec, but
+          fp2sql returns null instead.
+        outcome: failure
+        any:
+          - "@T09:45:23 + 2 years"
+      - title: Unary minus on Quantity not supported
+        type: new-feature
+        id: "#160"
+        comment: |
+          The expression produces a negative Quantity via subtraction, but fp2sql
+          has no overload for unary minus on Quantity type.
+        outcome: error
+        desc:
+          - "Can subtract a UCUM time-valued quantity from a calendar duration quantity less than or equal to seconds"
+      - title: Unsupported dateTime arithmetic operator (Quantity + Date)
+        type: wontfix
+        comment: |
+          FHIRPath defines Date + Quantity but not Quantity + Date.
+          Same exclusion as Pathling.
+        outcome: error
+        any:
+          - "1 year + @2016-02-29"
+      - title: YAML test harness ignores model field
+        type: test-infra
+        id: "#161"
+        comment: |
+          The test executor always loads inputfile-backed subjects as FHIR resources
+          regardless of the model field.
+        outcome: failure
+        desc:
+          - "Do not convert a resource node value to Date without model"
+  # ---------------------------------------------------------------------------
   # fp2sql — per-file "skip entirely" sets, awaiting triage
   #
   # These files contain a mix of semi-synthetic subjects, choice types, FHIRPath features
@@ -210,16 +321,6 @@ excludeSet:
         type: feature
         comment: |
           Strict-typing differences plus many arbitrary-subject tests. Needs per-case review.
-        any:
-          - ""
-  - title: fp2sql — skip entire 6.6_math.yaml
-    glob: "6.6_math.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Advanced math functions (abs, ceiling, floor, round, sqrt, …) and quantity math
-          that fp2sql has not yet implemented.
         any:
           - ""
   - title: fp2sql — skip entire fhir-r4.yaml

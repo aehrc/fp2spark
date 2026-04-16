@@ -45,7 +45,7 @@ import org.apache.spark.sql.types.StructType;
  * // Result: Dataset with schema: |id: string, age: int|
  * }</pre>
  */
-class ResourceDatasetConverter {
+public class ResourceDatasetConverter {
 
   private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
   private static final SparkSchemaConverter SCHEMA_CONVERTER = new SparkSchemaConverter();
@@ -60,7 +60,7 @@ class ResourceDatasetConverter {
    * @return A Dataset with a single row containing the resource data
    */
   @Nonnull
-  static Dataset<Row> toDataset(
+  public static Dataset<Row> toDataset(
       @Nonnull final SparkSession spark, @Nonnull final ResourceTestData resource) {
     try {
       // Step 1: Infer ResourceType from Map data

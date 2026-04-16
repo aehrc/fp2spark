@@ -49,6 +49,14 @@ For writing unit tests for FHIRPath functions/operators, use the `fhirpath-test-
 Reference: `src/test/java/com/example/fhirpath/ir/string/SubstringTest.java`
 Agent location: `.claude/agents/fhirpath-test-writer.md`
 
+## Specification Divergences
+
+[SPEC_DIVERGENCES.md](SPEC_DIVERGENCES.md) documents intentional architectural differences between fp2sql and the FHIRPath specification. It is the authority for deciding whether a compatibility-suite exclusion is a valid design choice vs a bug or missing feature.
+
+**Rules:**
+- Any exclusion in `config.yaml` classified as `type: design` or `type: wontfix` **MUST** trace back to a documented decision in SPEC_DIVERGENCES.md.
+- **Do NOT** add or modify entries in SPEC_DIVERGENCES.md without explicit user approval. Propose the change and wait for confirmation before writing it.
+
 ## Project Guidelines
 
 - **Java Coding Style**: [JAVA_CODING_STYLE.md](JAVA_CODING_STYLE.md)

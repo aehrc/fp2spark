@@ -327,10 +327,12 @@ excludeSet:
           - "contained"
       - title: Custom non-FHIR fields not in encoded schema
         type: feature
+        id: "#170"
         comment: |
           The YAML subject defines a CustomField field not present in the FHIR
           Observation schema. Pathling encoders only serialize FHIR-defined fields,
-          so CustomField is absent from the encoded dataset.
+          so CustomField is absent from the encoded dataset. Traversal to undefined
+          fields should return an empty collection.
         outcome: failure
         any:
           - "CustomField"

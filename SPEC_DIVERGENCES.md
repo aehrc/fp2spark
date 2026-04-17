@@ -10,8 +10,6 @@ Exclusion rules in `config.yaml` that follow from these divergences use
 `type: design` and reference the divergence ID (e.g. `comment: "D1"`).
 Reference implementation bugs use `type: ref-impl-bug` and reference the
 bug ID (e.g. `id: "R1"`).
-Reference implementation bugs use `type: ref-impl-bug` and reference the
-bug ID (e.g. `id: "R1"`).
 
 ---
 

@@ -314,7 +314,7 @@ excludeSet:
         comment: |
           Observation.value is a choice type; fp2sql requires ofType() to resolve it.
           The global choice-type rule's regex misses bare end-of-string expressions.
-          See SPEC_DIVERGENCES.md D1.
+          See SPEC_DIVERGENCES.md D6.
         outcome: error
         expression:
           - "^Observation\\.value$"
@@ -822,7 +822,7 @@ excludeSet:
         comment: |
           DiagnosticReport.effectiveDateTime is a typed accessor for the effective[x]
           choice element. fp2sql requires ofType() for choice elements.
-          See SPEC_DIVERGENCES.md D1.
+          See SPEC_DIVERGENCES.md D6.
         outcome: error
         expression:
           - "DiagnosticReport\\.effectiveDateTime"
@@ -864,6 +864,7 @@ excludeSet:
           - "Patient.name.given[3].as(FHIR.string).count() = 1"
       - title: "fhirpath.js operator precedence: is vs comparison"
         type: ref-impl-bug
+        outcome: error
         comment: |
           R3. Spec defines is/as (#06) higher than comparison (#08). '1 > 2 is Boolean'
           parses as '1 > (2 is Boolean)' = '1 > true', a type error. fhirpath.js parses

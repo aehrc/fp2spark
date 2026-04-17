@@ -373,17 +373,6 @@ excludeSet:
   # The `any: [""]` matcher matches every test case in the target file; omitting `outcome`
   # turns the match into a plain skip (TestAbortedException).
   # ---------------------------------------------------------------------------
-  - title: fp2sql — skip entire 5.5_conversion.yaml
-    glob: "5.5_conversion.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Heavy coverage of converts*() predicates, date/time conversions, and boundary
-          functions that fp2sql does not yet implement. Needs per-case triage in a
-          follow-up.
-        any:
-          - ""
   - title: fp2sql — skip entire fhir-r4.yaml
     glob: "fhir-r4.yaml"
     exclude:
@@ -889,9 +878,22 @@ excludeSet:
   - title: Conversion exclusions
     glob: "fhirpath-js/cases/5.5_conversion.yaml"
     exclude:
-      - title: "Null values in collections not properly handled"
-        comment: "Conversion functions on null values within collections return converted values instead of empty. This is a limitation of how null values are represented in arrays."
-        type: wontfix
+      - title: Missing implicit FHIR-to-System type conversion for ANY parameters
+        comment: |
+          Functions accepting ANY don't trigger implicit FHIR-to-System type conversion.
+          toString() on FhirPrimitiveType and toQuantity() on FhirComplexType (Duration)
+          both fail with "Expected SystemType" errors.
+        type: bug
+        id: "#180"
+        outcome: error
+        any:
+          - "Patient.name.given[0].toString()"
+          - "MedicationRequest.dispenseRequest.expectedSupplyDuration.toQuantity() = 3 days"
+      - title: No support for attributes on primitive types
+        comment: |
+          Null-valued primitives with extensions (e.g., collWithNullsAndTrue[0]) are
+          invisible due to D3. See SPEC_DIVERGENCES.md D3.
+        type: design
         outcome: failure
         any:
           - "Functions.collWithNullsAndTrue[0].toBoolean()"
@@ -907,12 +909,6 @@ excludeSet:
         outcome: failure
         any:
           - "'1 year'.toQuantity() != 1 'a'"
-      - title: "Quantity equality with calendar duration keyword"
-        comment: "toQuantity() on a FHIR Duration produces a calendar duration; equality with a literal using the keyword form is not yet supported."
-        type: feature
-        outcome: failure
-        any:
-          - "MedicationRequest.dispenseRequest.expectedSupplyDuration.toQuantity() = 3 days"
       - title: "UCUM to calendar duration conversions now supported"
         comment: "Full UCUM unit conversion support has been implemented, including conversions between UCUM time units and calendar duration units (e.g., 'wk' to 'days', 'd' to 'days'). Test expectations were based on limited conversion support."
         type: feature

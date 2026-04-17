@@ -395,6 +395,7 @@ excludeSet:
           - "supersetOf($this"
       - title: "3-arg iif() with else-branch not implemented"
         type: feature
+        id: "#186"
         comment: |
           fp2sql only implements the 2-arg iif(criterion, true-result) form.
           The 3-arg form with an else-branch is not yet supported.
@@ -409,6 +410,7 @@ excludeSet:
           - "** testIif4"
       - title: Unary negation of Quantity not implemented
         type: bug
+        id: "#187"
         comment: |
           FHIRPath spec §5.7 explicitly shows (-5.5 'mg').abs() as a valid example.
           fp2sql does not implement unaryMinus for Quantity operands.
@@ -907,6 +909,7 @@ excludeSet:
           - "Patient.contact is Element"
       - title: "FHIR and System type namespace distinction not preserved (as)"
         type: bug
+        id: "#188"
         outcome: failure
         comment: |
           Per FHIR FHIRPath spec, as() must distinguish FHIR types from System types.
@@ -1157,6 +1160,7 @@ excludeSet:
       - title: "3-arg iif() with else-branch not implemented"
         comment: "E.g.: iif(true, true, 1/0). Same as fp2sql fhir-r4 iif exclusion."
         type: feature
+        id: "#186"
         any:
           - "** testCollectionBoolean5"
           - "** testCollectionBoolean6"
@@ -1196,6 +1200,7 @@ excludeSet:
           - "8 days > 1 week"
       - title: "FHIR and System type namespace distinction not preserved"
         type: bug
+        id: "#188"
         outcome: failure
         comment: |
           Per FHIR FHIRPath spec, is() and as() must distinguish FHIR primitive types
@@ -1217,6 +1222,7 @@ excludeSet:
           - "1 | 1 is Integer"
       - title: "Recursive ValueSet.expansion.contains not encoded"
         type: feature
+        id: "#190"
         outcome: failure
         comment: |
           The encoder explicitly skips the recursive 'contains' field within

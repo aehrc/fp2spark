@@ -42,7 +42,7 @@ public final class YamlSubjectFactory {
    * the previous skip behavior until those files are explicitly triaged.
    */
   private static final Set<String> ENABLED_ARBITRARY_SUBJECTS =
-      Set.of("Functions", "Math", "MathTestData");
+      Set.of("Functions", "Math", "MathTestData", "Ops");
 
   /** Synthetic resource type name used for subjects that have no {@code resourceType} field. */
   private static final String ANONYMOUS_SUBJECT_TYPE = "AnonymousSubject";

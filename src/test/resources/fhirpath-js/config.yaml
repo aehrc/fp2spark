@@ -189,7 +189,7 @@ excludeSet:
           - "+ 1 'wk'"
           - "+ 1.5 'wk'"
       - title: Calendar duration quantity arithmetic gaps
-        type: new-feature
+        type: feature
         id: "#159"
         comment: |
           Operations mixing calendar durations with UCUM quantities or between
@@ -209,7 +209,7 @@ excludeSet:
           - "2 * 5 months = 10 months"
           - "1 year / 6 months = 2"
       - title: Date/time arithmetic precision and timezone gaps
-        type: new-feature
+        type: feature
         id: "#160"
         comment: |
           Sub-day precision arithmetic on dates, timezone normalization, and
@@ -225,7 +225,7 @@ excludeSet:
           - "@2018-02-18T12 + 59 minutes"
           - "@2018-02-18T12 + 60 minutes"
       - title: Time plus incompatible duration
-        type: new-feature
+        type: feature
         id: "#160"
         comment: |
           Adding years to a Time literal should error per the FHIRPath spec, but
@@ -234,7 +234,7 @@ excludeSet:
         any:
           - "@T09:45:23 + 2 years"
       - title: Unary minus on Quantity not supported
-        type: new-feature
+        type: feature
         id: "#160"
         comment: |
           The expression produces a negative Quantity via subtraction, but fp2sql
@@ -384,17 +384,6 @@ excludeSet:
           follow-up.
         any:
           - ""
-  - title: fp2sql — skip entire 6.2_comparision.yaml
-    glob: "6.2_comparision.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Mostly arbitrary-subject tests that reference non-FHIR fields on Observation /
-          Patient. Parses via HAPI but the extra fields are dropped, so path references
-          return empty.
-        any:
-          - ""
   - title: fp2sql — skip entire fhir-r4.yaml
     glob: "fhir-r4.yaml"
     exclude:
@@ -499,15 +488,6 @@ excludeSet:
         type: feature
         comment: |
           Distinct / intersect / exclude semantics and edge cases around boolean combine().
-        any:
-          - ""
-  - title: fp2sql — skip entire 6.1_equality.yaml
-    glob: "6.1_equality.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Several edge cases around empty-collection equality and mixed-cardinality inputs.
         any:
           - ""
   - title: fp2sql — skip entire 5.2_filtering_and_projection.yaml
@@ -702,26 +682,29 @@ excludeSet:
         id: "#2418"
         expression:
           - "(^|\\W)Bundle(\\W|$)"
-      - title: "Support for null values within FHIR elements"
-        type: wontfix
+      - title: "Primitive elements with extensions but no value"
+        type: design
+        comment: |
+          Patient.name.given[3] has no value but has an extension in _given[3].
+          fp2sql does not support this structure. See SPEC_DIVERGENCES.md D3.
         outcome: failure
         any:
           - "** equality for null values"
           - "** inequality for null values"
       - title: Unsupported equality for complex types
-        type: new-feature
+        type: feature
         id: "#2420"
         any:
           - "** two objects"
           - "** two objects not"
       - title: Unsupported equality for complex types
-        type: new-feature
+        type: feature
         id: "#2420"
         expression:
           - "Ops.coll = Ops.collsame"
           - "Ops.coll = Ops.collother"
       - title: Unsupported comparison above second calendar durations
-        type: new-feature
+        type: feature
         outcome: failure
         id: "#2494"
         any:
@@ -729,6 +712,47 @@ excludeSet:
           - "1 month = 30 days"
           - "1 week = 7 day"
           - "1 day = 24 hours"
+      - title: Calendar duration != UCUM literal returns true instead of empty
+        type: ref-impl-bug
+        id: "R1"
+        comment: |
+          fhirpath.js expects true but the spec says empty (calendar and definite
+          durations above seconds are un-comparable for equality).
+          See SPEC_DIVERGENCES.md R1.
+        outcome: failure
+        any:
+          - "1 year != 1 'a'"
+          - "1 month != 1 'mo'"
+      - title: UCUM quantity arithmetic in equality
+        type: feature
+        id: "#176"
+        comment: |
+          Complex UCUM quantity arithmetic (unit conversion, multiplication, division)
+          is not yet supported.
+        outcome: failure
+        any:
+          - "10 'kg.m/s2' = 5 'kg'"
+      - title: Different-precision temporal equality
+        type: feature
+        id: "#174"
+        comment: |
+          FHIRPath equality of date/time/dateTime values at different precisions
+          should return empty. fp2sql returns empty for some but not all cases.
+        outcome: failure
+        any:
+          - "@2018 = @2019-02"
+          - "@2018-02-03 != @2018-01"
+          - "@T12:35 != time1.toTime()"
+      - title: Timezone-aware dateTime equality
+        type: feature
+        id: "#175"
+        comment: |
+          DateTime equality should normalize timezones before comparing.
+          fp2sql does not perform timezone normalization.
+        outcome: failure
+        any:
+          - "@2018-02-02T22-04:00 = @2018-02-03T06+04:00"
+          - "@2018-02-02T22-04:00 = @2018-02-03T05:03+04:00"
   - title: Math6 exclusions
     glob: "fhirpath-js/cases/6.6_math.yaml"
     exclude:
@@ -740,7 +764,7 @@ excludeSet:
     glob: "fhirpath-js/cases/6.2_comparision.yaml"
     exclude:
       - title: Unsupported comparison above second calendar durations
-        type: new-feature
+        type: feature
         outcome: failure
         id: "#2494"
         any:
@@ -748,13 +772,57 @@ excludeSet:
           - "1 year < 12 months"
           - "1 minute > 59 seconds"
           - "1 minute < 61 seconds"
-      - title: Unsupported comparison for indefinite and definite time quantities
-        type: wontfix
-        comment: "This is not supported as per FHIRPath specification."
+      - title: Calendar duration != UCUM literal returns true instead of empty
+        type: ref-impl-bug
+        id: "R1"
+        comment: |
+          fhirpath.js expects true but the spec says empty.
+          See SPEC_DIVERGENCES.md R1.
         outcome: failure
         any:
           - "1 year != 1 'a'"
           - "1 month != 1 'mo'"
+      - title: Empty list [] inferred as MANY cardinality in comparison
+        type: bug
+        id: "#156"
+        comment: |
+          Subject field e: [] is inferred as MANY cardinality by ResourceTypeInference,
+          causing compile-time CardinalityMismatchException when used in comparisons.
+          Same root cause as the 6.6_math.yaml n4 exclusion.
+        outcome: error
+        any:
+          - "with empty value"
+      - title: Different-precision temporal comparison
+        type: feature
+        id: "#174"
+        comment: |
+          FHIRPath comparison of date/time/dateTime values at different precisions
+          should compare based on the lesser precision. fp2sql returns empty instead.
+        outcome: failure
+        any:
+          - "@2018 > @2017-01"
+          - "@2018-12-20T12 > @2018-12-20T11:01"
+          - "@T12:02:34.324 > @T12:01"
+          - "@2020 >= date.toDate()"
+          - "@2018 >= date.toDate()"
+      - title: Choice type polymorphism for DiagnosticReport.effective
+        type: design
+        comment: |
+          DiagnosticReport.effectiveDateTime is a typed accessor for the effective[x]
+          choice element. fp2sql requires ofType() for choice elements.
+          See SPEC_DIVERGENCES.md D1.
+        outcome: error
+        expression:
+          - "DiagnosticReport\\.effectiveDateTime"
+      - title: Instant to dateTime literal comparison bug
+        type: bug
+        id: "#172"
+        comment: |
+          Comparing FHIR.instant field to a dateTime literal causes a ClassCastException
+          (Timestamp cannot be cast to String) in Spark UDF execution.
+        outcome: error
+        any:
+          - "DiagnosticReport.issued = @2005-01-27T06:40:01Z"
   - title: Types exclusions
     glob: "fhirpath-js/cases/6.3_types.yaml"
     exclude:
@@ -832,7 +900,7 @@ excludeSet:
     glob: "fhirpath-js/cases/6.4_collections.yaml"
     exclude:
       - title: Unsupported equality for complex types
-        type: new-feature
+        type: feature
         id: "#2420"
         expression:
           - "el in coll"
@@ -851,12 +919,20 @@ excludeSet:
           - "Functions.collWithNullsAndTrue[0].toInteger()"
           - "Functions.collWithNullsAndTrue[0].toDecimal()"
           - "Functions.collWithNullsAndTrue[0].toQuantity()"
-      - title: "Unsupported comparison for indefinite and definite time quantities"
-        comment: "Comparing quantities from toQuantity() calendar durations with UCUM quantity literals is not supported, similar to direct quantity literal comparison (see Comparison exclusions)."
-        type: wontfix
+      - title: Calendar duration != UCUM literal returns true instead of empty
+        type: ref-impl-bug
+        id: "R1"
+        comment: |
+          fhirpath.js expects true but the spec says empty.
+          See SPEC_DIVERGENCES.md R1.
         outcome: failure
         any:
           - "'1 year'.toQuantity() != 1 'a'"
+      - title: "Quantity equality with calendar duration keyword"
+        comment: "toQuantity() on a FHIR Duration produces a calendar duration; equality with a literal using the keyword form is not yet supported."
+        type: feature
+        outcome: failure
+        any:
           - "MedicationRequest.dispenseRequest.expectedSupplyDuration.toQuantity() = 3 days"
       - title: "UCUM to calendar duration conversions now supported"
         comment: "Full UCUM unit conversion support has been implemented, including conversions between UCUM time units and calendar duration units (e.g., 'wk' to 'days', 'd' to 'days'). Test expectations were based on limited conversion support."
@@ -869,7 +945,7 @@ excludeSet:
     glob: "fhirpath-js/cases/8_variables.yaml"
     exclude:
       - title: "Unsupported context definition within view runner"
-        type: new-feature
+        type: feature
         outcome: failure
         id: "#2424"
         spel:
@@ -951,7 +1027,7 @@ excludeSet:
         any:
           - "Patient.name.given.select($this.length) = Patient.name.given.select(length)"
       - title: "Unsupported type runner feature: expression maps"
-        type: new-feature
+        type: feature
         any:
           - "Evaluating expression for a part of a resource"
       - title: "Unsupported comparison between typed complex value and expected structure"
@@ -1061,13 +1137,13 @@ excludeSet:
         any:
           - "(1|2).not() = false"
       - title: Unsupported equality for complex types
-        type: new-feature
+        type: feature
         id: "#2420"
         expression:
           - "name = name"
           - "name != name"
       - title: Unsupported comparison above second calendar durations
-        type: new-feature
+        type: feature
         outcome: failure
         id: "#2494"
         any:

@@ -127,7 +127,7 @@ public final class DefaultYamlTestExecutor implements YamlTestExecutor {
       return;
     }
 
-    assertResultEquals(spec.result(), actual);
+    assertResultEquals(spec.expression(), spec.result(), actual);
   }
 
   @Nullable
@@ -183,15 +183,25 @@ public final class DefaultYamlTestExecutor implements YamlTestExecutor {
    * element-wise comparison; a null actual and an empty-list expected are considered equal (both
    * mean "empty collection" in FHIRPath).
    */
-  static void assertResultEquals(@Nullable final Object expected, @Nullable final Object actual) {
+  static void assertResultEquals(
+      @Nonnull final String expression,
+      @Nullable final Object expected,
+      @Nullable final Object actual) {
     final List<Object> expectedList = toList(expected);
     final List<Object> actualList = toList(actual);
     assertEquals(
         expectedList.size(),
         actualList.size(),
-        () -> "Result size mismatch. Expected: " + expectedList + ", Actual: " + actualList);
+        () ->
+            "["
+                + expression
+                + "] Result size mismatch. Expected: "
+                + expectedList
+                + ", Actual: "
+                + actualList);
     for (int i = 0; i < expectedList.size(); i++) {
-      assertValueEquals(expectedList.get(i), actualList.get(i), i, expectedList, actualList);
+      assertValueEquals(
+          expression, expectedList.get(i), actualList.get(i), i, expectedList, actualList);
     }
   }
 
@@ -209,6 +219,7 @@ public final class DefaultYamlTestExecutor implements YamlTestExecutor {
   }
 
   private static void assertValueEquals(
+      @Nonnull final String expression,
       @Nullable final Object expected,
       @Nullable final Object actual,
       final int index,
@@ -219,7 +230,9 @@ public final class DefaultYamlTestExecutor implements YamlTestExecutor {
           expected,
           actual,
           () ->
-              "Element "
+              "["
+                  + expression
+                  + "] Element "
                   + index
                   + " mismatch. Expected: "
                   + expectedList
@@ -238,7 +251,9 @@ public final class DefaultYamlTestExecutor implements YamlTestExecutor {
             expectedStr,
             formatted,
             () ->
-                "Element "
+                "["
+                    + expression
+                    + "] Element "
                     + index
                     + " quantity mismatch. Expected: "
                     + expectedStr
@@ -256,7 +271,9 @@ public final class DefaultYamlTestExecutor implements YamlTestExecutor {
       assertTrue(
           expectedBd.compareTo(actualBd) == 0,
           () ->
-              "Element "
+              "["
+                  + expression
+                  + "] Element "
                   + index
                   + " numeric mismatch. Expected: "
                   + expectedBd.toPlainString()
@@ -269,7 +286,9 @@ public final class DefaultYamlTestExecutor implements YamlTestExecutor {
         expected,
         actual,
         () ->
-            "Element "
+            "["
+                + expression
+                + "] Element "
                 + index
                 + " mismatch. Expected: "
                 + expectedList
@@ -344,10 +363,22 @@ public final class DefaultYamlTestExecutor implements YamlTestExecutor {
     return current.getMessage();
   }
 
+  @Override
+  public String toString() {
+    return displayName;
+  }
+
   @Nonnull
   private static String buildDisplayName(@Nonnull final TestCase spec) {
     final String description = spec.description();
-    final String label = description != null ? description : spec.expression();
+    final String expr = spec.expression();
+    final String label;
+    if (description != null && !description.isBlank()) {
+      // Include both description and expression for easy triage.
+      label = description + " | " + expr;
+    } else {
+      label = expr;
+    }
     // Normalise characters that confuse the JUnit parameterized display-name template.
     return label.replace('\n', ' ').replace('\r', ' ');
   }

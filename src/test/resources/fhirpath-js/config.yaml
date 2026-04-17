@@ -884,6 +884,7 @@ excludeSet:
           toString() on FhirPrimitiveType and toQuantity() on FhirComplexType (Duration)
           both fail with "Expected SystemType" errors.
         type: bug
+        id: "#180"
         outcome: error
         any:
           - "Patient.name.given[0].toString()"

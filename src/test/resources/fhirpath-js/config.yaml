@@ -999,6 +999,7 @@ excludeSet:
         any:
           - "Patient.telecom.where($this.use = 'work')"
       - title: "type() returns null for null collection elements"
+        id: "#182"
         type: bug
         outcome: failure
         comment: "type() should return declared type for all elements; fp2sql returns null for null elements."
@@ -1011,6 +1012,7 @@ excludeSet:
         desc:
           - "type() function for the null element of a collection"
       - title: "ofType() does not filter null elements"
+        id: "#182"
         type: bug
         outcome: failure
         comment: "ofType(string) should exclude null elements; fp2sql includes them."

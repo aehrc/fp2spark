@@ -370,6 +370,7 @@ excludeSet:
     exclude:
       - title: Choice type traversal without narrowing
         type: design
+        outcome: failure
         comment: |
           D6. Observation.value is a choice type — direct field traversal (.value)
           requires ofType() narrowing first. See SPEC_DIVERGENCES.md D6.

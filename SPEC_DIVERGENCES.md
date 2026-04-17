@@ -1,11 +1,17 @@
 # Specification Divergences
 
-Intentional architectural differences between fp2sql and the FHIRPath specification.
+Intentional functional differences between fp2sql and the FHIRPath specification,
+and confirmed bugs in the fhirpath.js reference implementation.
+
 This document, together with the [FHIRPath spec](specs/FHIRPath.md), is the authority
 for deciding whether a compatibility-suite exclusion is a valid design choice vs a bug.
 
 Exclusion rules in `config.yaml` that follow from these divergences use
 `type: design` and reference the divergence ID (e.g. `comment: "D1"`).
+Reference implementation bugs use `type: ref-impl-bug` and reference the
+bug ID (e.g. `id: "R1"`).
+Reference implementation bugs use `type: ref-impl-bug` and reference the
+bug ID (e.g. `id: "R1"`).
 
 ---
 
@@ -49,3 +55,30 @@ Consequences:
   as absent rather than as an element with a null value and non-empty extensions.
 - `element.id` on a primitive element returns empty.
 - `element.extension()` on a primitive element is not supported.
+
+---
+
+# Reference Implementation Bugs
+
+Confirmed cases where the fhirpath.js reference implementation diverges from the
+FHIRPath specification. fp2sql follows the spec in these cases; the fhirpath.js test
+suite expectations are excluded with `type: ref-impl-bug`.
+
+## R1. Calendar duration != UCUM literal returns true instead of empty
+
+The spec explicitly states that calendar durations and definite duration UCUM units
+above seconds are "un-comparable" for equality (§6.1, Quantity Equality):
+
+```
+1 year = 1 'a'  // {} an empty collection
+1 second = 1 's' // true
+```
+
+Since `!=` is defined as `not(=)` and `not({})` is `{}`, `1 year != 1 'a'` should
+also return empty. However, fhirpath.js returns `true` due to a `null` vs `undefined`
+confusion in `engine.unequal`: `FP_Quantity.equals()` returns `null` for un-comparable
+quantities, but `engine.unequal` only checks for `=== undefined`, so `!null` evaluates
+to `true`.
+
+Affected expressions: `1 year != 1 'a'`, `1 month != 1 'mo'`,
+`'1 year'.toQuantity() != 1 'a'`.

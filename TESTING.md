@@ -221,13 +221,28 @@ excludeSet:
     glob: "*.yaml"          # file-name glob; * means all files
     exclude:
       - title: "Rule title"
-        type: feature        # feature | bug | wontfix
+        type: feature        # see Exclusion types below
         comment: "Why this exclusion is in place"
         outcome: failure     # null (skip) | error | failure (XFAIL) | pass
         any: ["substring"]   # substring match on expression or description
         expression: ["regex"]
         function: ["funcName"]
 ```
+
+#### Exclusion types
+
+Each exclusion must have a `type` that classifies why the test is excluded. This
+determines how the exclusion is tracked and what label to use when filing issues.
+
+| Type | Meaning | GitHub label | Traceability |
+|------|---------|--------------|--------------|
+| `feature` | FHIRPath capability not yet implemented | `enhancement` | File an issue or reference an existing one via `id` |
+| `new-feature` | Same as `feature` but for capabilities that extend beyond core FHIRPath | `enhancement` | File an issue or reference an existing one via `id` |
+| `bug` | fp2sql produces incorrect results | `bug` | File an issue via `id`; fix is expected |
+| `design` | Intentional fp2sql divergence from the spec | — | **MUST** trace to a D-entry in SPEC_DIVERGENCES.md |
+| `ref-impl-bug` | fhirpath.js reference implementation disagrees with the spec; fp2sql is correct | — | **MUST** trace to an R-entry in SPEC_DIVERGENCES.md |
+| `test-infra` | Test infrastructure limitation (e.g. YAML variable injection) | — | Comment explaining the limitation |
+| ~~`wontfix`~~ | **Obsolete.** Do not use for new exclusions. Existing uses should be reviewed and reclassified as `design`, `ref-impl-bug`, `feature`, or `bug`. | — | — |
 
 Outcome semantics:
 

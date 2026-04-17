@@ -990,7 +990,7 @@ excludeSet:
           - "Patient.name.given.select($this.length) = Patient.name.given.select(length)"
       - title: "Unsupported type runner feature: expression maps"
         id: "#184"
-        type: feature
+        type: test-infra
         any:
           - "Evaluating expression for a part of a resource"
       - title: "Complex structure comparison in test assertions"

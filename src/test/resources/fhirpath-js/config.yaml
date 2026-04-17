@@ -639,25 +639,18 @@ excludeSet:
         comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "Patient.name.given.select($this & $this.id)"
-      - title: "where() with count() filtering on id attribute of primitive elements not supported"
-        type: feature
+      - title: "where() filtering on .id of primitive elements"
+        type: design
         outcome: failure
         id: "#437"
-        comment: |
-          This test uses where() to filter on the 'id' attribute of primitive elements,
-          then applies count(). Since Pathling doesn't support accessing the id attribute
-          of primitive elements (which requires support for the primitive attribute/extension
-          structure), the where() clause returns an empty collection, causing count() to
-          return 0 instead of 1.
+        comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "Patient.name.given.where(id = 'Jacomus1Id').count()"
-      - title: "repeat() on id attribute of primitive elements not supported"
-        type: feature
+      - title: "repeat() on .id of primitive elements"
+        type: design
         outcome: failure
         id: "#437"
-        comment: |
-          This test uses repeat() to traverse the id attribute of primitive elements.
-          Pathling does not support accessing the id attribute of primitive elements.
+        comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "Patient.name.given.repeat(id)"
   - title: Equality exclusions
@@ -1043,6 +1036,7 @@ excludeSet:
       - title: "Primitive elements with extensions but no value are invisible"
         type: design
         outcome: failure
+        id: "#437"
         comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "(Patient.name.given[0] | Patient.name.given[3]).count()"

@@ -994,6 +994,7 @@ excludeSet:
         any:
           - "Evaluating expression for a part of a resource"
       - title: "Complex structure comparison in test assertions"
+        id: "#185"
         type: test-infra
         outcome: failure
         comment: "Test infrastructure cannot compare complex FHIR structures returned by fp2sql with expected JSON."

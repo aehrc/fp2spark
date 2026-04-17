@@ -682,8 +682,11 @@ excludeSet:
         id: "#2418"
         expression:
           - "(^|\\W)Bundle(\\W|$)"
-      - title: "Support for null values within FHIR elements"
-        type: wontfix
+      - title: "Primitive elements with extensions but no value"
+        type: design
+        comment: |
+          Patient.name.given[3] has no value but has an extension in _given[3].
+          fp2sql does not support this structure. See SPEC_DIVERGENCES.md D3.
         outcome: failure
         any:
           - "** equality for null values"

@@ -709,6 +709,40 @@ excludeSet:
           - "1 month = 30 days"
           - "1 week = 7 day"
           - "1 day = 24 hours"
+      - title: Unsupported equality for indefinite and definite time quantities
+        type: wontfix
+        comment: "Calendar duration keywords cannot be compared with UCUM literals."
+        outcome: failure
+        any:
+          - "1 year != 1 'a'"
+          - "1 month != 1 'mo'"
+      - title: UCUM quantity arithmetic in equality
+        type: new-feature
+        comment: |
+          Complex UCUM quantity arithmetic (unit conversion, multiplication, division)
+          is not yet supported.
+        outcome: failure
+        any:
+          - "10 'kg.m/s2' = 5 'kg'"
+      - title: Different-precision temporal equality
+        type: new-feature
+        comment: |
+          FHIRPath equality of date/time/dateTime values at different precisions
+          should return empty. fp2sql returns empty for some but not all cases.
+        outcome: failure
+        any:
+          - "@2018 = @2019-02"
+          - "@2018-02-03 != @2018-01"
+          - "@T12:35 != time1.toTime()"
+      - title: Timezone-aware dateTime equality
+        type: new-feature
+        comment: |
+          DateTime equality should normalize timezones before comparing.
+          fp2sql does not perform timezone normalization.
+        outcome: failure
+        any:
+          - "@2018-02-02T22-04:00 = @2018-02-03T06+04:00"
+          - "@2018-02-02T22-04:00 = @2018-02-03T05:03+04:00"
   - title: Math6 exclusions
     glob: "fhirpath-js/cases/6.6_math.yaml"
     exclude:
@@ -735,12 +769,13 @@ excludeSet:
         any:
           - "1 year != 1 'a'"
           - "1 month != 1 'mo'"
-      - title: Arbitrary (non-FHIR) subject fields in comparison tests
-        type: feature
+      - title: Empty list [] inferred as MANY cardinality in comparison
+        type: bug
+        id: "#156"
         comment: |
-          These tests use synthetic single-letter fields (a, c, e) on the YAML subject
-          which are not FHIR resource fields. fp2sql only supports real FHIR resources
-          through Pathling's encoders, so these fields trigger CardinalityMismatchException.
+          Subject field e: [] is inferred as MANY cardinality by ResourceTypeInference,
+          causing compile-time CardinalityMismatchException when used in comparisons.
+          Same root cause as the 6.6_math.yaml n4 exclusion.
         outcome: error
         any:
           - "with empty value"

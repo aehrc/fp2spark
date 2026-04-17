@@ -472,33 +472,6 @@ excludeSet:
           Quantity comparison and canonicalisation tests that fp2sql does not yet implement.
         any:
           - ""
-  - title: fp2sql — skip entire 5.1_existence.yaml
-    glob: "5.1_existence.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          A handful of strict-typing differences and not-yet-implemented function variants.
-        any:
-          - ""
-  - title: fp2sql — skip entire 5.4_combining.yaml
-    glob: "5.4_combining.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Distinct / intersect / exclude semantics and edge cases around boolean combine().
-        any:
-          - ""
-  - title: fp2sql — skip entire 5.2_filtering_and_projection.yaml
-    glob: "5.2_filtering_and_projection.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Uses inputfile-backed Questionnaire tests and a handful of strict-typing gaps.
-        any:
-          - ""
   - title: Global exclusions
     glob: "*.yaml"
     exclude:
@@ -635,43 +608,49 @@ excludeSet:
   - title: Existence exclusions
     glob: "fhirpath-js/cases/5.1_existence.yaml"
     exclude:
-      - title: Support for null values within FHIR elements
-        type: wontfix
+      - title: "Primitive elements with extensions but no value are invisible"
+        type: design
         outcome: failure
+        comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "** null is not empty"
           - "** exists for null should return true"
+      - title: "Static typing rejects multi-valued boolean at compile time"
+        type: design
+        outcome: failure
+        comment: "D1: fp2sql requires statically single-valued operands for not()."
+        any:
           - "** error for collection that is not a singleton"
   - title: Filtering and projection exclusions
     glob: "fhirpath-js/cases/5.2_filtering_and_projection.yaml"
     exclude:
-      - title: "Test runner does not support representation of mixed collections in arbitrary objects"
-        type: wontfix
+      - title: "Monomorphic collections cannot represent mixed-type arrays"
+        type: design
         outcome: failure
+        comment: "D4: fp2sql only supports monomorphic collections."
         any:
           - "heteroattr.ofType(String)"
           - "heteroattr.ofType(Integer)"
           - "heteroattr.ofType(Decimal)"
           - "heteroattr.ofType(Boolean)"
-      - title: "where() with count() filtering on id attribute of primitive elements not supported"
-        type: feature
+      - title: "select() accessing .id on primitive elements"
+        type: design
+        outcome: failure
+        comment: "D3: fp2sql does not support attributes on primitive types."
+        any:
+          - "Patient.name.given.select($this & $this.id)"
+      - title: "where() filtering on .id of primitive elements"
+        type: design
         outcome: failure
         id: "#437"
-        comment: |
-          This test uses where() to filter on the 'id' attribute of primitive elements,
-          then applies count(). Since Pathling doesn't support accessing the id attribute
-          of primitive elements (which requires support for the primitive attribute/extension
-          structure), the where() clause returns an empty collection, causing count() to
-          return 0 instead of 1.
+        comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "Patient.name.given.where(id = 'Jacomus1Id').count()"
-      - title: "repeat() on id attribute of primitive elements not supported"
-        type: feature
+      - title: "repeat() on .id of primitive elements"
+        type: design
         outcome: failure
         id: "#437"
-        comment: |
-          This test uses repeat() to traverse the id attribute of primitive elements.
-          Pathling does not support accessing the id attribute of primitive elements.
+        comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "Patient.name.given.repeat(id)"
   - title: Equality exclusions
@@ -1039,34 +1018,30 @@ excludeSet:
     glob: "fhirpath-js/cases/5.4_combining.yaml"
     exclude:
       - title: "Polymorphic unions not supported"
-        type: feature
+        type: design
         id: "#2398"
-        comment: |
-          Union operator currently only supports primitive types with native Spark equality
-          (Boolean, Integer, String). Cross-type unions like Integer | Boolean are not supported.
+        comment: "D4: fp2sql only supports monomorphic collections."
         any:
           - "Functions.attrdouble | Functions.coll1.colltrue.attr"
-      - title: "Indefinite calendar duration union deduplication"
-        type: wontfix
+      - title: "Calendar duration year/month conversion missing for equality"
+        type: bug
         outcome: failure
+        id: "#178"
         comment: |
-          Pathling treats indefinite calendar durations (year, month) as non-comparable in union
-          operations because they cannot be reliably converted to a common unit. The reference
-          implementation deduplicates (1 year | 12 months) to '1 year', while Pathling keeps
-          both values since the equality comparison returns NULL for incomparable quantities.
+          fp2sql does not implement the spec's year-to-month conversion factor
+          (1 year = 12 months) for quantity equality comparison. The reference
+          implementation correctly deduplicates (1 year | 12 months) to '1 year'.
         any:
           - "(1 year | 12 months)"
-      - title: "Union with count() on primitive elements with extensions but no value"
-        type: feature
+      - title: "Primitive elements with extensions but no value are invisible"
+        type: design
         outcome: failure
         id: "#437"
-        comment: |
-          This test uses count() on a union that includes Patient.name.given[3], which
-          is a primitive element with extensions but no value. Since Pathling doesn't
-          support accessing such elements, the union returns 0 elements instead of 1,
-          causing count() to return 0 instead of 1.
+        comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "(Patient.name.given[0] | Patient.name.given[3]).count()"
+          - "(Patient.name.given[0]).combine(Patient.name.given[3]).count()"
+          - "Patient.name.given[0].union(Patient.name.given[3]).count()"
   - title: FHIR R4 Exclusions
     glob: "fhirpath-js/cases/fhir-r4.yaml"
     exclude:

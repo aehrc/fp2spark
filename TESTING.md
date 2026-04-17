@@ -237,7 +237,6 @@ determines how the exclusion is tracked and what label to use when filing issues
 | Type | Meaning | GitHub label | Traceability |
 |------|---------|--------------|--------------|
 | `feature` | FHIRPath capability not yet implemented | `enhancement` | File an issue or reference an existing one via `id` |
-| `new-feature` | Same as `feature` but for capabilities that extend beyond core FHIRPath | `enhancement` | File an issue or reference an existing one via `id` |
 | `bug` | fp2sql produces incorrect results | `bug` | File an issue via `id`; fix is expected |
 | `design` | Intentional fp2sql divergence from the spec | — | **MUST** trace to a D-entry in SPEC_DIVERGENCES.md |
 | `ref-impl-bug` | fhirpath.js reference implementation disagrees with the spec; fp2sql is correct | — | **MUST** trace to an R-entry in SPEC_DIVERGENCES.md |

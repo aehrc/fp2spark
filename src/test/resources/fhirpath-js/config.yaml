@@ -979,6 +979,7 @@ excludeSet:
           - "name.`family`"
       - title: "exists(criteria) with non-boolean collection criteria"
         type: design
+        outcome: error
         comment: "D1: exists(given) uses a collection-valued expression as criteria; fp2sql strict typing requires boolean."
         any:
           - "Patient.name.exists(given)"

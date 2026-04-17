@@ -725,6 +725,7 @@ excludeSet:
           - "1 month != 1 'mo'"
       - title: UCUM quantity arithmetic in equality
         type: feature
+        id: "#176"
         comment: |
           Complex UCUM quantity arithmetic (unit conversion, multiplication, division)
           is not yet supported.
@@ -733,6 +734,7 @@ excludeSet:
           - "10 'kg.m/s2' = 5 'kg'"
       - title: Different-precision temporal equality
         type: feature
+        id: "#174"
         comment: |
           FHIRPath equality of date/time/dateTime values at different precisions
           should return empty. fp2sql returns empty for some but not all cases.
@@ -743,6 +745,7 @@ excludeSet:
           - "@T12:35 != time1.toTime()"
       - title: Timezone-aware dateTime equality
         type: feature
+        id: "#175"
         comment: |
           DateTime equality should normalize timezones before comparing.
           fp2sql does not perform timezone normalization.
@@ -791,6 +794,7 @@ excludeSet:
           - "with empty value"
       - title: Different-precision temporal comparison
         type: feature
+        id: "#174"
         comment: |
           FHIRPath comparison of date/time/dateTime values at different precisions
           should compare based on the lesser precision. fp2sql returns empty instead.

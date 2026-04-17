@@ -393,16 +393,6 @@ excludeSet:
           support.
         any:
           - ""
-  - title: fp2sql — skip entire simple.yaml
-    glob: "simple.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Uses HumanName.where('given') style single-string arguments and a handful of
-          features fp2sql does not yet implement.
-        any:
-          - ""
   - title: fp2sql — skip entire extensions.yaml
     glob: "extensions.yaml"
     exclude:
@@ -987,29 +977,45 @@ excludeSet:
         outcome: failure
         any:
           - "name.`family`"
-      - title: "Boolean evaluation of collections"
-        comment: "This seems to be incorrect expectation as name.given is not singular and should fail when evaluated as boolean."
-        type: wontfix
+      - title: "exists(criteria) with non-boolean collection criteria"
+        type: design
+        comment: "D1: exists(given) uses a collection-valued expression as criteria; fp2sql strict typing requires boolean."
         any:
           - "Patient.name.exists(given)"
-      - title: "length without parentheses treated as child traversal"
-        type: wontfix
+      - title: "Bare length without parentheses treated as field access"
+        type: ref-impl-bug
         outcome: failure
-        comment: |
-          FHIRPath length() requires parentheses. The test uses $this.length
-          (without parentheses), which Pathling treats as a child field access
-          rather than the length() function, returning null.
+        comment: "R2: FHIRPath spec §5 requires parentheses for functions. fhirpath.js treats bare length as length()."
         any:
           - "Patient.name.given.select($this.length) = Patient.name.given.select(length)"
       - title: "Unsupported type runner feature: expression maps"
         type: feature
         any:
           - "Evaluating expression for a part of a resource"
-      - title: "Unsupported comparison between typed complex value and expected structure"
-        type: wontfix
+      - title: "Complex structure comparison in test assertions"
+        type: test-infra
         outcome: failure
+        comment: "Test infrastructure cannot compare complex FHIR structures returned by fp2sql with expected JSON."
         any:
           - "Patient.telecom.where($this.use = 'work')"
+      - title: "type() returns null for null collection elements"
+        type: bug
+        outcome: failure
+        comment: "type() should return declared type for all elements; fp2sql returns null for null elements."
+        desc:
+          - "type() function for the null element of a collection"
+      - title: "TypeInfo struct format differs from fhirpath.js"
+        type: design
+        outcome: failure
+        comment: "D5: fp2sql returns TypeInfo with baseType per CI build spec; fhirpath.js returns only {name, namespace}."
+        desc:
+          - "type() function for the null element of a collection"
+      - title: "ofType() does not filter null elements"
+        type: bug
+        outcome: failure
+        comment: "ofType(string) should exclude null elements; fp2sql includes them."
+        desc:
+          - "ofType() function for the null element of a collection (2)"
   - title: Combining exclusions
     glob: "fhirpath-js/cases/5.4_combining.yaml"
     exclude:

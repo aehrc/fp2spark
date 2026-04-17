@@ -54,6 +54,20 @@ Consequences:
 - `element.id` on a primitive element returns empty.
 - `element.extension()` on a primitive element is not supported.
 
+## D4. Monomorphic collections
+
+The FHIRPath spec allows collections to contain elements of different types (e.g., a
+mix of String, Integer, and Boolean values). fp2sql only supports monomorphic
+collections where all elements share a single defined type. The only mechanism for
+multiple types in one collection is FHIR choice elements, but these are still
+represented as a single `choiceOf(A|B|C)` type.
+
+Consequences:
+
+- `ofType()` on a truly heterogeneous collection is not possible — collections are
+  always homogeneously typed at compile time.
+- Union of collections with different element types is not supported.
+
 ---
 
 # Reference Implementation Bugs

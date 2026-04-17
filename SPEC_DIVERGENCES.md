@@ -82,6 +82,21 @@ Consequences:
 - Test assertions comparing type() output against `{name, namespace}` maps will
   fail due to the additional field and different representation format.
 
+## D6. Choice type polymorphism requires explicit narrowing
+
+FHIR choice elements (e.g., `Observation.value[x]`) must be narrowed to a specific
+variant via `ofType()`, `is`, or `as` before field traversal or operations. Direct
+use of a choice type in expressions (e.g., `Observation.value.value`,
+`Observation.value > 100`) is rejected at compile time.
+
+The FHIRPath spec allows dynamic dispatch on the runtime type; fp2sql's static
+analyzer cannot determine which variant applies without an explicit narrowing step.
+
+Consequences:
+
+- `Observation.value.unit` requires `Observation.value.ofType(Quantity).unit`.
+- Comparison or arithmetic on unnarrowed choice types fails overload resolution.
+
 ---
 
 # Reference Implementation Bugs
@@ -119,3 +134,35 @@ invocation. fhirpath.js treats bare `length` as the function, causing
 
 Affected expressions:
 `Patient.name.given.select($this.length) = Patient.name.given.select(length)`.
+
+## R3. fhirpath.js operator precedence: `is`/`as` vs comparison/union
+
+The FHIRPath spec operator precedence table (§3.5.7) defines `is`/`as` at level #06,
+higher than `|` (#07) and comparison operators `<`, `>`, `<=`, `>=` (#08). fhirpath.js
+appears to parse these operators with wrong relative precedence.
+
+For example, `1 > 2 is Boolean` should parse as `1 > (2 is Boolean)` per spec,
+yielding `1 > true` which is a type error (comparing Integer with Boolean). fhirpath.js
+parses it as `(1 > 2) is Boolean` and returns `true`.
+
+Similarly, `1 | 1 is Integer` should parse as `1 | (1 is Integer)` = `1 | true`,
+a union of Integer and Boolean. fhirpath.js parses it as `(1 | 1) is Integer` and
+returns `true`.
+
+Affected expressions: `1 > 2 is Boolean`, `1 | 1 is Integer`.
+
+## R4. fhirpath.js allows `$this` outside expression (lambda) parameters
+
+The FHIRPath spec (§3.3) defines `$this` as an iteration variable available only
+within functions that take an `expression` parameter (e.g., `where()`, `select()`,
+`all()`, `aggregate()`): "$this … represent[s] the item from the input collection
+currently under evaluation."
+
+fhirpath.js allows `$this` in regular (non-expression) function arguments such as
+`subsetOf()` and `supersetOf()`, where it appears to resolve to the root input
+context. This usage is not defined by the spec.
+
+Affected expressions: `Patient.name.first().subsetOf($this.name)`,
+`Patient.name.subsetOf($this.name.first())`,
+`Patient.name.first().supersetOf($this.name)`,
+`Patient.name.supersetOf($this.name.first())`.

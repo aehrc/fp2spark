@@ -121,7 +121,7 @@ For each failure, determine the correct exclusion type by investigating the root
    | `bug` | fp2sql produces incorrect results | File a GitHub issue via `id` |
    | `design` | Intentional fp2sql divergence | Must trace to D-entry in SPEC_DIVERGENCES.md |
    | `ref-impl-bug` | fhirpath.js test expectation contradicts the spec | Must trace to R-entry in SPEC_DIVERGENCES.md |
-   | `test-infra` | Test infrastructure limitation | Comment explaining the limitation |
+   | `test-infra` | Test infrastructure limitation | File/reference a GitHub issue via `id` |
 
    **Never use `wontfix`** — it is obsolete. If an existing `wontfix` exclusion falls within
    scope, reclassify it using the types above.
@@ -162,7 +162,7 @@ Each exclusion must have:
 - `type` — from the approved classification
 - `outcome` — `failure`, `error`, or omitted (skip)
 - `comment` — brief explanation of why
-- `id` — issue reference for `feature` and `bug` types
+- `id` — issue reference for `feature`, `bug`, and `test-infra` types
 - Matcher (`any`, `expression`, `function`, or `desc`)
 
 ### Step 9: Reclassify In-Scope `wontfix`
@@ -195,9 +195,10 @@ EOF
 )"
 ```
 
-### Step 12: File Issues
+### Step 12: File Issues and Verify Traceability
 
-For each `feature` and `bug` exclusion that doesn't already have a GitHub issue, file one:
+For each `feature`, `bug`, and `test-infra` exclusion that doesn't already have a GitHub
+issue, file one:
 
 ```bash
 gh issue create --repo piotrszul/fp2spark \
@@ -206,7 +207,27 @@ gh issue create --repo piotrszul/fp2spark \
   --label <bug|enhancement> --label "compat:fhirpath-js"
 ```
 
-Then update the exclusions in `config.yaml` with the new issue `id` values. Commit and push.
+Then update the exclusions in `config.yaml` with the new issue `id` values.
+
+**Verify all exclusions have references.** Every exclusion in the file-specific sections
+being enabled must trace to either:
+- A GitHub issue via `id` (for `feature`, `bug`, `test-infra`)
+- A D-entry in SPEC_DIVERGENCES.md (for `design`)
+- An R-entry in SPEC_DIVERGENCES.md (for `ref-impl-bug`)
+
+If any exclusion is missing a reference, fix it before proceeding.
+
+**Present a summary of all issues created** to the user before moving on:
+
+```
+| Issue | Type | Title |
+|-------|------|-------|
+| #182  | bug  | type() and ofType() don't handle null collection elements |
+| #184  | test-infra | Support expression map test runner feature |
+| ...
+```
+
+Commit and push.
 
 ### Step 13: Push and Create PR
 
@@ -224,7 +245,8 @@ Closes #<NUMBER>
 ## Test plan
 - [ ] Full test suite passes (no regressions)
 - [ ] All exclusions properly classified
-- [ ] Issues filed for all feature/bug exclusions
+- [ ] Issues filed for all feature/bug/test-infra exclusions
+- [ ] All exclusions have references (issue id, D-entry, or R-entry)
 - [ ] Code reviewed
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
@@ -264,5 +286,6 @@ If checks fail, report the failure details to the user and investigate.
 - **Never use `wontfix`.** Reclassify any in-scope `wontfix` exclusions.
 - **SPEC_DIVERGENCES.md changes require approval.** Always propose and wait.
 - **Classification summary requires approval.** Present the table and wait.
-- **Every `feature` and `bug` needs an issue.** File with `compat:fhirpath-js` label.
+- **Every `feature`, `bug`, and `test-infra` needs an issue.** File with `compat:fhirpath-js` label.
+- **Every exclusion needs a reference.** Issue `id` for feature/bug/test-infra, D-entry for design, R-entry for ref-impl-bug.
 - **Global rules may already cover failures.** Check before adding redundant exclusions.

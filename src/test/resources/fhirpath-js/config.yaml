@@ -1004,7 +1004,9 @@ excludeSet:
         id: "#182"
         type: bug
         outcome: failure
-        comment: "type() returns null for null elements (#182) and TypeInfo struct includes baseType per CI build spec (D5)."
+        comment: >-
+          type() returns null for null elements (#182) and TypeInfo struct includes baseType
+          per CI build spec (D5). After #182 is fixed, reclassify this exclusion to design (D5).
         desc:
           - "type() function for the null element of a collection"
       - title: "ofType() does not filter null elements"

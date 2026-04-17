@@ -68,6 +68,20 @@ Consequences:
   always homogeneously typed at compile time.
 - Union of collections with different element types is not supported.
 
+## D5. TypeInfo struct format includes baseType
+
+fp2sql returns `TypeInfo` with `namespace`, `name`, and `baseType` fields per the
+[CI build FHIRPath reflection spec](https://build.fhir.org/ig/HL7/FHIRPath/#reflection),
+while fhirpath.js returns only `{name, namespace}`. This is an intentional design
+choice following the full spec definition (ref: #111).
+
+Consequences:
+
+- `type()` results include the `baseType` field, making the returned struct
+  structurally different from fhirpath.js expectations.
+- Test assertions comparing type() output against `{name, namespace}` maps will
+  fail due to the additional field and different representation format.
+
 ---
 
 # Reference Implementation Bugs
@@ -94,3 +108,14 @@ to `true`.
 
 Affected expressions: `1 year != 1 'a'`, `1 month != 1 'mo'`,
 `'1 year'.toQuantity() != 1 'a'`.
+
+## R2. Bare `length` without parentheses treated as length() function
+
+The FHIRPath spec §5 states: "Function names are always followed by a `()` to
+distinguish them from path navigation." Therefore `$this.length` (without
+parentheses) should be path navigation (field access), not the `length()` function
+invocation. fhirpath.js treats bare `length` as the function, causing
+`$this.length` and `length()` to return the same result.
+
+Affected expressions:
+`Patient.name.given.select($this.length) = Patient.name.given.select(length)`.

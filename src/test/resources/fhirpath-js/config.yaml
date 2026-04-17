@@ -1033,6 +1033,7 @@ excludeSet:
       - title: "Calendar duration year/month conversion missing for equality"
         type: bug
         outcome: failure
+        id: "#178"
         comment: |
           fp2sql does not implement the spec's year-to-month conversion factor
           (1 year = 12 months) for quantity equality comparison. The reference

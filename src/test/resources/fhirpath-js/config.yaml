@@ -96,18 +96,25 @@ excludeSet:
       - title: Unsupported FHIRPath environment variables
         type: feature
         comment: |
-          fp2sql only defines %context today. %ucum, %vs-*, %ext-*, %`vs-*`, %terminologies,
-          %factory etc. are all unsupported.
+          fp2sql only defines %context today. %ucum, %vs-*, %ext-*, %`vs-*`, %terminologies
+          etc. are all unsupported.
         any:
           - "%ucum"
           - "%vs-"
           - "%ext-"
           - "%terminologies"
-          - "%factory"
           - "%`vs-"
           - "%`ext-"
           - "%sct"
           - "%loinc"
+      - title: "%factory (Type Factory API) not implemented"
+        type: feature
+        id: "#194"
+        comment: |
+          The FHIR-specific Type Factory API (%factory.{primitive}, %factory.Extension,
+          %factory.withExtension, %factory.withProperty) is not yet supported.
+        any:
+          - "%factory"
       - title: Equivalence operators
         type: feature
         comment: |

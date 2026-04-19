@@ -57,7 +57,6 @@ excludeSet:
           - conformsTo
           - htmlChecks
           - hasValue
-          - extension
           - resolve
           - comparable
           - lowBoundary
@@ -438,26 +437,6 @@ excludeSet:
   # The `any: [""]` matcher matches every test case in the target file; omitting `outcome`
   # turns the match into a plain skip (TestAbortedException).
   # ---------------------------------------------------------------------------
-  - title: fp2sql — skip entire factory.yaml
-    glob: "factory.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Exercises the fhirpath.js %factory environment variable which fp2sql does not
-          support.
-        any:
-          - ""
-  - title: fp2sql — skip entire extensions.yaml
-    glob: "extensions.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Targets the FHIR extension() convenience function which fp2sql does not yet
-          support.
-        any:
-          - ""
   - title: fp2sql — skip entire 6.3_types.yaml
     glob: "6.3_types.yaml"
     exclude:
@@ -995,6 +974,17 @@ excludeSet:
   - title: Extension exclusions
     glob: "fhirpath-js/cases/extensions.yaml"
     exclude:
+      - title: "Primitive collection traversal does not filter null values"
+        comment: |
+          FHIRPath collections cannot contain null (spec §3.3); the JSON positional-null
+          convention used to align `given` with `_given` must be filtered out during
+          primitive field traversal. fp2sql returns [null, Peter, James] instead of
+          [Peter, James].
+        type: bug
+        outcome: failure
+        id: "#192"
+        any:
+          - "** exclude null values from the result"
       - title: "ID on primitive types not supported"
         comment: "This also includes the case of an empty primitive value with non-empty attributes"
         type: feature

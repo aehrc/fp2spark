@@ -976,10 +976,10 @@ excludeSet:
     exclude:
       - title: "Primitive collection traversal does not filter null values"
         comment: |
-          FHIRPath collections cannot contain null (spec §3.3); the JSON positional-null
-          convention used to align `given` with `_given` must be filtered out during
-          primitive field traversal. fp2sql returns [null, Peter, James] instead of
-          [Peter, James].
+          FHIRPath collections cannot contain null (spec "Null and empty"); the JSON
+          positional-null convention used to align `given` with `_given` must be filtered
+          out during primitive field traversal. fp2sql returns [null, Peter, James]
+          instead of [Peter, James].
         type: bug
         outcome: failure
         id: "#192"

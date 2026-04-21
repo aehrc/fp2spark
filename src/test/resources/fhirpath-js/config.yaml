@@ -697,12 +697,14 @@ excludeSet:
         comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "Patient.name.given.repeat(id)"
-  - title: Equality exclusions
+  - title: fp2sql — 6.1_equality.yaml exclusions
     glob: "fhirpath-js/cases/6.1_equality.yaml"
     exclude:
       - title: "Bundles are not supported"
         type: feature
-        id: "#2418"
+        id: "#208"
+        comment: |
+          Pathling encoders reject non-encodable resource types like Bundle.
         expression:
           - "(^|\\W)Bundle(\\W|$)"
       - title: "Primitive elements with extensions but no value"
@@ -715,21 +717,27 @@ excludeSet:
           - "** equality for null values"
           - "** inequality for null values"
       - title: Unsupported equality for complex types
-        type: feature
-        id: "#2420"
+        type: bug
+        id: "#134"
+        comment: |
+          Complex type equality: Pathling _fid synthetic fields cause false
+          negatives on Column.equalTo over encoded structs. See #134.
         any:
           - "** two objects"
           - "** two objects not"
-      - title: Unsupported equality for complex types
-        type: feature
-        id: "#2420"
+      - title: Unsupported equality for collections of complex types
+        type: bug
+        id: "#134"
+        comment: |
+          Complex type equality: Pathling _fid synthetic fields cause false
+          negatives on Column.equalTo over encoded structs. See #134.
         expression:
           - "Ops.coll = Ops.collsame"
           - "Ops.coll = Ops.collother"
-      - title: Unsupported comparison above second calendar durations
+      - title: Unsupported calendar-duration equality across unit scales
         type: feature
         outcome: failure
-        id: "#2494"
+        id: "#224"
         any:
           - "12 months = 1 year"
           - "1 month = 30 days"

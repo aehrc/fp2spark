@@ -512,6 +512,22 @@ excludeSet:
         outcome: error
         any:
           - "1 > 2 is Boolean"
+  - title: fp2sql — 4.1_literals.yaml exclusions
+    glob: "fhirpath-js/cases/4.1_literals.yaml"
+    exclude:
+      - title: "Backtick-wrapped literal with invalid escape sequences"
+        type: bug
+        id: "#211"
+        outcome: failure
+        comment: |
+          fp2sql's ANTLR grammar for DELIMITEDIDENTIFIER is too permissive
+          (uses `.` instead of the spec's `~[\\`]`), so escapes like `\"`
+          inside backticks are consumed silently rather than raising a
+          parse error. fhirpath.js errors correctly per spec. Tracked
+          under #211 bullet 3 (backtick-wrapped strings as literals —
+          spec says parse error).
+        any:
+          - "`a\\\\b\\'\\\"\\`\\r\\n\\t\\u0065`"
   - title: fp2sql — hasValue.yaml exclusions
     glob: "hasValue.yaml"
     exclude:
@@ -625,17 +641,6 @@ excludeSet:
           traversing to the `id` of a primitive element.
         any:
           - "** first for collection with null values"
-  - title: Literal exclusions
-    glob: "fhirpath-js/cases/4.1_literals.yaml"
-    exclude:
-      - title: "Using ` to wrap a string is not allowed by grammar"
-        type: bug
-        outcome: failure
-        comment: |
-          An issue has been raised on the fhirpath.js GitHub repository (#172), this may be an 
-          incorrect expectation within the test cases.
-        any:
-          - "`a\\\\b\\'\\\"\\`\\r\\n\\t\\u0065`"
   - title: String manipulation exclusions
     glob: "fhirpath-js/cases/5.6_string_manipulation.yaml"
     exclude:

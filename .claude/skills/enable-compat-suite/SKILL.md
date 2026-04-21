@@ -51,6 +51,39 @@ Delete the `fp2sql — skip entire <file>` entries from `config.yaml` for each f
 These are entries with `any: [""]` that match every test case. Be careful not to break YAML
 indentation of surrounding entries.
 
+### Step 3b: Verify Global Rule Premises
+
+Before trusting that "existing global rules will absorb the failures," verify that the
+global rules the issue (or the suite) relies on are still accurate. Global rules in
+`config.yaml` claim that a given function, variable, or capability is unimplemented — but
+these claims can go stale as fp2sql evolves. A stale global rule silently skips tests that
+would otherwise pass, inflating the skip count and hiding real coverage.
+
+**When to verify:** Any time the GitHub issue predicates enablement on a named global
+feature (e.g. *"blocked by unimplemented `extension()` function"*, *"absorbed by the
+`%factory` global rule"*), or when a large fraction of a file's tests are skipped by a
+single global rule.
+
+**How to verify:** For each named feature the issue or global rule mentions, grep the
+source for evidence it's implemented. For example:
+
+```bash
+# Is extension() actually unimplemented?
+rg -n '\bextension\b' src/main/java/
+# Is %factory actually unsupported?
+rg -n '%factory|factory' src/main/java/
+```
+
+Cross-reference against `Analyzer.java` (for function rewrites), the codegen files (for
+SparkSQL emission), and any resolver tables. If implementation exists, the global rule is
+stale — remove the affected entry from the global list. Then re-run Step 5 and triage
+whatever new failures surface.
+
+**Symmetry:** When the issue lists multiple features as blockers, verify *all of them* —
+not just the first one you happen to check. It's easy to verify one feature mid-triage
+(because a failure prompted the check) and forget to apply the same scrutiny to the
+others.
+
 ### Step 4: Enable Arbitrary Subjects
 
 Check what `resourceType` each YAML test file uses:
@@ -289,3 +322,7 @@ If checks fail, report the failure details to the user and investigate.
 - **Every `feature`, `bug`, and `test-infra` needs an issue.** File with `compat:fhirpath-js` label.
 - **Every exclusion needs a reference.** Issue `id` for feature/bug/test-infra, D-entry for design, R-entry for ref-impl-bug.
 - **Global rules may already cover failures.** Check before adding redundant exclusions.
+- **Global rules can be stale.** If the issue says enablement is "absorbed by the X global
+  rule," verify X is still actually unimplemented by grepping the source. Apply the check
+  symmetrically to every feature the issue names, not just the one that happens to come up
+  during triage.

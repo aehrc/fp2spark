@@ -968,7 +968,7 @@ excludeSet:
           - "not_el in coll"
           - "^coll contains el"
           - "coll contains not_el"
-  - title: Conversion exclusions
+  - title: fp2sql — 5.5_conversion.yaml exclusions
     glob: "fhirpath-js/cases/5.5_conversion.yaml"
     exclude:
       - title: Missing implicit FHIR-to-System type conversion for ANY parameters
@@ -1002,10 +1002,14 @@ excludeSet:
         outcome: failure
         any:
           - "'1 year'.toQuantity() != 1 'a'"
-      - title: "UCUM to calendar duration conversions now supported"
-        comment: "Full UCUM unit conversion support has been implemented, including conversions between UCUM time units and calendar duration units (e.g., 'wk' to 'days', 'd' to 'days'). Test expectations were based on limited conversion support."
-        type: feature
-        id: "#2391"
+      - title: "UCUM to calendar duration conversion supported across seconds boundary"
+        comment: |
+          D8. fp2sql permits toQuantity() conversion between UCUM definite-duration
+          units and calendar-duration keywords across the seconds boundary (e.g.,
+          '1 \'wk\''.toQuantity('days') → 7 'd'). fhirpath.js refuses this conversion
+          (returns []). Neither violates the spec, which is silent on cross-system
+          conversion above seconds. See SPEC_DIVERGENCES.md D8.
+        type: design
         outcome: failure
         any:
           - '''1 \''wk\''''.toQuantity(''days'')'

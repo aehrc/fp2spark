@@ -127,6 +127,33 @@ Consequences:
 - Fixing this without the whitespace workaround would require removing CODING
   literal support from the grammar or introducing context-sensitive lexing.
 
+## D8. UCUM ↔ calendar-duration conversion across the seconds boundary
+
+The FHIRPath spec (§3.3 Quantity) defines calendar durations (year/month/week/day/...)
+as **equivalent** (`~`) — not **equal** (`=`) — to their UCUM counterparts above the
+seconds boundary. The `toQuantity(unit)` conversion table (§5.3) bridges calendar
+units to UCUM only via `1 second = 1 's'`; all other conversions are calendar-to-
+calendar. §9 further states that definite-duration quantities above seconds cannot
+be used in date/time arithmetic (`1 'wk' + @2024-01-01` is an error).
+
+fhirpath.js (`src/misc.js:103-154`) interprets these constraints strictly and
+refuses `toQuantity()` cross-system conversion across the seconds boundary: it
+returns `[]` for inputs where exactly one of (source unit, target unit) is a
+calendar keyword and at least one is greater than one second.
+
+fp2sql is more permissive. `QuantityConvertToUnit.convertUcumToCalendar` /
+`convertCalendarToUcum` (`src/main/java/com/example/fhirpath/codegen/spark/udf/QuantityConvertToUnit.java`)
+convert across systems using UCUM's internal factors plus the spec's equivalence
+relationships (`1 'wk' ~ 1 week`), producing a converted Quantity where
+fhirpath.js returns empty.
+
+Consequences:
+
+- `'1 \'wk\''.toQuantity('days')` returns `7 'd'` in fp2sql, `[]` in fhirpath.js.
+- Neither implementation violates the spec — the spec neither mandates nor
+  forbids cross-system `toQuantity()` above seconds. fhirpath.js takes the
+  conservative reading; fp2sql takes the permissive one.
+
 ---
 
 # Reference Implementation Bugs

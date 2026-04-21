@@ -735,15 +735,6 @@ excludeSet:
           Variable injection is not yet supported by the executor bridge.
         any:
           - ""
-  - title: fp2sql — skip entire fhir-quantity.yaml
-    glob: "fhir-quantity.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Quantity comparison and canonicalisation tests that fp2sql does not yet implement.
-        any:
-          - ""
   - title: fp2sql — 5.3_subsetting.yaml exclusions
     glob: "fhirpath-js/cases/5.3_subsetting.yaml"
     exclude:
@@ -757,6 +748,43 @@ excludeSet:
           SPEC_DIVERGENCES.md D3 (No support for attributes on primitive types).
         any:
           - "** first for collection with null values"
+  - title: fp2sql — fhir-quantity.yaml exclusions
+    glob: "fhirpath-js/cases/fhir-quantity.yaml"
+    exclude:
+      - title: FHIR Quantity with unnarrowed choice type equality returns false (D6)
+        type: design
+        outcome: failure
+        comment: |
+          D6. `.answer.value` resolves to `?Choice(value)` (unnarrowed). Equality
+          against a System.Quantity literal hits the EqualityOps type-mismatch
+          shortcut (Choice ≠ Quantity) and returns false. fhirpath.js auto-narrows
+          the choice to its concrete Quantity variant and applies the FHIRPath
+          §Quantity UCUM→calendar-duration mapping. See SPEC_DIVERGENCES.md D6.
+        any:
+          - "QuestionnaireResponse.item[0].answer.value = 2 year"
+          - "QuestionnaireResponse.item[1].answer.value = 3 minutes"
+      - title: .toQuantity() rejects `*`-cardinality input (D1)
+        type: design
+        outcome: error
+        comment: |
+          D1. `.answer` has FHIR schema cardinality `0..*`, so `.answer.value`
+          has `*` cardinality. fp2sql's `toQuantity()` requires `?` cardinality
+          and raises `CardinalityMismatchException` at analysis time. fhirpath.js
+          evaluates element-wise and returns `[]`. See SPEC_DIVERGENCES.md D1.
+        any:
+          - "QuestionnaireResponse.item[2].answer.value.toQuantity()"
+      - title: Field access on unnarrowed choice type returns empty (D6)
+        type: design
+        outcome: failure
+        comment: |
+          D6. `.comparator` is a Quantity field; `.answer.value` is an unnarrowed
+          `?Choice(value)`. fp2sql resolves the traversal statically to null
+          because it cannot auto-narrow the choice. fhirpath.js dispatches
+          dynamically on the concrete Quantity variant and returns `['>']`.
+          Requires explicit `.value.ofType(Quantity).comparator`. See
+          SPEC_DIVERGENCES.md D6.
+        any:
+          - "QuestionnaireResponse.item[3].answer.value.comparator"
   - title: fp2sql — 5.1_existence.yaml exclusions
     glob: "fhirpath-js/cases/5.1_existence.yaml"
     exclude:
@@ -1171,18 +1199,6 @@ excludeSet:
           - "** expression with extension() for primitive type (using FHIR model data)"
           - "Patient.birthDate.extension .where(url = 'http://hl7.org/fhir/StructureDefinition/patient-birthTime') .valueDateTime.toDateTime() = @1974-12-25T14:35:45-05:00"
           - "Patient.birthDate.extension('http://hl7.org/fhir/StructureDefinition/patient-birthTime') .valueDateTime.toDateTime() = @1974-12-25T14:35:45-05:00"
-  - title: Quantity Exclusions
-    glob: "fhirpath-js/cases/fhir-quantity.yaml"
-    exclude:
-      - title: "Implicit conversion of polymorphic types not supported"
-        id: "#2163"
-        comment: "Should the value be implicitly converted to a quantity?"
-        type: feature
-        any:
-          - "After converting 'a' to year it is equal to year"
-          - "After converting 'a' to year it isn't equal to 'a'"
-          - "After converting 'min' to minutes it is equal to minutes"
-          - "Can access the comparator field when there isn't a need to convert"
   - title: fp2sql — simple.yaml exclusions
     glob: "fhirpath-js/cases/simple.yaml"
     exclude:

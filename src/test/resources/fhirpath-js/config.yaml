@@ -1140,12 +1140,11 @@ excludeSet:
         comment: "ofType(string) should exclude null elements; fp2sql includes them."
         desc:
           - "ofType() function for the null element of a collection (2)"
-  - title: Combining exclusions
+  - title: fp2sql — 5.4_combining.yaml exclusions
     glob: "fhirpath-js/cases/5.4_combining.yaml"
     exclude:
       - title: "Polymorphic unions not supported"
         type: design
-        id: "#2398"
         comment: "D4: fp2sql only supports monomorphic collections."
         any:
           - "Functions.attrdouble | Functions.coll1.colltrue.attr"
@@ -1162,7 +1161,6 @@ excludeSet:
       - title: "Primitive elements with extensions but no value are invisible"
         type: design
         outcome: failure
-        id: "#437"
         comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "(Patient.name.given[0] | Patient.name.given[3]).count()"

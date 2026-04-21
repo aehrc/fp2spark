@@ -103,16 +103,13 @@ excludeSet:
         comment: |
           These functions are registered in OperationRegistry but still fail
           specific fhirpath.js compat tests: exclude()/intersect() duplicate
-          handling; isDistinct() vs D3 primitive-extension cases; join() parse
-          issue on union expressions; toChars() parser issues in
-          5.6_string_manipulation. Skipped here until per-file PRs (Phase 3)
-          move them into targeted exclusions.
+          handling; isDistinct() vs D3 primitive-extension cases. Skipped
+          here until per-file PRs (Phase 3) move them into targeted
+          exclusions.
         function:
           - intersect
           - exclude
           - isDistinct
-          - toChars
-          - join
       - title: Tick-quoted FHIR type names in is()/as()/ofType()
         type: feature
         id: "#211"
@@ -371,6 +368,32 @@ excludeSet:
         outcome: failure
         desc:
           - "matches with dotAll"
+      - title: Union of string literals with '|' without surrounding whitespace
+        type: design
+        outcome: error
+        comment: |
+          D7. fp2sql's CODING literal lexer greedily consumes
+          `'a'|'b'` as a single CODING token, so these expressions
+          fail at parse time. fhirpath.js has no CODING literals
+          and parses the same input as a union of string literals.
+          Workaround: put whitespace around '|' (e.g. 'a' | 'b').
+          See SPEC_DIVERGENCES.md D7.
+        any:
+          - "('a'|'b'|'c').join(',')"
+          - "('a'|'b'|'c').join()"
+      - title: Union of string literals with '|' — yaml already expects error
+        type: design
+        outcome: pass
+        comment: |
+          D7 (see above). This case has `error: true` in the YAML, and
+          fp2sql does raise a parse error for the same CODING-literal
+          reason, so the test passes as-is. Recorded as a pass-exclusion
+          to document the divergent root cause (fhirpath.js errors at
+          runtime when converting a Date into the string union; fp2sql
+          errors at parse time before evaluating anything).
+          See SPEC_DIVERGENCES.md D7.
+        any:
+          - "('a'|'2023-05-28'.toDate()|'c').join(',')"
   # ---------------------------------------------------------------------------
   # fp2sql — 5.7_math.yaml exclusions
   # ---------------------------------------------------------------------------
@@ -642,17 +665,6 @@ excludeSet:
           SPEC_DIVERGENCES.md D3 (No support for attributes on primitive types).
         any:
           - "** first for collection with null values"
-  - title: String manipulation exclusions
-    glob: "fhirpath-js/cases/5.6_string_manipulation.yaml"
-    exclude:
-      - title: "Parse error"
-        type: wontfix
-        outcome: pass
-        comment: |
-          The test case is not valid FHIRPath syntax, it contains a parse error.
-        any:
-          - "('a'|'2023-05-28'.toDate()|'c').join(',')"
-          - "('a'|'2023-05-28'.toDate()|'c').join(',')"
   - title: Existence exclusions
     glob: "fhirpath-js/cases/5.1_existence.yaml"
     exclude:

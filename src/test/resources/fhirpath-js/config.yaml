@@ -681,7 +681,7 @@ excludeSet:
         comment: "D1: fp2sql requires statically single-valued operands for not()."
         any:
           - "** error for collection that is not a singleton"
-  - title: Filtering and projection exclusions
+  - title: fp2sql — 5.2_filtering_and_projection.yaml exclusions
     glob: "fhirpath-js/cases/5.2_filtering_and_projection.yaml"
     exclude:
       - title: "Monomorphic collections cannot represent mixed-type arrays"
@@ -702,14 +702,12 @@ excludeSet:
       - title: "where() filtering on .id of primitive elements"
         type: design
         outcome: failure
-        id: "#437"
         comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "Patient.name.given.where(id = 'Jacomus1Id').count()"
       - title: "repeat() on .id of primitive elements"
         type: design
         outcome: failure
-        id: "#437"
         comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "Patient.name.given.repeat(id)"

@@ -776,28 +776,18 @@ excludeSet:
         any:
           - "@2018-02-02T22-04:00 = @2018-02-03T06+04:00"
           - "@2018-02-02T22-04:00 = @2018-02-03T05:03+04:00"
-  - title: Comparison exclusions
+  - title: fp2sql — 6.2_comparision.yaml exclusions
     glob: "fhirpath-js/cases/6.2_comparision.yaml"
     exclude:
       - title: Unsupported comparison above second calendar durations
         type: feature
         outcome: failure
-        id: "#2494"
+        id: "#224"
         any:
           - "1 year > 12 months"
           - "1 year < 12 months"
           - "1 minute > 59 seconds"
           - "1 minute < 61 seconds"
-      - title: Calendar duration != UCUM literal returns true instead of empty
-        type: ref-impl-bug
-        id: "R1"
-        comment: |
-          fhirpath.js expects true but the spec says empty.
-          See SPEC_DIVERGENCES.md R1.
-        outcome: failure
-        any:
-          - "1 year != 1 'a'"
-          - "1 month != 1 'mo'"
       - title: Empty list [] inferred as MANY cardinality in comparison
         type: bug
         id: "#156"

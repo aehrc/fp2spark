@@ -115,14 +115,19 @@ excludeSet:
           - toChars
           - join
       - title: Tick-quoted FHIR type names in is()/as()/ofType()
-        type: bug
-        id: "#209"
+        type: feature
+        id: "#211"
         comment: |
           fp2sql's analyzer rejects FHIR type names written with backtick-quoted
-          identifiers, e.g. `FHIR.\`Patient\``. Covered under #209 until a
-          targeted per-file exclusion lands in fhir-r4.yaml (Phase 3).
+          identifiers (e.g. FHIR.`Patient`) with InvalidExpressionException.
+          Tracked under the tick-quoted-identifier umbrella (#211). Will be
+          folded into the fhir-r4.yaml per-file block during Phase 3 alongside
+          the other #2153 tick-quote rules.
         any:
-          - "FHIR.`"
+          - "is(FHIR.`"
+          - "as FHIR.`"
+          - "as(FHIR.`"
+          - "ofType(FHIR.`"
       # -----------------------------------------------------------------------
       # Environment variables, operators and other global concerns.
       # -----------------------------------------------------------------------
@@ -217,13 +222,16 @@ excludeSet:
           - "@T09:45Z + 59 seconds = @T09:45Z"
           - "@T09:45:23Z + 2 minutes = @T04:47:23.000-05:00"
           - "@T23:59:23Z + 2 minutes = @T00:01:23Z"
-      - title: Encoder-rejected resource types
+      - title: Encoder-rejected resource types (StructureDefinition)
         type: feature
         id: "#208"
         comment: |
-          Pathling encoders fp2sql uses cannot serialise certain FHIR resource types
-          (notably Bundle and StructureDefinition). Tests whose subject is such a
-          resource cannot be loaded.
+          Pathling encoders fp2sql uses cannot serialise StructureDefinition; this
+          matcher skips top-level StructureDefinition.* expressions.
+          Bundle-backed tests (which reference patient-bundle.json via the subject
+          inputfile, not the expression text) are out of this matcher's reach and
+          are handled separately at the subject-factory layer. The underlying
+          encoder gap is tracked by #208.
         expression:
           - "^StructureDefinition"
   # ---------------------------------------------------------------------------

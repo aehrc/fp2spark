@@ -1049,14 +1049,6 @@ excludeSet:
           - "** expression with extension() for primitive type (using FHIR model data)"
           - "Patient.birthDate.extension .where(url = 'http://hl7.org/fhir/StructureDefinition/patient-birthTime') .valueDateTime.toDateTime() = @1974-12-25T14:35:45-05:00"
           - "Patient.birthDate.extension('http://hl7.org/fhir/StructureDefinition/patient-birthTime') .valueDateTime.toDateTime() = @1974-12-25T14:35:45-05:00"
-  - title: Factory exclusions
-    glob: "fhirpath-js/cases/factory.yaml"
-    exclude:
-      - title: "Custom factory not supported"
-        type: feature
-        id: "#2425"
-        expression:
-          - "%factory(\\W|$)"
   - title: Quantity Exclusions
     glob: "fhirpath-js/cases/fhir-quantity.yaml"
     exclude:

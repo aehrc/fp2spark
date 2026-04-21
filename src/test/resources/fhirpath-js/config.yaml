@@ -1006,7 +1006,7 @@ excludeSet:
         id: "#2424"
         spel:
           - "#testCase.context == 'g1'"
-  - title: Extension exclusions
+  - title: fp2sql — extensions.yaml exclusions
     glob: "fhirpath-js/cases/extensions.yaml"
     exclude:
       - title: "Primitive collection traversal does not filter null values"
@@ -1021,24 +1021,37 @@ excludeSet:
         any:
           - "** exclude null values from the result"
       - title: "ID on primitive types not supported"
-        comment: "This also includes the case of an empty primitive value with non-empty attributes"
-        type: feature
+        comment: |
+          D3. FHIR primitive elements can carry id/extension attributes alongside their
+          value, but fp2sql does not support this structure — .id on primitives returns
+          empty, and primitives with attributes-but-no-value are invisible. See
+          SPEC_DIVERGENCES.md D3 (no support for attributes on primitive types).
+        type: design
         outcome: failure
-        id: "#437"
         any:
           - "** id for primitive type"
           - "Patient.address[1].id = 'someId'"
           - "** count nodes without value, but with extensions"
-      - title: "extensions on primitive types not supported"
-        type: feature
+      - title: "extension() on primitive types — passes trivially (outcome: pass)"
+        comment: |
+          D3. FHIR primitive elements can carry id/extension attributes alongside their
+          value, but fp2sql does not support this structure — .extension() on primitives
+          returns empty. This case passes trivially because the expected result is also
+          empty. See SPEC_DIVERGENCES.md D3 (no support for attributes on primitive
+          types).
+        type: design
         outcome: pass
-        id: "#437"
         any:
           - "** expression with extension for primitive type 1"
-      - title: "extensions on primitive types not supported"
-        type: feature
+      - title: "extension() on primitive types not supported (outcome: failure)"
+        comment: |
+          D3. FHIR primitive elements can carry id/extension attributes alongside their
+          value, but fp2sql does not support this structure — .extension() on primitives
+          returns empty, so expressions that navigate through primitive extensions yield
+          no result. See SPEC_DIVERGENCES.md D3 (no support for attributes on primitive
+          types).
+        type: design
         outcome: failure
-        id: "#437"
         any:
           - "** expression with extension for primitive type 3"
           - "Patient.communication.preferred.extension('test').value.id"

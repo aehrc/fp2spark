@@ -629,16 +629,17 @@ excludeSet:
         any:
           - "Access a custom field starting with a capital letter (1)"
           - "Access a custom field starting with a capital letter (2)"
-  - title: Subsetting exclusions
+  - title: fp2sql — 5.3_subsetting.yaml exclusions
     glob: "fhirpath-js/cases/5.3_subsetting.yaml"
     exclude:
-      - title: "Primitive attributes"
-        id: "#437"
-        type: feature
+      - title: "Primitive attributes: .first().id on collection with null primitives"
+        type: design
         outcome: failure
         comment: |
-          This test requires support for the primitive attribute/extension structure, as it involves 
-          traversing to the `id` of a primitive element.
+          D3. fp2sql does not support attributes on primitive types. The expression
+          `Functions.collWithNullsAndTrue.first().id` traverses to the `id` of a
+          primitive element, which per D3 returns empty rather than the id. See
+          SPEC_DIVERGENCES.md D3 (No support for attributes on primitive types).
         any:
           - "** first for collection with null values"
   - title: String manipulation exclusions

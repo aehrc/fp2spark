@@ -255,6 +255,13 @@ entire <file>"** at the top of `config.yaml`. Upstream Pathling rules follow aft
 enabling a currently-skipped file, delete or narrow its `fp2sql — skip entire <file>` set and
 run the suite; add per-case exclusions for whatever remains red.
 
+**Workflows:**
+- Enabling a blanket-skipped file → `/enable-compat-suite` skill.
+- Re-reviewing or auditing already-enabled content (cleaning up `wontfix`, reclassifying
+  Pathling ids, consolidating duplicates) → `/review-compat-exclusions` skill.
+- Both skills share the same `## Exclusion hygiene (authoring rules)` section documented in
+  `.claude/skills/enable-compat-suite/SKILL.md`.
+
 ### Adding YAML test files
 
 1. Refresh `.local/pathling` to the desired Pathling snapshot.

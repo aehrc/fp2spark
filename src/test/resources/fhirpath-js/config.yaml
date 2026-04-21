@@ -103,13 +103,11 @@ excludeSet:
         comment: |
           These functions are registered in OperationRegistry but still fail
           specific fhirpath.js compat tests: exclude()/intersect() duplicate
-          handling; isDistinct() vs D3 primitive-extension cases. Skipped
-          here until per-file PRs (Phase 3) move them into targeted
-          exclusions.
+          handling. Skipped here until per-file PRs (Phase 3) move them into
+          targeted exclusions.
         function:
           - intersect
           - exclude
-          - isDistinct
       - title: Tick-quoted FHIR type names in is()/as()/ofType()
         type: feature
         id: "#211"
@@ -665,7 +663,7 @@ excludeSet:
           SPEC_DIVERGENCES.md D3 (No support for attributes on primitive types).
         any:
           - "** first for collection with null values"
-  - title: Existence exclusions
+  - title: fp2sql — 5.1_existence.yaml exclusions
     glob: "fhirpath-js/cases/5.1_existence.yaml"
     exclude:
       - title: "Primitive elements with extensions but no value are invisible"
@@ -681,6 +679,17 @@ excludeSet:
         comment: "D1: fp2sql requires statically single-valued operands for not()."
         any:
           - "** error for collection that is not a singleton"
+      - title: "isDistinct() on primitives with null values but present extensions"
+        type: design
+        outcome: failure
+        comment: |
+          D3. fp2sql treats primitive elements with only extensions (no value)
+          as absent. fhirpath.js includes them as distinct "null" items, so
+          combine() followed by isDistinct() disagrees on collections backed by
+          _given extension-only slots.
+          See SPEC_DIVERGENCES.md D3.
+        any:
+          - "(Patient.name.given[0]).combine(Patient.name.given[3]).isDistinct()"
   - title: fp2sql — 5.2_filtering_and_projection.yaml exclusions
     glob: "fhirpath-js/cases/5.2_filtering_and_projection.yaml"
     exclude:

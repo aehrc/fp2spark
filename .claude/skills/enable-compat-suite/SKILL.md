@@ -23,6 +23,34 @@ The repo is `piotrszul/fp2spark` on GitHub.
 - **Config file**: `src/test/resources/fhirpath-js/config.yaml`
 - **Test class**: `src/test/java/com/example/fhirpath/compat/yaml/YamlReferenceCompatTest.java`
 - **Arbitrary subjects**: `ENABLED_ARBITRARY_SUBJECTS` in `YamlSubjectFactory.java`
+- **Re-review companion skill**: `.claude/skills/review-compat-exclusions/SKILL.md` — use when
+  auditing already-enabled content rather than enabling a blanket-skipped file.
+
+## Exclusion hygiene (authoring rules)
+
+Every rule added or modified in `config.yaml` must satisfy these invariants. The re-review
+skill exists precisely because earlier runs of this skill produced rules that break them.
+
+1. **Never use `type: wontfix`.** It is obsolete. Use one of `feature`, `bug`, `design`,
+   `ref-impl-bug`, `test-infra`.
+2. **Never carry forward Pathling issue ids.** `#2xxx` and `#437` live on `pathling/pathling`,
+   not `piotrszul/fp2spark`. If a Pathling rule is reused, either (a) file a fp2sql issue and
+   replace the id, or (b) reclassify to `design`/`ref-impl-bug` citing a D/R entry.
+3. **`type: design` requires a `D\d+` token** (e.g. `D3`) somewhere in the rule's `comment`.
+   The reviewer should grep the diff and fail any `type: design` lacking a D-entry citation.
+4. **`type: ref-impl-bug` requires an `R\d+` token** in the rule's `comment`.
+5. **`type: feature|bug|test-infra` requires `id: "#NNN"`** pointing to `piotrszul/fp2spark`.
+   No blank ids. No Pathling ids.
+6. **Prefer narrow matchers.** `any: ["<exact expression>"]` or `desc: [...]` is preferable to
+   open `expression:` regex. Use `expression:` only when the pattern genuinely varies, and
+   state why in the `comment`.
+7. **Avoid singleton global rules.** A rule in the `*.yaml` global block that only fires on
+   one file belongs in that file's `fp2sql — <file>` block. Global rules should cover
+   genuinely cross-cutting concerns (unimplemented functions, unsupported env vars, design
+   divergences that apply everywhere).
+8. **Every slice has exactly one authoritative block.** When a rule covered by a per-file
+   `fp2sql — <file>` block also appears in the global block or a legacy upstream Pathling
+   block, consolidate into the per-file block and delete the duplicates.
 
 ## Workflow
 
@@ -83,6 +111,15 @@ whatever new failures surface.
 not just the first one you happen to check. It's easy to verify one feature mid-triage
 (because a failure prompted the check) and forget to apply the same scrutiny to the
 others.
+
+**Duplicate sweep:** When you remove or narrow a global rule, also grep `config.yaml` for
+per-file duplicates of the same rule and delete them. Leaving a duplicate in a per-file
+block silently re-enables the skip for one file and defeats the cleanup.
+
+```bash
+# Example: removing a global "Contained resources" rule
+rg -n 'Contained|contained' src/test/resources/fhirpath-js/config.yaml
+```
 
 ### Step 4: Enable Arbitrary Subjects
 
@@ -148,16 +185,20 @@ For each failure, determine the correct exclusion type by investigating the root
 
 5. **Assign a type** based on findings:
 
-   | Type | When to use | Traceability |
-   |------|-------------|--------------|
-   | `feature` | fp2sql doesn't implement this yet | File/reference a GitHub issue via `id` |
-   | `bug` | fp2sql produces incorrect results | File a GitHub issue via `id` |
-   | `design` | Intentional fp2sql divergence | Must trace to D-entry in SPEC_DIVERGENCES.md |
-   | `ref-impl-bug` | fhirpath.js test expectation contradicts the spec | Must trace to R-entry in SPEC_DIVERGENCES.md |
-   | `test-infra` | Test infrastructure limitation | File/reference a GitHub issue via `id` |
+   | Type | When to use | Required reference format |
+   |------|-------------|---------------------------|
+   | `feature` | fp2sql doesn't implement this yet | `id: "#NNN"` on `piotrszul/fp2spark` |
+   | `bug` | fp2sql produces incorrect results | `id: "#NNN"` on `piotrszul/fp2spark` |
+   | `design` | Intentional fp2sql divergence | `D\d+` token in `comment` (traces to SPEC_DIVERGENCES.md) |
+   | `ref-impl-bug` | fhirpath.js test expectation contradicts the spec | `R\d+` token in `comment` (traces to SPEC_DIVERGENCES.md) |
+   | `test-infra` | Test infrastructure limitation | `id: "#NNN"` on `piotrszul/fp2spark` |
 
    **Never use `wontfix`** — it is obsolete. If an existing `wontfix` exclusion falls within
    scope, reclassify it using the types above.
+
+   **Never use Pathling ids** (`#2xxx`, `#437`). They point at `pathling/pathling`. File a
+   fp2sql issue on `piotrszul/fp2spark` or reclassify to `design`/`ref-impl-bug` with a D/R
+   citation.
 
 #### Handling SPEC_DIVERGENCES.md changes
 
@@ -197,6 +238,21 @@ Each exclusion must have:
 - `comment` — brief explanation of why
 - `id` — issue reference for `feature`, `bug`, and `test-infra` types
 - Matcher (`any`, `expression`, `function`, or `desc`)
+
+#### Pre-write checklist
+
+Before saving the edit, confirm each new rule passes all six:
+
+- [ ] `type` is one of `feature`, `bug`, `design`, `ref-impl-bug`, `test-infra`
+      (never `wontfix`).
+- [ ] `feature|bug|test-infra` has `id: "#NNN"` on `piotrszul/fp2spark`
+      (never `#2xxx` or `#437`).
+- [ ] `design` has a `D\d+` token in the `comment`; `ref-impl-bug` has `R\d+`.
+- [ ] Matcher is as narrow as possible (`any` / `desc` preferred over `expression` regex).
+- [ ] If adding to the global `*.yaml` block: the rule genuinely cross-cuts ≥2 files. If not,
+      place it in the relevant `fp2sql — <file>` block instead.
+- [ ] No duplicate of an existing in-scope rule (per-file block + global block + any
+      surviving upstream Pathling block).
 
 ### Step 9: Reclassify In-Scope `wontfix`
 
@@ -249,6 +305,34 @@ being enabled must trace to either:
 - An R-entry in SPEC_DIVERGENCES.md (for `ref-impl-bug`)
 
 If any exclusion is missing a reference, fix it before proceeding.
+
+**Sweep neighbouring in-scope rules.** Don't stop at newly added rules — apply the same
+traceability check to *all* rules in the `fp2sql — <file>` block for the file being
+enabled and to any upstream Pathling block matching the same glob. If a neighbour has a
+`wontfix`, a Pathling id, or a missing D/R citation, fix it in this PR. That is what
+keeps the hygiene of the file monotonically improving instead of accumulating debt.
+
+Quick diff-level checks before pushing:
+
+```bash
+# No wontfix remains in the slice
+rg -n 'type: wontfix' src/test/resources/fhirpath-js/config.yaml
+
+# No Pathling ids remain in the slice
+rg -n 'id: "#(2[0-9]{3}|437)"' src/test/resources/fhirpath-js/config.yaml
+
+# Every design rule cites a D-entry
+python3 - <<'PY'
+import yaml, pathlib, re
+cfg = yaml.safe_load(pathlib.Path('src/test/resources/fhirpath-js/config.yaml').read_text())
+for block in cfg['excludeSet']:
+    for r in block.get('exclude', []):
+        if r.get('type') == 'design' and not re.search(r'D\d+', r.get('comment') or ''):
+            print('design w/o D-entry:', r.get('title'))
+        if r.get('type') == 'ref-impl-bug' and not re.search(r'R\d+', r.get('comment') or ''):
+            print('ref-impl-bug w/o R-entry:', r.get('title'))
+PY
+```
 
 **Present a summary of all issues created** to the user before moving on:
 
@@ -317,12 +401,22 @@ If checks fail, report the failure details to the user and investigate.
 - **Spec is ground truth.** Trust the FHIRPath spec over test expectations.
 - **Always consult the spec** via `fhirpath-spec` skill before classifying ambiguous failures.
 - **Never use `wontfix`.** Reclassify any in-scope `wontfix` exclusions.
+- **Never carry forward Pathling ids.** `#2xxx` and `#437` point at `pathling/pathling`. File
+  a fp2sql issue on `piotrszul/fp2spark` or reclassify to `design`/`ref-impl-bug`.
 - **SPEC_DIVERGENCES.md changes require approval.** Always propose and wait.
 - **Classification summary requires approval.** Present the table and wait.
-- **Every `feature`, `bug`, and `test-infra` needs an issue.** File with `compat:fhirpath-js` label.
-- **Every exclusion needs a reference.** Issue `id` for feature/bug/test-infra, D-entry for design, R-entry for ref-impl-bug.
+- **Every `feature`, `bug`, and `test-infra` needs a fp2sql issue.** File with
+  `compat:fhirpath-js` label.
+- **Every exclusion needs a reference.** Issue `id` for feature/bug/test-infra, `D\d+` token
+  in comment for design, `R\d+` token in comment for ref-impl-bug.
 - **Global rules may already cover failures.** Check before adding redundant exclusions.
 - **Global rules can be stale.** If the issue says enablement is "absorbed by the X global
   rule," verify X is still actually unimplemented by grepping the source. Apply the check
   symmetrically to every feature the issue names, not just the one that happens to come up
-  during triage.
+  during triage. When you remove a global rule, sweep the file for per-file duplicates and
+  remove them too.
+- **Sweep neighbours, not just new rules.** Before the PR, traceability checks apply to every
+  rule in the `fp2sql — <file>` block for the file being enabled, not only newly added
+  rules.
+- **Refreshing from Pathling?** Never carry forward Pathling ids or `wontfix`. Run the
+  `/review-compat-exclusions` skill on the affected slice instead.

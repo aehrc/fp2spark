@@ -114,9 +114,7 @@ excludeSet:
         comment: |
           fp2sql's analyzer rejects FHIR type names written with backtick-quoted
           identifiers (e.g. FHIR.`Patient`) with InvalidExpressionException.
-          Tracked under the tick-quoted-identifier umbrella (#211). Will be
-          folded into the fhir-r4.yaml per-file block during Phase 3 alongside
-          the other #2153 tick-quote rules.
+          Tracked under the tick-quoted-identifier umbrella (#211).
         any:
           - "is(FHIR.`"
           - "as FHIR.`"
@@ -516,6 +514,8 @@ excludeSet:
           - "** testCollectionBoolean2"
           - "** testCollectionBoolean3"
           - "** testCollectionBoolean4"
+          - "** testCollectionBoolean5"
+          - "** testCollectionBoolean6"
           - "** testIif1"
           - "** testIif2"
           - "** testIif3"
@@ -538,6 +538,123 @@ excludeSet:
         outcome: error
         any:
           - "1 > 2 is Boolean"
+      - title: "Tick quotes identifiers not supported"
+        outcome: failure
+        id: "#211"
+        type: bug
+        comment: |
+          Tracked under the tick-quoted-identifier umbrella (#211). fp2sql's
+          ANTLR grammar / analyzer does not accept backtick-quoted identifiers
+          in path segments (e.g. name.`given`, `Patient`.name.`given`).
+        any:
+          - "** testEscapedIdentifier"
+          - "** testSimpleBackTick1"
+      - title: Choice polymorphism for Observation.value chained access
+        type: design
+        outcome: failure
+        comment: |
+          D6. Observation.value is a choice type — direct chained traversal
+          (e.g. .value.value, .value.unit) requires ofType() narrowing first.
+          These expressions slip past the global choice-type regex
+          (Observation\.value[^\.]) because the next character is a dot.
+          See SPEC_DIVERGENCES.md D6.
+        any:
+          - "Observation.value.unit"
+          - "** testLiteralDecimalGreaterThanNonZeroTrue"
+          - "** testLiteralDecimalGreaterThanZeroTrue"
+          - "** testLiteralDecimalGreaterThanIntegerTrue"
+          - "** testLiteralDecimalLessThanInteger"
+      - title: "Incorrect multiplication/division of quantity literals"
+        id: "#228"
+        type: bug
+        comment: |
+          Quantity arithmetic does not canonicalize units when multiplying or
+          dividing two Quantity values (per FHIRPath spec §6.6 / UCUM).
+          E.g. 2.0 'cm' * 2.0 'm' = 0.040 'm2'; 4.0 'g' / 2.0 'm' = 2 'g/m'.
+        any:
+          - "** testQuantity9"
+          - "** testQuantity10"
+      - title: "Decimal literal exceeded maximum scale supported"
+        id: "#229"
+        type: feature
+        comment: |
+          FHIRPath permits arbitrary-precision decimal literals and arithmetic
+          (§5.1, §6.6). fp2sql truncates / rejects values whose scale exceeds
+          Spark's DECIMAL(38,n) default.
+        any:
+          - "** testNEquality22"
+          - "1.2 / 1.8 = 0.66666667"
+          - "1.00000001.truncate() = 1"
+          - "0.00000001.convertsToDecimal()"
+      - title: "extension() on primitive types — outcome: failure"
+        type: design
+        outcome: failure
+        comment: |
+          D3. fp2sql does not support attributes (including extensions) on
+          primitive types. See SPEC_DIVERGENCES.md D3.
+        any:
+          - "Patient.birthDate.extension('http://hl7.org/fhir/StructureDefinition/patient-birthTime').exists()"
+      - title: "extension() on primitive types — passes trivially (outcome: pass)"
+        type: design
+        outcome: pass
+        comment: |
+          D3. fp2sql does not support attributes (including extensions) on
+          primitive types. This expression passes trivially because the
+          extension URL is absent; recorded as a pass-exclusion to document
+          the divergent root cause. See SPEC_DIVERGENCES.md D3.
+        any:
+          - "Patient.birthDate.extension('http://hl7.org/fhir/StructureDefinition/patient-birthTime1').empty()"
+      - title: Unsupported equality for complex types
+        type: bug
+        id: "#134"
+        comment: |
+          Equality on complex types (e.g. HumanName) incorrectly returns false
+          due to the implicit _fid (family id) field polluting the structural
+          comparison. Tracked under #134.
+        expression:
+          - "name = name"
+          - "name != name"
+      - title: Unsupported comparison above second calendar durations
+        type: feature
+        id: "#224"
+        outcome: failure
+        any:
+          - "7 days = 1 week"
+          - "6 days < 1 week"
+          - "8 days > 1 week"
+      - title: "FHIR and System type namespace distinction not preserved"
+        type: bug
+        id: "#188"
+        outcome: failure
+        comment: |
+          Per FHIR FHIRPath spec, is() and as() must distinguish FHIR primitive types
+          from System types (e.g., FHIR.boolean vs System.Boolean). Pathling maps FHIR
+          primitives to System types internally, causing is(Boolean) to return true for
+          FHIR.boolean values. The spec explicitly calls is() an exception to automatic
+          FHIR-to-System type conversion.
+        any:
+          - "Patient.active.is(Boolean).not()"
+          - "Patient.active.is(System.Boolean).not()"
+      - title: "fhirpath.js operator precedence: is vs union"
+        type: ref-impl-bug
+        outcome: error
+        comment: |
+          R3. Spec defines is/as (#06) higher than union (#07). '1 | 1 is Integer'
+          parses as '1 | (1 is Integer)' = '1 | true', rejected as type error.
+          fhirpath.js parses as '(1 | 1) is Integer'. See SPEC_DIVERGENCES.md R3.
+        any:
+          - "1 | 1 is Integer"
+      - title: "Recursive ValueSet.expansion.contains not encoded"
+        type: feature
+        id: "#190"
+        outcome: failure
+        comment: |
+          The encoder explicitly skips the recursive 'contains' field within
+          ValueSetExpansionContainsComponent (see R4DataTypeMappings.skipField).
+          This means nested contains entries are not available in the Spark schema,
+          so repeat(contains) only finds top-level entries.
+        any:
+          - "** testRepeat1"
   - title: fp2sql — 4.1_literals.yaml exclusions
     glob: "fhirpath-js/cases/4.1_literals.yaml"
     exclude:
@@ -1142,114 +1259,3 @@ excludeSet:
           - "(Patient.name.given[0] | Patient.name.given[3]).count()"
           - "(Patient.name.given[0]).combine(Patient.name.given[3]).count()"
           - "Patient.name.given[0].union(Patient.name.given[3]).count()"
-  - title: FHIR R4 Exclusions
-    glob: "fhirpath-js/cases/fhir-r4.yaml"
-    exclude:
-      - title: "Tick quotes identifiers not supported"
-        outcome: failure
-        id: "#2153"
-        type: bug
-        any:
-          - "** testEscapedIdentifier"
-          - "** testSimpleBackTick1"
-      - title: "Tick quotes identifiers not supported"
-        id: "#2153"
-        type: bug
-        any:
-          - "Patient.ofType(FHIR.`Patient`).type().name"
-      - title: "Implicit conversion of polymorphic types not supported"
-        type: feature
-        id: "#2163"
-        any:
-          - "Observation.value.unit"
-          - "** testLiteralDecimalGreaterThanNonZeroTrue"
-          - "** testLiteralDecimalGreaterThanZeroTrue"
-          - "** testLiteralDecimalGreaterThanIntegerTrue"
-          - "** testLiteralDecimalLessThanInteger"
-          - "** testEquality28"
-          - "** testNEquality24"
-          - "** testLessThan22"
-          - "** testLessOrEqual22"
-          - "Observation.value >= 100 '[lb_av]'"
-          - "Observation.value > 100 '[lb_av]'"
-      - title: "incorrect multiplication/division of quantity literals"
-        id: "#2168"
-        comment: "E.g: 2.0 'cm' * 2.0 'm' = 0.040 'm2'"
-        type: bug
-        any:
-          - "** testQuantity9"
-          - "** testQuantity10"
-      - title: "3-arg iif() with else-branch not implemented"
-        comment: "E.g.: iif(true, true, 1/0). Same as fp2sql fhir-r4 iif exclusion."
-        type: feature
-        id: "#186"
-        any:
-          - "** testCollectionBoolean5"
-          - "** testCollectionBoolean6"
-      - title: "Decimal literal exceeded maximum scale supported"
-        id: "#2144"
-        type: feature
-        any:
-          - "** testNEquality22"
-          - "1.2 / 1.8 = 0.66666667"
-          - "1.00000001.truncate() = 1"
-          - "0.00000001.convertsToDecimal()"
-      - title: "Extensions on primitive types not supported"
-        type: feature
-        outcome: failure
-        id: "#437"
-        any:
-          - "Patient.birthDate.extension('http://hl7.org/fhir/StructureDefinition/patient-birthTime').exists()"
-      - title: "Extensions on primitive types not supported"
-        type: feature
-        outcome: pass
-        id: "#437"
-        any:
-          - "Patient.birthDate.extension('http://hl7.org/fhir/StructureDefinition/patient-birthTime1').empty()"
-      - title: Unsupported equality for complex types
-        type: feature
-        id: "#2420"
-        expression:
-          - "name = name"
-          - "name != name"
-      - title: Unsupported comparison above second calendar durations
-        type: feature
-        outcome: failure
-        id: "#2494"
-        any:
-          - "7 days = 1 week"
-          - "6 days < 1 week"
-          - "8 days > 1 week"
-      - title: "FHIR and System type namespace distinction not preserved"
-        type: bug
-        id: "#188"
-        outcome: failure
-        comment: |
-          Per FHIR FHIRPath spec, is() and as() must distinguish FHIR primitive types
-          from System types (e.g., FHIR.boolean vs System.Boolean). Pathling maps FHIR
-          primitives to System types internally, causing is(Boolean) to return true for
-          FHIR.boolean values. The spec explicitly calls is() an exception to automatic
-          FHIR-to-System type conversion.
-        any:
-          - "Patient.active.is(Boolean).not()"
-          - "Patient.active.is(System.Boolean).not()"
-      - title: "fhirpath.js operator precedence: is vs union"
-        type: ref-impl-bug
-        outcome: error
-        comment: |
-          R3. Spec defines is/as (#06) higher than union (#07). '1 | 1 is Integer'
-          parses as '1 | (1 is Integer)' = '1 | true', rejected as type error.
-          fhirpath.js parses as '(1 | 1) is Integer'. See SPEC_DIVERGENCES.md R3.
-        any:
-          - "1 | 1 is Integer"
-      - title: "Recursive ValueSet.expansion.contains not encoded"
-        type: feature
-        id: "#190"
-        outcome: failure
-        comment: |
-          The encoder explicitly skips the recursive 'contains' field within
-          ValueSetExpansionContainsComponent (see R4DataTypeMappings.skipField).
-          This means nested contains entries are not available in the Spark schema,
-          so repeat(contains) only finds top-level entries.
-        any:
-          - "** testRepeat1"

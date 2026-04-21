@@ -97,6 +97,36 @@ Consequences:
 - `Observation.value.unit` requires `Observation.value.ofType(Quantity).unit`.
 - Comparison or arithmetic on unnarrowed choice types fails overload resolution.
 
+## D7. CODING literal lexer takes precedence over union of string literals
+
+fp2sql's grammar (inherited from Pathling) defines a FHIR-specific CODING literal
+token of the form `'system'|'code'|'version'`, reusing `|` as the component
+delimiter:
+
+    CODING : CODING_COMPONENT '|' CODING_COMPONENT (...)* ;
+
+Because ANTLR's lexer is greedy and builds a single token from contiguous
+characters (no whitespace skipping inside a token rule), an expression that
+unions string literals with `|` without intervening whitespace (e.g.,
+`('a'|'b').count()`) is tokenized as a single CODING token rather than as two
+STRING tokens separated by the union operator. The parser then rejects the
+expression at the `term` rule.
+
+The FHIRPath spec does not define CODING literals — they are a FHIR-specific
+extension. fhirpath.js does not support them, so it does not exhibit this
+ambiguity: it parses `'a' | 'b'` as a collection union.
+
+Consequences:
+
+- Expressions that union two or more string literals with `|` without
+  surrounding whitespace fail at parse time in fp2sql.
+- **Workaround**: put whitespace around the `|` operator — `('a' | 'b')` parses
+  correctly as a union because the CODING lexer rule cannot span whitespace.
+- Alternative workarounds: use `combine()` explicitly, or use semicolon (`;`)
+  where the grammar accepts it.
+- Fixing this without the whitespace workaround would require removing CODING
+  literal support from the grammar or introducing context-sensitive lexing.
+
 ---
 
 # Reference Implementation Bugs

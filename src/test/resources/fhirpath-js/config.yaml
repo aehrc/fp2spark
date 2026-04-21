@@ -103,12 +103,11 @@ excludeSet:
         comment: |
           These functions are registered in OperationRegistry but still fail
           specific fhirpath.js compat tests: exclude()/intersect() duplicate
-          handling; isDistinct() vs D3 primitive-extension cases; hasValue()
-          on MANY cardinality (D1); join() parse issue on union expressions;
-          toChars() parser issues in 5.6_string_manipulation. Skipped here
-          until per-file PRs (Phase 3) move them into targeted exclusions.
+          handling; isDistinct() vs D3 primitive-extension cases; join() parse
+          issue on union expressions; toChars() parser issues in
+          5.6_string_manipulation. Skipped here until per-file PRs (Phase 3)
+          move them into targeted exclusions.
         function:
-          - hasValue
           - intersect
           - exclude
           - isDistinct
@@ -513,6 +512,20 @@ excludeSet:
         outcome: error
         any:
           - "1 > 2 is Boolean"
+  - title: fp2sql — hasValue.yaml exclusions
+    glob: "hasValue.yaml"
+    exclude:
+      - title: hasValue() on multi-valued paths
+        type: design
+        comment: |
+          D1. hasValue() requires a singleton operand; fp2sql rejects `*`-cardinality
+          inputs at compile time. fhirpath.js returns false on MANY collections by
+          element-wise evaluation. See SPEC_DIVERGENCES.md D1 (static typing and
+          cardinality).
+        any:
+          - "Patient.identifier.hasValue()"
+          - "Patient.name.hasValue()"
+          - "Patient.name.given.hasValue()"
   # ---------------------------------------------------------------------------
   # fp2sql — per-file "skip entirely" sets, awaiting triage
   #

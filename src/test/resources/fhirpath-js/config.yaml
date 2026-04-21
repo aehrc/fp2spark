@@ -314,19 +314,24 @@ excludeSet:
         any:
           - "@T09:45:23 + 2 years"
       - title: Unary minus on Quantity not supported
-        type: feature
-        id: "#160"
+        type: bug
+        id: "#187"
         comment: |
           The expression produces a negative Quantity via subtraction, but fp2sql
-          has no overload for unary minus on Quantity type.
+          has no overload for unary minus on Quantity type. Same root cause as
+          the fhir-r4.yaml (-5.5 'mg').abs() exclusion.
         outcome: error
         desc:
           - "Can subtract a UCUM time-valued quantity from a calendar duration quantity less than or equal to seconds"
-      - title: Unsupported dateTime arithmetic operator (Quantity + Date)
-        type: wontfix
+      - title: Quantity + Date/DateTime/Time commutation (fhirpath.js ext beyond spec)
+        type: ref-impl-bug
         comment: |
-          FHIRPath defines Date + Quantity but not Quantity + Date.
-          Same exclusion as Pathling.
+          R6. FHIRPath spec §6.6.5/6.6.7 define the time-valued Quantity arithmetic
+          operators with the signature (Date/DateTime/Time + Quantity). The reverse
+          operand order is not defined. fhirpath.js permissively commutes operands
+          (src/math.js:70-77), evaluating `Quantity + Date` as `Date + Quantity`.
+          fp2sql follows the spec signature strictly and rejects at overload
+          resolution. See SPEC_DIVERGENCES.md R6.
         outcome: error
         any:
           - "1 year + @2016-02-29"
@@ -771,13 +776,6 @@ excludeSet:
         any:
           - "@2018-02-02T22-04:00 = @2018-02-03T06+04:00"
           - "@2018-02-02T22-04:00 = @2018-02-03T05:03+04:00"
-  - title: Math6 exclusions
-    glob: "fhirpath-js/cases/6.6_math.yaml"
-    exclude:
-      - title: Unsupported dateTime arithmetics operator (Quantity + Date)
-        type: wontfix
-        any:
-          - "1 year + @2016-02-29"
   - title: Comparison exclusions
     glob: "fhirpath-js/cases/6.2_comparision.yaml"
     exclude:

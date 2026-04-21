@@ -246,3 +246,27 @@ Affected expressions: time-literal comparisons and arithmetic such as
 `@T10:04:23-04:00 = @T14:04:23Z`, `@T09:45Z + 120 seconds`. 33 expressions across
 7 case files (5.5_conversion, 5.6_string_manipulation, 6.1_equality,
 6.2_comparision, 6.6_math, 7_aggregate, fhir-r4).
+
+## R6. `Quantity + Date/DateTime/Time` commutation accepted
+
+The FHIRPath spec defines time-valued Quantity arithmetic with an asymmetric
+operand signature:
+
+- §6.6.5 addition: "The left operand must be a Date, DateTime, or Time;
+  the right operand must be a Quantity with a time-valued unit."
+- §6.6.7 subtraction: same pattern (Date/DateTime/Time minus Quantity).
+
+The reverse operand order is not defined.
+
+fhirpath.js (`src/math.js` lines 70–77) permissively swaps the operands when the
+first is a Quantity and the second is a Date/DateTime/Time, evaluating
+`Quantity + Date` as `Date + Quantity`. This is an extension beyond the spec's
+defined signature and produces a defined result (`1 year + @2016-02-29` returns
+`[@2017-02-28]`) where the spec defines none.
+
+fp2sql follows the spec's operator signature strictly and rejects
+`Quantity + Date/DateTime/Time` at overload resolution.
+
+Affected expressions: `1 year + @2016-02-29` (6.6_math.yaml). Workaround in
+FHIRPath expressions that target both engines: put the Date/DateTime/Time on
+the left (`@2016-02-29 + 1 year`).

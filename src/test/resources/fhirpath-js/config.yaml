@@ -1066,13 +1066,14 @@ excludeSet:
           - "After converting 'a' to year it isn't equal to 'a'"
           - "After converting 'min' to minutes it is equal to minutes"
           - "Can access the comparator field when there isn't a need to convert"
-  - title: Simple Exclusions
+  - title: fp2sql — simple.yaml exclusions
     glob: "fhirpath-js/cases/simple.yaml"
     exclude:
       - title: "Tick quotes identifiers not supported"
-        id: "#2153"
+        id: "#211"
         type: bug
         outcome: failure
+        comment: "Tracked under the tick-quoted-identifier umbrella (#211)."
         any:
           - "name.`family`"
       - title: "exists(criteria) with non-boolean collection criteria"
@@ -1099,7 +1100,7 @@ excludeSet:
         comment: "Test infrastructure cannot compare complex FHIR structures returned by fp2sql with expected JSON."
         any:
           - "Patient.telecom.where($this.use = 'work')"
-      - title: "type() null handling and TypeInfo format"
+      - title: "type() on null collection elements returns null"
         id: "#182"
         type: bug
         outcome: failure
@@ -1108,7 +1109,7 @@ excludeSet:
           per CI build spec (D5). After #182 is fixed, reclassify this exclusion to design (D5).
         desc:
           - "type() function for the null element of a collection"
-      - title: "ofType() does not filter null elements"
+      - title: "ofType() does not filter null collection elements"
         id: "#182"
         type: bug
         outcome: failure

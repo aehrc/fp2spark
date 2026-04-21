@@ -8,96 +8,130 @@ excludeSet:
   - title: fp2sql exclusions
     glob: "*.yaml"
     exclude:
-      - title: Delimited identifier literals
+      # -----------------------------------------------------------------------
+      # Unimplemented FHIRPath functions, grouped by spec section. Each group
+      # has its own tracking issue so the work can be picked up category by
+      # category.
+      # -----------------------------------------------------------------------
+      - title: Tree navigation functions not yet implemented
         type: feature
+        id: "#197"
         comment: |
-          fp2sql's parser accepts backtick-delimited identifiers as path references rather than
-          rejecting them as parse errors, so these tests evaluate to an empty collection instead
-          of throwing. Not a regression in FHIRPath semantics per se — documenting as a feature
-          gap to avoid churn until the parser is aligned with the fhirpath.js tokenizer.
-        outcome: failure
-        any:
-          - "`a\\\\b\\'\\\"\\`\\r\\n\\t\\u0065`"
-      - title: Arbitrary (non-FHIR) subjects
+          children(), descendants(), repeat() not implemented.
+          See FHIRPath §5.8 Tree navigation and §5.2.5 repeat.
+        function:
+          - children
+          - descendants
+          - repeat
+      - title: Utility/environment functions not yet implemented
         type: feature
+        id: "#198"
         comment: |
-          Many fhirpath.js YAML cases use synthetic top-level names like 'Functions', 'TypeExamples'
-          or 'Tree' as the subject. Pathling's ArbitraryObjectResolverFactory synthesizes a
-          resource definition from the YAML map; fp2sql only supports real FHIR resources through
-          Pathling's encoders. Skipping these cases until an arbitrary-subject adapter is added.
-        # outcome omitted -> test is skipped (TestAbortedException)
-        expression:
-          - "^Tree"
-          - "^TypeExamples"
-          - "^TypeInfoExample"
-          - "^TypeTest"
-          - "^Tests"
-          - "^Test"
-          - "^Extensions"
-          - "^Equality"
-          - "^Questionnaire\\.item"
-      - title: Functions not yet implemented
-        type: feature
-        comment: |
-          FHIRPath functions fp2sql has not implemented yet. These are tracked as separate
-          feature issues — listing them here keeps the reference suite green while the work
-          proceeds.
+          trace(), now(), today(), timeOfDay() not implemented.
+          See FHIRPath §5.9 Utility Functions.
         function:
           - trace
           - now
           - today
           - timeOfDay
-          - children
-          - descendants
-          - repeat
-          - aggregate
-          - subsumes
-          - subsumedBy
-          - memberOf
-          - conformsTo
-          - htmlChecks
-          - hasValue
-          - resolve
-          - comparable
+      - title: defineVariable() not yet implemented
+        type: feature
+        id: "#199"
+        comment: |
+          defineVariable(name [, expr]) for user-defined context variables.
+          See FHIRPath §5.9 defineVariable. (fp2sql uses the short name 'define'.)
+        function:
+          - define
+      - title: Boundary/precision functions not yet implemented
+        type: feature
+        id: "#200"
+        comment: |
+          lowBoundary(), highBoundary(), precision() not implemented.
+          See FHIRPath §5.9 Boundary and §5.9 precision.
+        function:
           - lowBoundary
           - highBoundary
           - precision
-          - convertsToString
-          - convertsToInteger
-          - convertsToDecimal
-          - convertsToBoolean
-          - convertsToDateTime
-          - convertsToDate
-          - convertsToTime
-          - convertsToQuantity
-          - toChars
-          - encode
-          - decode
-          - escape
-          - unescape
-          - join
-          - split
+      - title: aggregate() and aggregate helpers not yet implemented
+        type: feature
+        id: "#201"
+        comment: |
+          aggregate() plus sum/min/max/avg helpers. The spec (§Aggregates STU)
+          defines only aggregate(); sum/min/max/avg are fhirpath.js extensions
+          whose implementation is a product decision tracked by this issue.
+        function:
+          - aggregate
           - sum
           - min
           - max
           - avg
+      - title: Additional String Functions (STU) not yet implemented
+        type: feature
+        id: "#202"
+        comment: |
+          encode(), decode(), escape(), unescape() (STU).
+          See FHIRPath §Additional String Functions.
+        function:
+          - encode
+          - decode
+          - escape
+          - unescape
+      - title: FHIR terminology functions not yet implemented
+        type: feature
+        id: "#203"
+        comment: |
+          subsumes(), subsumedBy(), memberOf(), conformsTo() — require FHIR
+          terminology server integration.
+        function:
+          - subsumes
+          - subsumedBy
+          - memberOf
+          - conformsTo
+      - title: FHIR htmlChecks() not yet implemented
+        type: feature
+        id: "#204"
+        function:
+          - htmlChecks
+      - title: Quantity comparable() not yet implemented
+        type: feature
+        id: "#205"
+        function:
+          - comparable
+      - title: Registered functions with known gaps
+        type: bug
+        id: "#209"
+        comment: |
+          These functions are registered in OperationRegistry but still fail
+          specific fhirpath.js compat tests: exclude()/intersect() duplicate
+          handling; isDistinct() vs D3 primitive-extension cases; hasValue()
+          on MANY cardinality (D1); join() parse issue on union expressions;
+          toChars() parser issues in 5.6_string_manipulation. Skipped here
+          until per-file PRs (Phase 3) move them into targeted exclusions.
+        function:
+          - hasValue
           - intersect
           - exclude
-          - distinct
           - isDistinct
-          - allTrue
-          - anyTrue
-          - allFalse
-          - anyFalse
-          - is
-          - as
-          - single
-          - define
+          - toChars
+          - join
+      - title: Tick-quoted FHIR type names in is()/as()/ofType()
+        type: bug
+        id: "#209"
+        comment: |
+          fp2sql's analyzer rejects FHIR type names written with backtick-quoted
+          identifiers, e.g. `FHIR.\`Patient\``. Covered under #209 until a
+          targeted per-file exclusion lands in fhir-r4.yaml (Phase 3).
+        any:
+          - "FHIR.`"
+      # -----------------------------------------------------------------------
+      # Environment variables, operators and other global concerns.
+      # -----------------------------------------------------------------------
       - title: Unsupported FHIRPath environment variables
         type: feature
+        id: "#206"
         comment: |
-          fp2sql only defines %context today. %ucum, %vs-*, %ext-*, %`vs-*`, %terminologies
-          etc. are all unsupported.
+          fp2sql only defines %context. %ucum, %vs-*, %ext-*, %terminologies,
+          %sct, %loinc and other extended/terminology variables are unsupported.
         any:
           - "%ucum"
           - "%vs-"
@@ -115,19 +149,21 @@ excludeSet:
           %factory.withExtension, %factory.withProperty) is not yet supported.
         any:
           - "%factory"
-      - title: Equivalence operators
+      - title: Equivalence operators ~ and !~
         type: feature
+        id: "#207"
         comment: |
-          FHIRPath '~' and '!~' (equivalence / non-equivalence) are not yet implemented.
-          Tracked as future work.
+          FHIRPath '~' (equivalence) and '!~' (non-equivalence) are not implemented.
         any:
           - " ~ "
           - " !~ "
-      - title: Collection-taking iif calls
+      - title: Method-style iif() invocation and 3-arg form
         type: feature
+        id: "#186"
         comment: |
-          fp2sql requires the iif() else-branch to be supplied; the zero-argument overload used
-          by several fhirpath.js reference tests is not yet supported.
+          fp2sql only implements the 2-arg iif(criterion, true-result) form.
+          Method-style .iif() calls and the 3-arg form (with else-branch) are
+          not yet supported.
         any:
           - ".iif("
       - title: Choice type polymorphism
@@ -139,21 +175,57 @@ excludeSet:
         expression:
           - "Observation\\.value[^\\.]"
           - "MedicationRequest\\.medication[^\\.]"
-      - title: Contained resources not supported
-        type: design
+      - title: Time literals with timezone offset
+        type: ref-impl-bug
         comment: |
-          D2. Traversal into contained resources is not supported.
-          See SPEC_DIVERGENCES.md D2.
-        outcome: failure
+          R5. FHIRPath spec §5.1 defines Time as a local-time type with no timezone
+          offset. fhirpath.js extends Time to accept @T...-05:00 / @T...Z / @T...+04:00
+          and evaluates timezone-aware arithmetic/comparison/equality on them.
+          fp2sql follows the spec and rejects these literals.
+          See SPEC_DIVERGENCES.md R5.
         any:
-          - "Patient.contained"
-      - title: Unsupported resource types in encoders
+          - "@T17:00-05:00 < timeWithT.toTime()"
+          - "@T17:00-05:00 > timeWithT.toTime()"
+          - "@T17:00-05:00 < timeWithOutT.toTime()"
+          - "@T17:00-05:00 > timeWithOutT.toTime()"
+          - "time.toTime() = @T19:15-05:00"
+          - "time.toTime() = @T18:15-05:00"
+          - "time.toTime() != @T18:15-05:00"
+          - "@T12+04:00 > @T12:02:34.324+05:00"
+          - "@T12:02:34.324+05:00 > @T12+05:00"
+          - "@T23:59:23-05:00 + 2 minutes = @T00:01:23-05:00"
+          - "@T23:59:23-05:00 + 5 milliseconds = @T23:59:23.005-05:00"
+          - "@T23:59:23-05:00 + 1.5 seconds = @T23:59:24.500-05:00"
+          - "@T23:59:23-05:00 + 1.5 's' = @T23:59:24.500-05:00"
+          - "@T23:59:23-05:00 - 1.5 's' = @T23:59:21.500-05:00"
+          - "@T23:59:23-05:00 + 1000 milliseconds = @T23:59:24-05:00"
+          - "@T23:59:23.005-05:00 + 995 milliseconds = @T23:59:24-05:00"
+          - "@T23:59:23.005-05:00 + 1990 milliseconds = @T23:59:24.995-05:00"
+          - "@T23:59:23-05:00 + 1.5 hours = @T00:59:23-05:00"
+          - "@T10:04:23-04:00 = @T18:04:23+04:00"
+          - "@T19:01:23-05:00 = @T00:01:23-00:00"
+          - "@T10:04:23-04:00 = @T18:04:24+04:00"
+          - "@T10:04:23-04:00 = @T14:04:23Z"
+          - "@T10:04:23-04:00 = @T14:04:24Z"
+          - "@T10:04:23-04:00 = @T14:04Z"
+          - "@T10:05:23-04:00 = @T14:04Z"
+          - "@T10:04:23-04:00 != @T18:04:23+04:00"
+          - "@T10:04:23-04:00 != @T18:04:24+04:00"
+          - "@T10:04:23-04:00 != @T14:04:23Z"
+          - "@T10:04:23-04:00 != @T14:04:24Z"
+          - "@T09:45Z + 120 seconds = @T04:47-05:00"
+          - "@T09:45Z + 59 seconds = @T09:45Z"
+          - "@T09:45:23Z + 2 minutes = @T04:47:23.000-05:00"
+          - "@T23:59:23Z + 2 minutes = @T00:01:23Z"
+      - title: Encoder-rejected resource types
         type: feature
+        id: "#208"
         comment: |
-          Pathling encoders used by fp2sql cannot serialise certain resource types (notably
-          Bundle). Inputfile-backed tests targeting such resources are skipped.
-        any:
-          - "patient-bundle.json"
+          Pathling encoders fp2sql uses cannot serialise certain FHIR resource types
+          (notably Bundle and StructureDefinition). Tests whose subject is such a
+          resource cannot be loaded.
+        expression:
+          - "^StructureDefinition"
   # ---------------------------------------------------------------------------
   # fp2sql — 6.6_math.yaml exclusions
   # ---------------------------------------------------------------------------
@@ -492,77 +564,6 @@ excludeSet:
           Quantity comparison and canonicalisation tests that fp2sql does not yet implement.
         any:
           - ""
-  - title: Global exclusions
-    glob: "*.yaml"
-    exclude:
-      - title: Unsupported resources
-        type: feature
-        id: "#2418"
-        expression:
-          - "^StructureDefinition"
-      - title: Parse error
-        type: wontfix
-        comment: |
-          The test case is not valid FHIRPath syntax, it contains a parse error.
-        any:
-          - "@T17:00-05:00 < timeWithT.toTime()"
-          - "@T17:00-05:00 > timeWithT.toTime()"
-          - "@T17:00-05:00 < timeWithOutT.toTime()"
-          - "@T17:00-05:00 > timeWithOutT.toTime()"
-          - "('a'|'b'|'c').join(',')"
-          - "('a'|'b'|'c').join()"
-          - "time.toTime() = @T19:15-05:00"
-          - "time.toTime() = @T18:15-05:00"
-          - "time.toTime() != @T18:15-05:00"
-          - "('a'|'b'|'c').aggregate($total & '-' & $this, 'concat')"
-          - "(1 'cm'|3 'cm'|1 'm').aggregate($total + $this, 0 'cm') = 104 'cm'"
-          - "(1 'cm'|3 'cm'|1 'kg'|1 'm').aggregate($total + $this, 0 'cm')"
-          - "(1|2|3|4|5|6|7|8|9).sum() = 45"
-          - "(1 'cm'|3 'cm'|1 'm').sum() = 104 'cm'"
-          - "(7|8|9|1|2|3|4|5|6).min() = 1"
-          - "(1 'cm'|3 'cm'|1 'm').min() = 1 'cm'"
-          - "(7|8|9|1|2|3|4|5|6).max() = 9"
-          - "(1 'cm'|3 'cm'|1 'm').max() = 1 'm'"
-          - "(7|8|9|1|2|3|4|5|6).avg() = 5"
-          - "(7 'm' |8 'm'|9 'm'|1 'm'|2 'm'|3 'm'|400 'cm'|5 'm'|6 'm').avg() = 5 'm'"
-          - "@T10:04:23-04:00 ~ @T18:04:23+04:00"
-          - "@T10:04:23-04:00 ~ @T18:04:24+04:00"
-          - "@T10:04:23-04:00 ~ @T14:04:23Z"
-          - "@T10:04:23-04:00 ~ @T14:04:24Z"
-          - "@T10:04:23-04:00 !~ @T18:04:23+04:00"
-          - "@T10:04:23-04:00 !~ @T18:04:24+04:00"
-          - "@T10:04:23-04:00 !~ @T14:04:23Z"
-          - "@T10:04:23-04:00 !~ @T14:04:24Z"
-          - "(1|2|3|4|5|6|7|8|9).aggregate($this+$total, 0) = 45"
-          - "(1|2|3|4|5|6|7|8|9).aggregate($this+$total, 2) = 47"
-          - "(1|2|3|4|5|6|7|8|9).aggregate(iif($total.empty(), $this, iif($this < $total, $this, $total))) = 1"
-          - "(1|2|3|4|5|6|7|8|9).aggregate(iif($total.empty(), $this, iif($this > $total, $this, $total)"
-          - "@T12+04:00 > @T12:02:34.324+05:00"
-          - "@T12:02:34.324+05:00 > @T12+05:00"
-          - "@T23:59:23-05:00 + 2 minutes = @T00:01:23-05:00"
-          - "@T23:59:23-05:00 + 5 milliseconds = @T23:59:23.005-05:00"
-          - "@T23:59:23-05:00 + 1.5 seconds = @T23:59:24.500-05:00"
-          - "@T23:59:23-05:00 + 1.5 's' = @T23:59:24.500-05:00"
-          - "@T23:59:23-05:00 - 1.5 's' = @T23:59:21.500-05:00"
-          - "@T23:59:23-05:00 + 1000 milliseconds = @T23:59:24-05:00"
-          - "@T23:59:23.005-05:00 + 995 milliseconds = @T23:59:24-05:00"
-          - "@T23:59:23.005-05:00 + 1990 milliseconds = @T23:59:24.995-05:00"
-          - "@T23:59:23-05:00 + 1.5 hours = @T00:59:23-05:00"
-          - "@T10:04:23-04:00 = @T18:04:23+04:00"
-          - "@T19:01:23-05:00 = @T00:01:23-00:00"
-          - "@T10:04:23-04:00 = @T18:04:24+04:00"
-          - "@T10:04:23-04:00 = @T14:04:23Z"
-          - "@T10:04:23-04:00 = @T14:04:24Z"
-          - "@T10:04:23-04:00 = @T14:04Z"
-          - "@T10:05:23-04:00 = @T14:04Z"
-          - "@T10:04:23-04:00 != @T18:04:23+04:00"
-          - "@T10:04:23-04:00 != @T18:04:24+04:00"
-          - "@T10:04:23-04:00 != @T14:04:23Z"
-          - "@T10:04:23-04:00 != @T14:04:24Z"
-          - "@T09:45Z + 120 seconds = @T04:47-05:00"
-          - "@T09:45Z + 59 seconds = @T09:45Z"
-          - "@T09:45:23Z + 2 minutes = @T04:47:23.000-05:00"
-          - "@T23:59:23Z + 2 minutes = @T00:01:23Z"
   - title: Path exclusions
     glob: "fhirpath-js/cases/3.2_paths.yaml"
     exclude:

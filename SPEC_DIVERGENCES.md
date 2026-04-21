@@ -166,3 +166,26 @@ Affected expressions: `Patient.name.first().subsetOf($this.name)`,
 `Patient.name.subsetOf($this.name.first())`,
 `Patient.name.first().supersetOf($this.name)`,
 `Patient.name.supersetOf($this.name.first())`.
+
+## R5. Time literals with timezone offset
+
+The FHIRPath spec explicitly defines `Time` as a local-time type without a
+timezone component:
+
+- §5.1 (L368): `Time: @T14:34:28 (@ followed by ISO8601 compliant time beginning
+  with T, no timezone offset)`
+- §5.1 (L528-529): `Time values in FHIRPath do not have a timezone or timezone
+  offset.`
+
+fhirpath.js accepts `Time` literals with a trailing timezone offset (`@T17:00-05:00`,
+`@T09:45Z`, `@T12+04:00`) and evaluates timezone-aware arithmetic, comparison, and
+equality on them. This extends beyond the spec's `Time` definition; the spec places
+timezone offsets only on `DateTime` (§5.1 L575-577).
+
+fp2sql follows the spec and rejects timezone-bearing `Time` literals during parsing.
+
+Affected expressions: time-literal comparisons and arithmetic such as
+`@T17:00-05:00 < timeWithT.toTime()`, `@T23:59:23-05:00 + 2 minutes`,
+`@T10:04:23-04:00 = @T14:04:23Z`, `@T09:45Z + 120 seconds`. 33 expressions across
+7 case files (5.5_conversion, 5.6_string_manipulation, 6.1_equality,
+6.2_comparision, 6.6_math, 7_aggregate, fhir-r4).

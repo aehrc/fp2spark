@@ -168,19 +168,21 @@ public class FilteringAndProjectionFunctionsDslTest extends CompatTestBase {
             "ofType() returns integer value when filtering for (System).Integer type")
         .testEquals(
             3.14,
+            "decimalValue.ofType(Decimal)",
+            "ofType() returns decimal value when filtering for System.Decimal type")
+        .testEmpty(
             "decimalValue.ofType(decimal)",
-            "ofType() returns decimal value when filtering for (FHIR).decimal type")
-        .testEquals(
-            true,
+            "ofType() returns empty — inline System.Decimal does not match FHIR.decimal (#188)")
+        .testEmpty(
             "booleanValue.ofType(FHIR.boolean)",
-            "ofType() returns boolean value when filtering for FHIR.boolean type")
+            "ofType() returns empty — inline System.Boolean does not match FHIR.boolean (#188)")
         .testEquals(
             "mg",
             "quantityValue.ofType(Quantity).unit",
-            "ofType() returns quantity value when filtering for (FHIR).Quantity type")
-        .testTrue(
+            "ofType() returns quantity value when filtering for (System).Quantity type")
+        .testFalse(
             "codingValue.ofType(FHIR.Coding).exists()",
-            "ofType() returns coding value when for FHIR.Coding type")
+            "ofType() returns empty — inline System.Coding does not match FHIR.Coding (#188)")
         .testTrue(
             "codingValue.ofType(System.Coding).exists()",
             "ofType() returns coding value when for System.Coding type")

@@ -62,26 +62,36 @@ public class TypeFunctionsDslTest extends CompatTestBase {
                         val2 -> val2.integer("valueInteger", 1),
                         val3 -> val3.integer("valueInteger", 2)))
         .group("is() function - primitive type matching")
-        // Positive type matches
+        // Positive type matches. Inline DSL primitives are SystemType values, so FHIR.* specifiers
+        // do not match under the strict namespace rule from fhirpath.js (issue #188).
         .testTrue(
             "stringValue.is(System.String)",
             "is() returns true when value matches System.String type")
         .testTrue("integerValue.is(Integer)", "is() returns true when value matches Integer type")
-        .testTrue("decimalValue.is(decimal)", "is() returns true when value matches decimal type")
         .testTrue(
+            "decimalValue.is(Decimal)", "is() returns true when value matches System.Decimal type")
+        .testFalse(
+            "decimalValue.is(decimal)",
+            "is() returns false — inline System.Decimal does not match FHIR.decimal (#188)")
+        .testFalse(
             "booleanValue.is(FHIR.boolean)",
-            "is() returns true when value matches FHIR.boolean type")
+            "is() returns false — inline System.Boolean does not match FHIR.boolean (#188)")
         .group("is() function - type mismatches")
         // Negative type matches
         .testFalse("stringValue.is(Integer)", "is() returns false when type doesn't match")
         .testFalse("integerValue.is(Boolean)", "is() returns false when value is different type")
         .testFalse("codingValue.is(Quantity)", "is() returns false when complex type doesn't match")
         .group("is() function - complex types")
-        // Complex type matching
+        // Complex type matching. Inline DSL complex primitives (Quantity, Coding) carry System
+        // types, so they match System.* and bare names (which default to System) but NOT FHIR.*
+        // under the strict namespace rule (issue #188).
         .testTrue("quantityValue.is(Quantity)", "is() returns true for Quantity complex type")
-        .testTrue(
-            "quantityValue.is(FHIR.Quantity)", "is() returns true with explicit FHIR namespace")
-        .testTrue("codingValue.is(FHIR.Coding)", "is() returns true for Coding with FHIR namespace")
+        .testFalse(
+            "quantityValue.is(FHIR.Quantity)",
+            "is() returns false — inline System.Quantity ≠ FHIR.Quantity (#188)")
+        .testFalse(
+            "codingValue.is(FHIR.Coding)",
+            "is() returns false — inline System.Coding ≠ FHIR.Coding (#188)")
         .testTrue(
             "codingValue.is(System.Coding)", "is() returns true for Coding with System namespace")
         .testTrue("codingValue.is(Coding)", "is() returns true for Coding with unqualified name")
@@ -125,7 +135,9 @@ public class TypeFunctionsDslTest extends CompatTestBase {
                         val2 -> val2.integer("valueInteger", 1),
                         val3 -> val3.integer("valueInteger", 2)))
         .group("as() function - primitive type matching (positive cases)")
-        // Positive type matches - should return the actual value
+        // Positive type matches - should return the actual value. Inline DSL primitives are
+        // SystemType values, so FHIR.* specifiers yield empty under the strict namespace rule
+        // from fhirpath.js (issue #188).
         .testEquals(
             "test",
             "stringValue.as(System.String)",
@@ -133,38 +145,37 @@ public class TypeFunctionsDslTest extends CompatTestBase {
         .testEquals(
             42, "integerValue.as(Integer)", "as() returns value when it matches Integer type")
         .testEquals(
-            3.14, "decimalValue.as(decimal)", "as() returns value when it matches decimal type")
-        .testTrue(
-            "booleanValue.as(FHIR.boolean)", "as() returns value when it matches FHIR.boolean type")
+            3.14, "decimalValue.as(Decimal)", "as() returns value when it matches Decimal type")
+        .testEmpty(
+            "decimalValue.as(decimal)",
+            "as() returns empty — inline System.Decimal does not match FHIR.decimal (#188)")
+        .testEmpty(
+            "booleanValue.as(FHIR.boolean)",
+            "as() returns empty — inline System.Boolean does not match FHIR.boolean (#188)")
         .group("as() function - type mismatches (negative cases)")
         // Negative type matches - should return empty collection
         .testEmpty("stringValue.as(Integer)", "as() returns empty when type doesn't match")
         .testEmpty("integerValue.as(Boolean)", "as() returns empty when value is different type")
         .testEmpty("codingValue.as(Quantity)", "as() returns empty when complex type doesn't match")
         .group("as() function - complex types")
-        // Complex type matching
+        // Complex type matching. Inline Quantity/Coding values are System.*, so FHIR.* specifiers
+        // yield empty under the strict namespace rule (issue #188).
         .testEquals(
             toQuantity("11.5 'mg'"), "quantityValue.as(Quantity)", "as() returns Quantity value")
-        .testEquals(
-            "mg",
+        .testEmpty(
             "quantityValue.as(FHIR.Quantity).unit",
-            "as() allows traversal after conversion to Quantity")
+            "as() returns empty — inline System.Quantity ≠ FHIR.Quantity (#188)")
         .testEquals(
             11.5,
             "quantityValue.as(Quantity).value",
             "as() returns Quantity value and allows traversal")
         .testEquals(
             "mg",
-            "quantityValue.as(FHIR.Quantity).unit",
-            "as() works with FHIR namespace for Quantity")
-        .testEquals(
-            "mg",
             "quantityValue.as(System.Quantity).unit",
             "as() works with System namespace for Quantity")
-        .testEquals(
-            "code2",
+        .testEmpty(
             "codingValue.as(FHIR.Coding).code",
-            "as() returns Coding value and allows traversal")
+            "as() returns empty — inline System.Coding ≠ FHIR.Coding (#188)")
         .testEquals(
             "code2",
             "codingValue.as(System.Coding).code",
@@ -179,11 +190,10 @@ public class TypeFunctionsDslTest extends CompatTestBase {
             toQuantity("12 'cm'"),
             "(12 'cm').as(System.Quantity)",
             "as() works with System namespace for Quantity")
-        // THIS IS A SPECIAL CASE: FHIR.Quantity is the same as System.Quantity in our model
-        .testEquals(
-            toQuantity("13 'mg'"),
+        // Per fhirpath.js (#188), System.Quantity literal does NOT match FHIR.Quantity specifier.
+        .testEmpty(
             "(13 'mg').as(FHIR.Quantity)",
-            "as() returns works for System.Quantity with FHIR namespace")
+            "as() returns empty — System.Quantity literal ≠ FHIR.Quantity (#188)")
         .group("as() function - edge cases")
         // Empty collections
         .testEmpty("emptyString.as(String)", "as() returns empty when applied to empty value")

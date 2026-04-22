@@ -12,8 +12,10 @@ import org.hl7.fhir.r4.model.Enumerations.FHIRDefinedType;
  * Represents a FHIRPath type specifier with namespace and type name.
  *
  * <p>Handles qualified ({@code FHIR.string}, {@code System.String}) and unqualified ({@code
- * String}, {@code decimal}) type specifiers. For unqualified names, the FHIR namespace is searched
- * first, then System — following the Pathling reference implementation.
+ * String}, {@code decimal}) type specifiers. For unqualified names, the System namespace is
+ * searched first, then FHIR — matching fhirpath.js behavior (see issue #188), so bare {@code
+ * Boolean}/{@code Quantity}/{@code Coding} resolve to {@code System.*} while lowercase FHIR-only
+ * names like {@code string}/{@code boolean}/{@code decimal} fall through to {@code FHIR.*}.
  *
  * <p>Provides namespace-aware type matching via {@link #matchesType(Type)} and FHIR variant name
  * resolution via {@link #toFhirVariantName()} for choice type operations.
@@ -73,7 +75,8 @@ public final class TypeSpecifier {
    *   <li>Unqualified: {@code "String"}, {@code "decimal"}, {@code "HumanName"}
    * </ul>
    *
-   * <p>Unqualified names are resolved by searching the FHIR namespace first, then System.
+   * <p>Unqualified names are resolved by searching the System namespace first, then FHIR (see issue
+   * #188).
    *
    * @param expression the raw type specifier string
    * @return the resolved TypeSpecifier
@@ -186,8 +189,19 @@ public final class TypeSpecifier {
   /**
    * Checks whether a type matches this type specifier.
    *
-   * <p>Handles cross-namespace equivalences: {@code FHIR.string} matches a type whose System type
-   * is STRING, and {@code System.String} matches a FHIR type that maps to STRING.
+   * <p>Applies strict namespace+name equality per fhirpath.js behavior (see issue #188):
+   *
+   * <ul>
+   *   <li>{@code FHIR.boolean} matches a FhirPrimitiveType("boolean"), never a SystemType.BOOLEAN
+   *   <li>{@code System.Boolean} matches a SystemType.BOOLEAN, never a FhirPrimitiveType("boolean")
+   *   <li>{@code FHIR.Quantity} and {@code System.Quantity} are disjoint — no cross-namespace
+   *       matching
+   * </ul>
+   *
+   * <p>For inline test data (which uses {@link SystemType} directly for primitives without a FHIR
+   * wrapper), this means {@code FHIR.string}/{@code FHIR.boolean}/etc. do not match. Tests that
+   * want to assert against a FHIR type should either (a) use the {@code System.*} specifier, or (b)
+   * supply data typed with {@link FhirPrimitiveType}.
    *
    * @param type the type to check
    * @return true if the type matches this specifier
@@ -204,31 +218,21 @@ public final class TypeSpecifier {
     if (expected == null) {
       return false;
     }
-    if (type instanceof SystemType pt) {
-      return pt == expected;
-    }
-    if (type instanceof FhirPrimitiveType fpt) {
-      return fpt.getSystemType() == expected;
-    }
-    return false;
+    // Strict: only SystemType instances match a System.* specifier.
+    // FhirPrimitiveType values (e.g., FHIR.boolean, FHIR.string) are NOT matched even though
+    // they wrap a SystemType — namespaces are disjoint per fhirpath.js.
+    return type instanceof SystemType pt && pt == expected;
   }
 
   private boolean matchesFhirType(@Nonnull final Type type) {
     if (type instanceof FhirPrimitiveType fpt) {
       return typeName.equals(fpt.getFhirName());
     }
-    if (type instanceof SystemType pt) {
-      // Inline subjects use SystemType directly — map FHIR name to SystemType
-      // via FhirPrimitiveType (for primitives like "string"→STRING) with fallback to
-      // SystemType.fromName() (for Coding/Quantity which share names across namespaces).
-      final SystemType mapped =
-          FhirPrimitiveType.systemTypeFor(typeName)
-              .orElseGet(() -> SystemType.fromName(typeName).orElse(null));
-      return mapped != null && mapped == pt;
-    }
     if (type instanceof ComplexType ct) {
       return typeName.equals(ct.getName());
     }
+    // SystemType values (inline primitives, System.Quantity literals) do NOT match a FHIR.*
+    // specifier — namespaces are disjoint per fhirpath.js.
     return false;
   }
 
@@ -273,12 +277,15 @@ public final class TypeSpecifier {
 
   @Nonnull
   private static TypeSpecifier ofUnqualified(@Nonnull final String typeName) {
-    // Search FHIR namespace first, then System (per Pathling/FHIRPath spec)
-    if (isValidFhirType(typeName)) {
-      return new TypeSpecifier(FHIR_NAMESPACE, typeName);
-    }
+    // Search System namespace first, then FHIR — matches fhirpath.js behavior (issue #188).
+    // Bare `Boolean`/`Quantity`/`Coding` resolve to System.* (System.Boolean, System.Quantity,
+    // System.Coding). Bare lowercase names like `string`/`boolean`/`decimal` are not valid System
+    // type names (System uses capitalized names), so they fall through to FHIR.
     if (isValidSystemType(typeName)) {
       return new TypeSpecifier(SYSTEM_NAMESPACE, typeName);
+    }
+    if (isValidFhirType(typeName)) {
+      return new TypeSpecifier(FHIR_NAMESPACE, typeName);
     }
     throw new IllegalArgumentException("Unknown type: " + typeName);
   }

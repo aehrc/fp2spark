@@ -270,3 +270,29 @@ fp2sql follows the spec's operator signature strictly and rejects
 Affected expressions: `1 year + @2016-02-29` (6.6_math.yaml). Workaround in
 FHIRPath expressions that target both engines: put the Date/DateTime/Time on
 the left (`@2016-02-29 + 1 year`).
+
+## R7. fhirpath.js types `Patient.id` as `System.String` (FHIR.id lost)
+
+fhirpath.js reports `Patient.id.type() = {namespace: "System", name: "String"}`
+rather than `{namespace: "FHIR", name: "id"}`. Consequently:
+
+```
+Patient.id is System.String    // true  (fhirpath.js)
+Patient.id is FHIR.id          // false (fhirpath.js)
+Patient.id is FHIR.string      // false (fhirpath.js)
+```
+
+This is inconsistent with fhirpath.js's treatment of other FHIR primitives.
+`Patient.active` keeps its FHIR namespace (`FHIR.boolean`), so under the same
+strict namespace rule it intentionally applies to `is`/`as`/`ofType` (see
+[#188](https://github.com/piotrszul/fp2spark/issues/188)), `Patient.active is
+System.Boolean` returns `false` — the correct FHIR-namespace-preserving
+behavior. The `id` case collapses to System.String because fhirpath.js's model
+does not register `id` as a distinct FHIR primitive (unlike `boolean`,
+`string`, `decimal`, etc.).
+
+fp2sql (correctly per the FHIR spec) types `Patient.id` as `FHIR.id` and
+therefore reports `Patient.id is System.String = false`. fhirpath.js's behavior
+is a ref-impl quirk resulting from an incomplete FHIR primitive registry.
+
+Affected expressions: `Patient.id is System.String` (6.3_types.yaml, r4 and r5).

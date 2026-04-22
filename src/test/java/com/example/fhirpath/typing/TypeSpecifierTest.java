@@ -53,8 +53,8 @@ class TypeSpecifierTest {
 
     @Test
     void unqualifiedCapitalizedResolvesToSystem() {
-      // "String" is not a valid FHIR type code (FHIR uses lowercase "string"),
-      // so it falls through to System namespace.
+      // "String" is a valid System type. Per fhirpath.js (#188), bare names resolve to System
+      // when possible before falling through to FHIR.
       final TypeSpecifier ts = TypeSpecifier.fromExpression("String");
       assertTrue(ts.isSystemType());
       assertEquals("String", ts.getTypeName());
@@ -62,29 +62,33 @@ class TypeSpecifierTest {
 
     @Test
     void unqualifiedLowercaseResolvesToFhir() {
-      // "string" is a valid FHIR type code, so FHIR namespace is found first.
+      // "string" is not a valid System type (System uses capitalized names), so the search
+      // falls through to FHIR.
       final TypeSpecifier ts = TypeSpecifier.fromExpression("string");
       assertTrue(ts.isFhirType());
       assertEquals("string", ts.getTypeName());
     }
 
     @Test
-    void unqualifiedQuantityResolvesToFhir() {
-      // "Quantity" is a valid FHIR type, so FHIR namespace is found first.
+    void unqualifiedQuantityResolvesToSystem() {
+      // "Quantity" exists in both System and FHIR. Per fhirpath.js (#188), bare names default
+      // to System.* — (1 year).is(Quantity) is true because bare Quantity ≡ System.Quantity.
       final TypeSpecifier ts = TypeSpecifier.fromExpression("Quantity");
-      assertTrue(ts.isFhirType());
+      assertTrue(ts.isSystemType());
       assertEquals("Quantity", ts.getTypeName());
     }
 
     @Test
-    void unqualifiedCodingResolvesToFhir() {
+    void unqualifiedCodingResolvesToSystem() {
+      // "Coding" also exists in both namespaces; System wins for bare names.
       final TypeSpecifier ts = TypeSpecifier.fromExpression("Coding");
-      assertTrue(ts.isFhirType());
+      assertTrue(ts.isSystemType());
       assertEquals("Coding", ts.getTypeName());
     }
 
     @Test
     void unqualifiedComplexTypeResolvesToFhir() {
+      // "HumanName" is not a System type, so it resolves to FHIR.
       final TypeSpecifier ts = TypeSpecifier.fromExpression("HumanName");
       assertTrue(ts.isFhirType());
       assertEquals("HumanName", ts.getTypeName());
@@ -130,16 +134,16 @@ class TypeSpecifierTest {
     }
 
     @Test
-    void systemStringMatchesFhirPrimitiveString() {
+    void systemStringDoesNotMatchFhirPrimitiveString() {
+      // Per fhirpath.js (#188), System.* and FHIR.* are disjoint — strict namespace match.
       final TypeSpecifier ts = TypeSpecifier.fromExpression("System.String");
-      assertTrue(ts.matchesType(FhirPrimitiveType.of("string")));
+      assertFalse(ts.matchesType(FhirPrimitiveType.of("string")));
     }
 
     @Test
-    void systemStringMatchesFhirPrimitiveUri() {
-      // FHIR "uri" maps to System.String
+    void systemStringDoesNotMatchFhirPrimitiveUri() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("System.String");
-      assertTrue(ts.matchesType(FhirPrimitiveType.of("uri")));
+      assertFalse(ts.matchesType(FhirPrimitiveType.of("uri")));
     }
 
     @Test
@@ -155,41 +159,49 @@ class TypeSpecifierTest {
     }
 
     @Test
-    void fhirBooleanMatchesPrimitiveBoolean() {
-      // FHIR.boolean should match SystemType.BOOLEAN (inline subjects)
+    void fhirBooleanDoesNotMatchSystemBoolean() {
+      // Per fhirpath.js (#188), FHIR.boolean ≠ SystemType.BOOLEAN. Namespaces are disjoint.
       final TypeSpecifier ts = TypeSpecifier.fromExpression("FHIR.boolean");
-      assertTrue(ts.matchesType(SystemType.BOOLEAN));
+      assertFalse(ts.matchesType(SystemType.BOOLEAN));
     }
 
     @Test
-    void fhirDecimalMatchesPrimitiveDecimal() {
+    void fhirDecimalDoesNotMatchSystemDecimal() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("FHIR.decimal");
-      assertTrue(ts.matchesType(SystemType.DECIMAL));
+      assertFalse(ts.matchesType(SystemType.DECIMAL));
     }
 
     @Test
-    void fhirCodingMatchesPrimitiveCoding() {
+    void fhirCodingDoesNotMatchSystemCoding() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("FHIR.Coding");
-      assertTrue(ts.matchesType(SystemType.CODING));
+      assertFalse(ts.matchesType(SystemType.CODING));
     }
 
     @Test
-    void fhirQuantityMatchesPrimitiveQuantity() {
+    void fhirQuantityDoesNotMatchSystemQuantity() {
+      // Per fhirpath.js (#188), (1 year).is(FHIR.Quantity) is false — System.Quantity ≠
+      // FHIR.Quantity.
       final TypeSpecifier ts = TypeSpecifier.fromExpression("FHIR.Quantity");
-      assertTrue(ts.matchesType(SystemType.QUANTITY));
+      assertFalse(ts.matchesType(SystemType.QUANTITY));
     }
 
     @Test
-    void systemCodingMatchesPrimitiveCoding() {
+    void systemCodingMatchesSystemCoding() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("System.Coding");
       assertTrue(ts.matchesType(SystemType.CODING));
     }
 
     @Test
-    void systemQuantityMatchesFhirPrimitiveDecimal() {
-      // System.Quantity should NOT match FhirPrimitiveType("decimal")
+    void systemQuantityDoesNotMatchFhirPrimitiveDecimal() {
       final TypeSpecifier ts = TypeSpecifier.fromExpression("System.Quantity");
       assertFalse(ts.matchesType(FhirPrimitiveType.of("decimal")));
+    }
+
+    @Test
+    void systemBooleanDoesNotMatchFhirPrimitiveBoolean() {
+      // FHIR.boolean values (e.g., Patient.active) do NOT match System.Boolean specifier.
+      final TypeSpecifier ts = TypeSpecifier.fromExpression("System.Boolean");
+      assertFalse(ts.matchesType(FhirPrimitiveType.of("boolean")));
     }
 
     @Test

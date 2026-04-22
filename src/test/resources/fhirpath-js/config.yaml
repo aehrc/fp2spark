@@ -300,16 +300,6 @@ excludeSet:
         outcome: failure
         any:
           - "@T09:45:23 + 2 years"
-      - title: Unary minus on Quantity not supported
-        type: bug
-        id: "#187"
-        comment: |
-          The expression produces a negative Quantity via subtraction, but fp2sql
-          has no overload for unary minus on Quantity type. Same root cause as
-          the fhir-r4.yaml (-5.5 'mg').abs() exclusion.
-        outcome: error
-        desc:
-          - "Can subtract a UCUM time-valued quantity from a calendar duration quantity less than or equal to seconds"
       - title: Quantity + Date/DateTime/Time commutation (fhirpath.js ext beyond spec)
         type: ref-impl-bug
         comment: |
@@ -499,15 +489,6 @@ excludeSet:
           - "** testIif2"
           - "** testIif3"
           - "** testIif4"
-      - title: Unary negation of Quantity not implemented
-        type: bug
-        id: "#187"
-        comment: |
-          FHIRPath spec §5.7 explicitly shows (-5.5 'mg').abs() as a valid example.
-          fp2sql does not implement unaryMinus for Quantity operands.
-        outcome: error
-        any:
-          - "(-5.5 'mg').abs()"
       - title: "fhirpath.js operator precedence: is vs comparison"
         type: ref-impl-bug
         comment: |

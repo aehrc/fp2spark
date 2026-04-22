@@ -90,10 +90,25 @@ public final class ArithmeticOps {
 
     registry.register("stringConcat", binary(StringSupport::stringConcat));
 
-    // Unary plus: identity operation.
+    // Unary plus: identity operation (same for numeric and Quantity inputs).
     registry.register("unaryPlus", unary(col -> col));
 
     // Unary minus: negation.
-    registry.register("unaryMinus", unary(col -> col.multiply(lit(-1))));
+    // Numeric: multiply by -1. Quantity: negate the value field, preserve unit/system/code.
+    registry.register(
+        "unaryMinus",
+        byResultType()
+            .when(types(INTEGER, DECIMAL), unary(col -> col.multiply(lit(-1))))
+            .when(types(QUANTITY), unary(ArithmeticOps::quantityNegate)));
+  }
+
+  /**
+   * Unary minus for Quantity: negates the numeric value field, preserving unit, system, and code.
+   * Null (empty) input propagates naturally because Spark arithmetic on null yields null. Uses
+   * {@code withField} so the implementation is resilient to Quantity schema changes.
+   */
+  @Nonnull
+  private static Column quantityNegate(@Nonnull final Column quantity) {
+    return quantity.withField("value", quantity.getField("value").multiply(lit(-1)));
   }
 }

@@ -102,21 +102,15 @@ class TickQuotedIdentifierTest extends FhirPathTestBase {
 
   @Test
   void backtickContentWithInvalidEscapeIsParseError() {
-    // `\b` — b is not in the allowed ESC character class [`'\\/fnrt].
-    assertThrows(
-        RuntimeException.class,
-        () -> ParserFacade.parse("`a\\b`"),
-        "Backslash followed by non-escape char inside backticks must be a parse error");
+    // `\b` — b is not in the allowed ESC character class [`'\\/fnrt], so ~[\\`] excludes
+    // the stray backslash and the lexer fails.
+    assertThrows(IllegalArgumentException.class, () -> ParserFacade.parse("`a\\b`"));
   }
 
   @Test
   void backtickContentWithStrayBackslashBeforeQuoteIsParseError() {
-    // `abc\"` — backslash followed by " which is NOT in the ESC character class
-    // [`'\\/fnrt], so it must fail lexing under the tightened grammar.
-    assertThrows(
-        RuntimeException.class,
-        () -> ParserFacade.parse("`abc\\\"`"),
-        "Backslash-quote inside backticks must be a parse error (\" not in ESC set)");
+    // `abc\"` — " is not in the ESC set, so the stray backslash breaks lexing.
+    assertThrows(IllegalArgumentException.class, () -> ParserFacade.parse("`abc\\\"`"));
   }
 
   @Test
@@ -124,8 +118,7 @@ class TickQuotedIdentifierTest extends FhirPathTestBase {
     // The exact expression from the compat exclusion — spec says backtick-wrapping a string
     // with many escapes is a parse error.
     assertThrows(
-        RuntimeException.class,
-        () -> ParserFacade.parse("`a\\b\\'\\\"\\`\\r\\n\\t\\u0065`"),
-        "Compat test expression must raise a parse error per spec");
+        IllegalArgumentException.class,
+        () -> ParserFacade.parse("`a\\b\\'\\\"\\`\\r\\n\\t\\u0065`"));
   }
 }

@@ -171,7 +171,6 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
   private static String extractIdentifier(final FhirPathParser.IdentifierContext ctx) {
     if (ctx.DELIMITEDIDENTIFIER() != null) {
       final String raw = ctx.DELIMITEDIDENTIFIER().getText();
-      // Strip surrounding backticks and process FHIRPath escape sequences.
       return StringEscapeUtils.unescapeFhirPathString(raw.substring(1, raw.length() - 1));
     }
     return ctx.getText();

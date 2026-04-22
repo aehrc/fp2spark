@@ -82,9 +82,9 @@ public final class TypeOps {
         ctx -> {
           if (ctx.args().size() == 1) {
             final CollectionValue coll = ctx.collectionArg(0);
-            return coll.apply(
-                arr -> CollectionValue.nullIfEmpty(functions.filter(arr, Column::isNotNull)),
-                col -> col);
+            return coll.isSingular()
+                ? coll.column()
+                : CollectionValue.nullIfEmpty(coll.filterNulls().column());
           }
           final CollectionValue coll = ctx.collectionArg(0);
           final Column typeName = ctx.arg(1);
@@ -93,10 +93,9 @@ public final class TypeOps {
               col -> when(col.equalTo(typeName), col));
         });
 
-    // Non-choice type(): static type info. Per the FHIRPath spec, every element in the input
-    // collection has the same declared type — including null elements of primitive arrays —
-    // so we emit the TypeInfo struct unconditionally for each element. Null propagation for an
-    // empty singular input is preserved via the isNotNull guard in the singular branch.
+    // Non-choice type(): static type info. For arrays, emit a TypeInfo struct unconditionally per
+    // element — null-valued primitives still have a declared type (#182). For singular inputs, the
+    // null-check preserves empty-collection propagation.
     registry.register(
         "type",
         ctx -> {

@@ -5,8 +5,10 @@ import io.github.fhnaumann.funcs.CanonicalizerService;
 import io.github.fhnaumann.funcs.ConverterService;
 import io.github.fhnaumann.funcs.RelationCheckerService;
 import io.github.fhnaumann.funcs.UCUMService;
+import io.github.fhnaumann.funcs.ValidatorService;
 import io.github.fhnaumann.model.UCUMExpression.CanonicalTerm;
 import io.github.fhnaumann.util.PreciseDecimal;
+import io.github.fhnaumann.util.SpecialUtil;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
@@ -85,6 +87,30 @@ final class UcumService {
       return new Canonical(magnitude.getValue(), adjustedCode);
     } catch (final Exception e) {
       return null;
+    }
+  }
+
+  /**
+   * Checks whether a UCUM code denotes (or contains) a special unit.
+   *
+   * <p>Special units are UCUM units whose value is defined by a non-linear transform rather than a
+   * simple scale factor (e.g., {@code 'B'} for bel, {@code 'dB'} for decibel, {@code '[pH]'},
+   * {@code 'Np'}). Per the FHIRPath spec, arithmetic involving special units is undefined and
+   * should return empty.
+   *
+   * @param code the UCUM code to check
+   * @return true if the code parses and contains a special unit, false otherwise (including when
+   *     the code is invalid)
+   */
+  static boolean isSpecialUnit(@Nonnull final String code) {
+    try {
+      final ValidatorService.ValidationResult result = SERVICE.validate(code);
+      if (!(result instanceof ValidatorService.Success success)) {
+        return false;
+      }
+      return SpecialUtil.containsSpecialUnit(success.term());
+    } catch (final Exception e) {
+      return false;
     }
   }
 

@@ -152,4 +152,37 @@ public class QuantityArithmeticTest extends FhirPathTestBase {
         .testEmpty("1 month + 1 month", "Month addition not supported")
         .build();
   }
+
+  // ===== Special UCUM units (non-linear: bel, decibel, neper, pH) =====
+
+  @TestFactory
+  Stream<DynamicTest> testSpecialUcumUnits() {
+    return builder()
+        .group("Arithmetic with special UCUM units → empty (issue #157)")
+        // 'B' (bel) — the canonical example from the spec/issue
+        .testEmpty("1 'B' * 2", "Multiplying bel by scalar → empty")
+        .testEmpty("1 'B' + 1 'B'", "Adding two bels → empty")
+        .testEmpty("1 'B' - 1 'B'", "Subtracting two bels → empty")
+        .testEmpty("1 'B' / 2", "Dividing bel by scalar → empty")
+        // Other non-linear UCUM units
+        .testEmpty("1 'dB' + 1 'dB'", "Adding two decibels → empty")
+        .testEmpty("1 'Np' * 2", "Neper (natural log unit) × scalar → empty")
+        .testEmpty("1 '[pH]' + 1 '[pH]'", "pH (negative log concentration) → empty")
+        // Mixed: special on either side poisons the operation
+        .testEmpty("1 'B' + 1 'dB'", "bel + decibel → empty")
+        .testEmpty("5 'kg' + 1 'B'", "Mass + bel → empty (incompatible anyway)")
+        .build();
+  }
+
+  // ===== Regression guard: non-special units still work =====
+
+  @TestFactory
+  Stream<DynamicTest> testNonSpecialUnitsRegression() {
+    return builder()
+        .group("Non-special UCUM units still perform arithmetic (regression guard)")
+        .testTrue("1 'kg' * 2 'kg' = 2 'kg2'", "kg × kg still works after special-unit check")
+        .testTrue("2 'mg' + 3 'mg' = 5 'mg'", "mg + mg still works")
+        .testTrue("10 'cm' / 2 'cm' = 5.0 '1'", "cm ÷ cm still works")
+        .build();
+  }
 }

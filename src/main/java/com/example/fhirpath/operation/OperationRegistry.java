@@ -77,8 +77,14 @@ public final class OperationRegistry {
         register("mod", forTypes(NUMERIC).define(Signatures::binaryOp)),
         register("div", forTypes(NUMERIC).define(Signatures::binaryOp)),
         register("stringConcat", Signatures.binaryOp(STRING)),
-        register("unaryPlus", forTypes(NUMERIC).define(Signatures::unaryOp)),
-        register("unaryMinus", forTypes(NUMERIC).define(Signatures::unaryOp)),
+        register(
+            "unaryPlus",
+            forTypes(NUMERIC).define(Signatures::unaryOp),
+            Signatures.unaryOp(QUANTITY)),
+        register(
+            "unaryMinus",
+            forTypes(NUMERIC).define(Signatures::unaryOp),
+            Signatures.unaryOp(QUANTITY)),
 
         // EQUALITY OPERATORS (FHIRPath Spec 6.4)
         // Three tiers for equality overload resolution:

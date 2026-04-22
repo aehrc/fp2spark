@@ -174,6 +174,50 @@ public class QuantityArithmeticTest extends FhirPathTestBase {
         .build();
   }
 
+  // ===== Unary minus (issue #187) =====
+
+  @TestFactory
+  Stream<DynamicTest> testUnaryMinus() {
+    return builder()
+        .group("Unary minus on Quantity (issue #187)")
+        .testTrue("(-5.5 'mg').abs() = 5.5 'mg'", "Spec §5.7 example: (-5.5 'mg').abs()")
+        .testTrue("-(1 'mg') = -1 'mg'", "Negation of positive quantity literal")
+        .testTrue("-(-1 'mg') = 1 'mg'", "Double negation")
+        .testTrue("(-0 'mg') = 0 'mg'", "Negation of zero preserves unit")
+        .testTrue("-(5 'kg') < 0 'kg'", "Negated positive quantity compares less than zero")
+        .testTrue(
+            "(1 year).toQuantity('seconds') - 1 'a' = -21600 seconds",
+            "Negative quantity literal in subtraction (6.6_math compat)")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testUnaryPlusQuantity() {
+    return builder()
+        .group("Unary plus on Quantity (identity)")
+        .testTrue("+(5 'mg') = 5 'mg'", "Unary plus is identity for Quantity")
+        .testTrue("+(-5 'mg') = -5 'mg'", "Unary plus preserves negative Quantity")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testUnaryMinusEmptyPropagation() {
+    return builder()
+        .group("Unary minus on Quantity — empty propagation")
+        // Incompatible-dimension subtraction produces a null Quantity; negating it must stay null.
+        .testEmpty("-(10 'cm' - 10 'g')", "Unary minus on empty Quantity → empty")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testUnaryMinusPreservesSpecialUnits() {
+    return builder()
+        .group("Unary minus on special UCUM units — negation is linear, not arithmetic")
+        .testTrue("(-1 'B') = -1 'B'", "Negation of bel preserves unit")
+        .testTrue("(-1 '[pH]') = -1 '[pH]'", "Negation of pH preserves unit")
+        .build();
+  }
+
   // ===== Regression guard: non-special units still work =====
 
   @TestFactory

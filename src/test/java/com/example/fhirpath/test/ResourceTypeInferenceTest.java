@@ -2,15 +2,14 @@ package com.example.fhirpath.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.example.fhirpath.typing.Cardinality;
 import com.example.fhirpath.typing.ComplexType;
-import com.example.fhirpath.typing.FieldSpec;
 import com.example.fhirpath.typing.InlineComplexType;
 import com.example.fhirpath.typing.ResourceType;
 import com.example.fhirpath.typing.Shape;
 import com.example.fhirpath.typing.SystemType;
+import com.example.fhirpath.typing.Type;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,14 +23,11 @@ import org.junit.jupiter.api.Test;
  */
 class ResourceTypeInferenceTest {
 
-  private static Shape shapeOf(final ResourceType type, final String fieldName) {
-    final InlineComplexType inline = (InlineComplexType) type;
-    for (final FieldSpec fs : inline.getFields()) {
-      if (fs.getName().equals(fieldName)) {
-        return fs.getShape();
-      }
-    }
-    throw new AssertionError("Field not found: " + fieldName);
+  private static Shape shapeOf(final Type type, final String fieldName) {
+    return ((InlineComplexType) type)
+        .resolveField(fieldName)
+        .orElseThrow(() -> new AssertionError("Field not found: " + fieldName))
+        .getShape();
   }
 
   @Test
@@ -77,13 +73,9 @@ class ResourceTypeInferenceTest {
    */
   @Test
   void emptyListIsOptionalSingletonOfNull() {
-    final Map<String, Object> data = Map.of("empty", List.of());
+    final ResourceType type = ResourceTypeInference.infer("R", Map.of("empty", List.of()));
 
-    final ResourceType type = ResourceTypeInference.infer("R", data);
-
-    final Shape shape = shapeOf(type, "empty");
-    assertEquals(Cardinality.SINGLE, shape.cardinality(), "empty list → SINGLE cardinality");
-    assertEquals(SystemType.NULL, shape.elementType(), "empty list → NULL element type");
+    assertEquals(Shape.single(SystemType.NULL), shapeOf(type, "empty"));
   }
 
   @Test
@@ -115,24 +107,11 @@ class ResourceTypeInferenceTest {
     assertEquals(Cardinality.MANY, itemsShape.cardinality());
     assertInstanceOf(ComplexType.class, itemsShape.elementType());
 
-    final InlineComplexType elementType = (InlineComplexType) itemsShape.elementType();
-    final Shape attrShape =
-        elementType.getFields().stream()
-            .filter(fs -> fs.getName().equals("attr"))
-            .findFirst()
-            .orElseThrow()
-            .getShape();
-    final Shape emptyShape =
-        elementType.getFields().stream()
-            .filter(fs -> fs.getName().equals("empty"))
-            .findFirst()
-            .orElseThrow()
-            .getShape();
-
-    assertEquals(Shape.single(SystemType.STRING), attrShape);
+    final Type elementType = itemsShape.elementType();
+    assertEquals(Shape.single(SystemType.STRING), shapeOf(elementType, "attr"));
     assertEquals(
         Shape.single(SystemType.NULL),
-        emptyShape,
+        shapeOf(elementType, "empty"),
         "Nested empty list inside a complex element → ?NULL (#156)");
   }
 
@@ -157,15 +136,5 @@ class ResourceTypeInferenceTest {
     final ResourceType type = ResourceTypeInference.infer("R", data);
 
     assertEquals(Shape.single(SystemType.STRING), shapeOf(type, "s"));
-  }
-
-  @Test
-  void emptyListFieldWithDirectEqualityOnShape() {
-    // The most important property: the inferred shape must equal Shape.single(NULL)
-    // (not just report the same cardinality). This guards against future drift.
-    final ResourceType type = ResourceTypeInference.infer("R", Map.of("empty", List.of()));
-
-    assertTrue(shapeOf(type, "empty").isSingle());
-    assertEquals(Shape.single(SystemType.NULL), shapeOf(type, "empty"));
   }
 }

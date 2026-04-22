@@ -40,7 +40,8 @@ import java.util.stream.Collectors;
  *   <li>Boolean values → {@link SystemType#BOOLEAN}
  *   <li>null values → {@link SystemType#NULL}
  *   <li>{@link TypedNull} values → the wrapped {@link SystemType} with {@link Cardinality#SINGLE}
- *   <li>List values → {@link Cardinality#MANY} with element type merged across all items
+ *   <li>Non-empty List values → {@link Cardinality#MANY} with element type merged across all items
+ *   <li>Empty List values → see "Cardinality Rules" below
  *   <li>Map values → {@link ComplexType} with recursive inference
  * </ul>
  *

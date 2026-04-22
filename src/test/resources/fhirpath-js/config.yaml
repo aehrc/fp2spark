@@ -726,15 +726,6 @@ excludeSet:
           strict-typing differences. Follow-up work.
         any:
           - ""
-  - title: fp2sql — skip entire 8_variables.yaml
-    glob: "8_variables.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Variable injection is not yet supported by the executor bridge.
-        any:
-          - ""
   - title: fp2sql — 5.3_subsetting.yaml exclusions
     glob: "fhirpath-js/cases/5.3_subsetting.yaml"
     exclude:
@@ -748,6 +739,25 @@ excludeSet:
           SPEC_DIVERGENCES.md D3 (No support for attributes on primitive types).
         any:
           - "** first for collection with null values"
+  - title: fp2sql — 8_variables.yaml exclusions
+    glob: "fhirpath-js/cases/8_variables.yaml"
+    exclude:
+      - title: "User-defined %name bindings via YAML variables: field"
+        type: feature
+        id: "#199"
+        comment: |
+          The fp2sql compiler has no public hook for injecting user-defined
+          %name environment bindings, so tests that supply them via the YAML
+          `variables:` field cannot be evaluated. Tracked under the
+          defineVariable() umbrella (#199); once that lands the executor bridge
+          will be extended to feed YAML-level bindings into the compiler.
+        any:
+          - "%a - 1"
+        desc:
+          - "Empty variable"
+          - "Null variable"
+          - "Back-quoted variable name"
+          - "Single-quoted variable name"
   - title: fp2sql — fhir-quantity.yaml exclusions
     glob: "fhirpath-js/cases/fhir-quantity.yaml"
     exclude:
@@ -1133,15 +1143,6 @@ excludeSet:
         outcome: failure
         any:
           - '''1 \''wk\''''.toQuantity(''days'')'
-  - title: Variable exclusions
-    glob: "fhirpath-js/cases/8_variables.yaml"
-    exclude:
-      - title: "Unsupported context definition within view runner"
-        type: feature
-        outcome: failure
-        id: "#2424"
-        spel:
-          - "#testCase.context == 'g1'"
   - title: fp2sql — extensions.yaml exclusions
     glob: "fhirpath-js/cases/extensions.yaml"
     exclude:

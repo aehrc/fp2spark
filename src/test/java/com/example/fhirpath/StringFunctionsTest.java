@@ -211,6 +211,14 @@ public class StringFunctionsTest extends FhirPathTestBase {
         .testFalse(
             "'N8000123123'.matches('^N[0-9]{8}$')", "Full-match anchors reject longer string")
         .testTrue("'N8000123123'.matches('N[0-9]{8}')", "Partial match without anchors succeeds")
+        .group("matches() dotAll semantics (FHIRPath spec §5.6.8)")
+        .testTrue(
+            "'first line\nsecond line'.matches('line.second')",
+            "'.' matches newline between lines (DOTALL enabled)")
+        .testTrue(
+            "'a\nb\nc'.matches('a.b.c')", "'.' matches multiple newlines across a multiline string")
+        .testTrue(
+            "'abc'.matches('a.c')", "'.' still matches a non-newline character when DOTALL is on")
         .group("matches() empty propagation")
         .testEmpty("{}.matches('abc')", "Empty input returns empty")
         .testEmpty("'abc'.matches({})", "Empty regex returns empty")

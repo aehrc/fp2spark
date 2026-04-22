@@ -45,6 +45,9 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
   /** Pathling flat schema: integer identity field present on every composite struct. */
   private static final String FID_COLUMN = "_fid";
 
+  /** FHIR instant ISO-8601 UTC format, matching Pathling's {@code SqlFunctions.toFhirInstant}. */
+  private static final String FHIR_INSTANT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
+
   @Nullable private final Column thisColumn;
 
   @Nullable private final Column rootColumn;
@@ -206,14 +209,10 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
         || !"instant".equals(fpt.getFhirName())) {
       return column;
     }
-    final boolean isArray = !trav.isSingular();
-    return isArray
-        ? functions.transform(column, SparkCodeGenerator::formatInstant)
-        : formatInstant(column);
+    return trav.isSingular()
+        ? formatInstant(column)
+        : functions.transform(column, SparkCodeGenerator::formatInstant);
   }
-
-  /** FHIR instant ISO-8601 UTC format, matching Pathling's {@code SqlFunctions.toFhirInstant}. */
-  private static final String FHIR_INSTANT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
 
   @Nonnull
   private static Column formatInstant(@Nonnull final Column timestamp) {

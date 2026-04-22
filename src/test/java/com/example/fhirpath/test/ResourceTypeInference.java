@@ -48,8 +48,9 @@ import java.util.stream.Collectors;
  *
  * <ul>
  *   <li>Single values (String, Integer, etc.) → {@link Cardinality#SINGLE}
- *   <li>List values → {@link Cardinality#MANY}
- *   <li>Empty lists → {@link Cardinality#MANY} with {@link SystemType#ANY}
+ *   <li>Non-empty List values → {@link Cardinality#MANY}
+ *   <li>Empty lists → {@link Cardinality#SINGLE} with {@link SystemType#NULL} (see <a
+ *       href="https://github.com/piotrszul/fp2spark/issues/156">issue #156</a>)
  * </ul>
  *
  * <p><b>Example:</b>
@@ -155,17 +156,27 @@ class ResourceTypeInference {
   }
 
   /**
-   * Infer shape from a List value (always MANY cardinality).
+   * Infer shape from a List value.
+   *
+   * <p>A non-empty list is inferred as {@link Cardinality#MANY}. An empty list is inferred as an
+   * optional singleton of {@link SystemType#NULL} ({@code ?null}) rather than {@code *ANY} — the
+   * empty list carries no information about intended cardinality, and {@link SystemType#NULL}
+   * coerces to any type (see {@link TypeSystem#canCast}), which matches the FHIRPath
+   * empty-collection propagation semantics (§1.5). Inferring MANY here caused static-analysis
+   * CardinalityMismatchExceptions on operators requiring singleton operands — see <a
+   * href="https://github.com/piotrszul/fp2spark/issues/156">issue #156</a>.
    *
    * @param list The list to analyze
    * @param depth Current recursion depth
-   * @return Shape with MANY cardinality
+   * @return Shape with MANY cardinality for non-empty lists, single-NULL for empty lists
    */
   @Nonnull
   private static Shape inferListShape(@Nonnull final List<?> list, final int depth) {
     if (list.isEmpty()) {
-      // Empty list - use ANY type
-      return Shape.many(SystemType.ANY);
+      // Empty list carries no cardinality information — treat as an empty optional singleton.
+      // SystemType.NULL coerces to any type so this participates cleanly in operator resolution
+      // and the runtime empty-propagation rules produce the expected empty result.
+      return Shape.single(SystemType.NULL);
     }
 
     // Use first element to determine type

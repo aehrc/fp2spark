@@ -239,15 +239,6 @@ excludeSet:
           - "'c' + Patient.name.given[0]"
           - "Patient.name.given[0] & 'c'"
           - "'c' & Patient.name.given[0]"
-      - title: Empty list [] inferred as MANY cardinality
-        type: bug
-        id: "#156"
-        comment: |
-          YAML subject field n4: [] is inferred as MANY cardinality by
-          ResourceTypeInference, causing compile-time CardinalityMismatchException.
-        outcome: error
-        expression:
-          - "^(s5 \\+ n4|n4 \\+ |n4 \\* |\\w+ \\* n4|n4 & |s5 & n4|n1 - n4)"
       - title: UCUM quantity literals in date/time arithmetic
         type: bug
         id: "#158"
@@ -363,14 +354,27 @@ excludeSet:
           - "** toChars on a singleton with null value"
           - "** split on a singleton with null value"
           - "** trim on a singleton with null value"
+      # Must come before the broad Functions.str.* rule so the more specific match wins.
+      - title: Functions.str.empty passes for toChars/join post-#156
+        type: design
+        comment: |
+          toChars() and join() accept MANY-cardinality input and empty-propagate, so
+          Functions.str.empty.toChars() and Functions.str.empty.join(',') evaluate to
+          an empty collection after #156 (empty-list nested field is now ?NULL). The
+          broader Functions.str.* rule below would otherwise demand an error for them.
+        outcome: pass
+        expression:
+          - "^Functions\\.str\\.empty\\.(toChars\\(\\)|join\\(',' *\\))$"
       - title: Array subject field Functions.str has MANY cardinality
         type: design
         comment: |
           The YAML subject defines str as a one-element array, giving it MANY cardinality.
-          String functions require singleton input (? cardinality), so all expressions
-          traversing Functions.str.* fail with CardinalityMismatchException at compile time.
-          This is D1 (static typing) — fp2sql rejects MANY-cardinality operands statically.
-          See SPEC_DIVERGENCES.md D1.
+          String functions require singleton input (? cardinality), so expressions
+          traversing Functions.str.* fail with CardinalityMismatchException at compile
+          time (the MANY propagates through the nested field access even when the nested
+          field itself is singleton — see #156 for the related empty-list case).
+          This is D1 (static typing) — fp2sql rejects MANY-cardinality operands
+          statically. See SPEC_DIVERGENCES.md D1.
         outcome: error
         expression:
           - "^Functions\\.str\\."
@@ -406,17 +410,19 @@ excludeSet:
   - title: fp2sql — 5.7_math.yaml exclusions
     glob: "5.7_math.yaml"
     exclude:
-      - title: Empty list [] inferred as MANY cardinality
+      - title: round() with non-foldable precision argument
         type: bug
-        id: "#156"
+        id: "#247"
         comment: |
-          YAML subject field n2: [] is inferred as MANY cardinality by
-          ResourceTypeInference, causing compile-time CardinalityMismatchException.
-          Same root cause as the 6.6_math.yaml n4 exclusion.
+          Math.n2.round(n3) reaches Spark codegen after #156 (empty list is now
+          inferred as optional singleton) but fails with Spark's
+          DATATYPE_MISMATCH.NON_FOLDABLE_INPUT: Spark's built-in round() requires
+          a foldable (constant) scale argument, but fp2sql's implementation passes
+          coalesce(precision_column, 0) which is not foldable.
+          See #247.
         outcome: error
-        expression:
-          # Word-boundary match to avoid false positives on e.g. n20
-          - "\\bn2\\b"
+        any:
+          - "Math.n2.round(n3)"
   # ---------------------------------------------------------------------------
   # fp2sql — 3.2_paths.yaml exclusions
   # ---------------------------------------------------------------------------
@@ -456,17 +462,6 @@ excludeSet:
   - title: fp2sql — 6.5_boolean_logic.yaml exclusions
     glob: "6.5_boolean_logic.yaml"
     exclude:
-      - title: Empty list [] inferred as MANY cardinality
-        type: bug
-        id: "#156"
-        comment: |
-          YAML subject field emp: [] is inferred as MANY cardinality by
-          ResourceTypeInference, causing compile-time CardinalityMismatchException
-          for boolean operators that require ? cardinality operands.
-          Same root cause as the 5.7_math.yaml n2 and 6.6_math.yaml n4 exclusions.
-        outcome: error
-        any:
-          - "emp"
       - title: Strict typing rejects not() on Integer
         type: design
         comment: |
@@ -915,16 +910,6 @@ excludeSet:
         any:
           - "1 minute > 59 seconds"
           - "1 minute < 61 seconds"
-      - title: Empty list [] inferred as MANY cardinality in comparison
-        type: bug
-        id: "#156"
-        comment: |
-          Subject field e: [] is inferred as MANY cardinality by ResourceTypeInference,
-          causing compile-time CardinalityMismatchException when used in comparisons.
-          Same root cause as the 6.6_math.yaml n4 exclusion.
-        outcome: error
-        any:
-          - "with empty value"
       - title: Different-precision temporal comparison
         type: feature
         id: "#174"

@@ -938,15 +938,6 @@ excludeSet:
         outcome: error
         expression:
           - "DiagnosticReport\\.effectiveDateTime"
-      - title: Instant to dateTime literal comparison bug
-        type: bug
-        id: "#172"
-        comment: |
-          Comparing FHIR.instant field to a dateTime literal causes a ClassCastException
-          (Timestamp cannot be cast to String) in Spark UDF execution.
-        outcome: error
-        any:
-          - "DiagnosticReport.issued = @2005-01-27T06:40:01Z"
   - title: fp2sql — 6.3_types.yaml exclusions
     glob: "fhirpath-js/cases/6.3_types.yaml"
     exclude:

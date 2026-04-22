@@ -159,27 +159,66 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
       return visitExtensionTraversal(trav);
     }
 
+    Column result;
     if (trav.target() instanceof Resource) {
       // Flat schema: resource fields are top-level columns when rootColumn is null.
       // When rootColumn is set, field access is relative to the root column (e.g., a lambda
       // parameter for forEach/repeat evaluation).
-      return rootColumn != null
-          ? rootColumn.getField(trav.fieldSpec().getName())
-          : col(trav.fieldSpec().getName());
-    }
-    final Column target = trav.target().accept(this);
-    Column result = target.getField(trav.fieldSpec().getName());
+      result =
+          rootColumn != null
+              ? rootColumn.getField(trav.fieldSpec().getName())
+              : col(trav.fieldSpec().getName());
+    } else {
+      final Column target = trav.target().accept(this);
+      result = target.getField(trav.fieldSpec().getName());
 
-    // Handle collection traversals - need to filter nulls and flatten if necessary
-    if (!trav.target().isSingular()) {
-      result = functions.filter(result, Column::isNotNull);
-      if (!trav.fieldSpec().isSingular()) {
-        result = functions.flatten(result);
+      // Handle collection traversals - need to filter nulls and flatten if necessary
+      if (!trav.target().isSingular()) {
+        result = functions.filter(result, Column::isNotNull);
+        if (!trav.fieldSpec().isSingular()) {
+          result = functions.flatten(result);
+        }
+        // Convert empty arrays to null (FHIRPath empty collection = null in Spark)
+        result = CollectionValue.nullIfEmpty(result);
       }
-      // Convert empty arrays to null (FHIRPath empty collection = null in Spark)
-      result = CollectionValue.nullIfEmpty(result);
     }
+
+    // FHIR.instant is encoded by the Pathling encoder as Spark TimestampType, but fp2sql
+    // represents DateTime values as ISO-8601 strings (see SparkTypeMapper). Bridge the encoding
+    // by formatting Timestamp columns to an ISO-8601 UTC string at read time so downstream ops
+    // (comparison, equality, conversion) operate on a consistent representation. Mirrors
+    // Pathling's SqlFunctions.toFhirInstant / DateTimeCollection.asStringPath.
+    result = coerceInstantToString(trav, result);
     return result;
+  }
+
+  /**
+   * Converts a Spark TimestampType column (from FHIR.instant encoding) to an ISO-8601 UTC string.
+   * Always produces UTC since Spark TimestampType does not preserve the original timezone.
+   *
+   * <p>For many-cardinality traversals, the column is an array so conversion is applied via {@code
+   * transform}. Singular columns are converted directly.
+   */
+  @Nonnull
+  private static Column coerceInstantToString(
+      @Nonnull final Traversal trav, @Nonnull final Column column) {
+    if (!(trav.fieldSpec().getType() instanceof FhirPrimitiveType fpt)
+        || !"instant".equals(fpt.getFhirName())) {
+      return column;
+    }
+    final boolean isArray = !trav.isSingular();
+    return isArray
+        ? functions.transform(column, SparkCodeGenerator::formatInstant)
+        : formatInstant(column);
+  }
+
+  /** FHIR instant ISO-8601 UTC format, matching Pathling's {@code SqlFunctions.toFhirInstant}. */
+  private static final String FHIR_INSTANT_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'";
+
+  @Nonnull
+  private static Column formatInstant(@Nonnull final Column timestamp) {
+    return functions.date_format(
+        functions.to_utc_timestamp(timestamp, functions.current_timezone()), FHIR_INSTANT_FORMAT);
   }
 
   /**

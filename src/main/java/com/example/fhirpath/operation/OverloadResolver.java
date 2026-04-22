@@ -194,17 +194,20 @@ public final class OverloadResolver {
       return new Adapt(arg, true, 0);
     }
 
-    // NULL (empty collection {}) matches any expected type
-    // FHIRPath semantics: empty collections are polymorphic
+    // ANY matches any type. FHIR→System unwrapping happens lazily in codegen via
+    // SparkOpContext.systemArgType so that shape-preserving operations like
+    // where(*T, lambda) → *T keep the original FHIR element type on their result.
     if (target == Types.ANY) {
       return new Adapt(arg, true, 1);
-    } else if (actual == Types.NULL) {
-      return new Adapt(new Literal(null, target != Types.ANY ? target : Types.NULL), true, 1);
-    } else if (target == Types.ANY) {
-      // ANY matches any type
-      return new Adapt(arg, true, 1);
-    } else if (TypeSystem.canCast(actual, target)) {
-      // Phase 1: Only INTEGER → DECIMAL cast is supported
+    }
+
+    // NULL (empty collection {}) matches any expected type
+    // FHIRPath semantics: empty collections are polymorphic
+    if (actual == Types.NULL) {
+      return new Adapt(new Literal(null, target), true, 1);
+    }
+
+    if (TypeSystem.canCast(actual, target)) {
       return new Adapt(new Cast(arg, target), true, 1);
     }
 

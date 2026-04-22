@@ -9,6 +9,7 @@ import ca.uhn.fhir.context.RuntimePrimitiveDatatypeDefinition;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Optional;
+import org.hl7.fhir.r4.model.Quantity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +41,18 @@ public non-sealed class FhirComplexType implements ComplexType {
   @Override
   public String getName() {
     return definition.getName();
+  }
+
+  /**
+   * Returns {@code true} if this FHIR complex type is structurally compatible with {@link
+   * SystemType#QUANTITY}, i.e. it is Quantity or one of its HAPI subclasses (Duration, Age, Count,
+   * Distance, Money, SimpleQuantity).
+   *
+   * <p>These types share the {@code (value, unit, system, code)} struct layout in Spark storage, so
+   * they can be substituted for {@code System.Quantity} wherever a quantity is expected.
+   */
+  public boolean isQuantityCompatible() {
+    return Quantity.class.isAssignableFrom(definition.getImplementingClass());
   }
 
   @Override

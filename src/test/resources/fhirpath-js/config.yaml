@@ -1024,21 +1024,14 @@ excludeSet:
   - title: fp2sql — 5.5_conversion.yaml exclusions
     glob: "fhirpath-js/cases/5.5_conversion.yaml"
     exclude:
-      - title: Missing implicit FHIR-to-System type conversion for ANY parameters
-        comment: |
-          Functions accepting ANY don't trigger implicit FHIR-to-System type conversion.
-          toString() on FhirPrimitiveType and toQuantity() on FhirComplexType (Duration)
-          both fail with "Expected SystemType" errors.
-        type: bug
-        id: "#180"
-        outcome: error
-        any:
-          - "Patient.name.given[0].toString()"
-          - "MedicationRequest.dispenseRequest.expectedSupplyDuration.toQuantity() = 3 days"
       - title: No support for attributes on primitive types
         comment: |
-          Null-valued primitives with extensions (e.g., collWithNullsAndTrue[0]) are
-          invisible due to D3. See SPEC_DIVERGENCES.md D3.
+          Null-valued primitives with extensions (e.g., collWithNullsAndTrue[0],
+          Patient.name.given[0] in patient-example-2.json) are invisible due to D3:
+          fp2sql filters JSON positional nulls at traversal, shifting indices so a
+          null-with-extension is silently skipped and the next non-empty element is
+          returned. fhirpath.js preserves the null slot and propagates empty through
+          the conversion. See SPEC_DIVERGENCES.md D3.
         type: design
         outcome: failure
         any:
@@ -1046,6 +1039,19 @@ excludeSet:
           - "Functions.collWithNullsAndTrue[0].toInteger()"
           - "Functions.collWithNullsAndTrue[0].toDecimal()"
           - "Functions.collWithNullsAndTrue[0].toQuantity()"
+          - "Patient.name.given[0].toString()"
+      - title: Duration → Quantity (UCUM day) not equal to calendar-day literal
+        comment: |
+          `expectedSupplyDuration.toQuantity()` produces {3, UCUM, d} but `3 days`
+          is {3, calendar, day}. QuantitySupport's three-tier comparator cannot
+          bridge them: canonicalize on calendar `day` returns null, the year↔month
+          tier does not apply, and tier 3 requires matching system+code. fhirpath.js
+          treats them as equal. Tracked under #249.
+        type: bug
+        id: "#249"
+        outcome: failure
+        any:
+          - "MedicationRequest.dispenseRequest.expectedSupplyDuration.toQuantity() = 3 days"
       - title: Calendar duration != UCUM literal returns true instead of empty
         type: ref-impl-bug
         id: "R1"

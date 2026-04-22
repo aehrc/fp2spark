@@ -81,4 +81,47 @@ class FhirPrimitiveTypeConversionTest extends FhirPathTestBase {
         .testFalse("gender.hasValue()", "hasValue() returns false for null field")
         .build();
   }
+
+  /**
+   * Regression tests for #180 — conversion functions declared with {@code ANY} parameters (e.g.
+   * {@code toString()}, {@code toBoolean()}) must accept FHIR primitive arguments by applying the
+   * implicit FHIR→System coercion defined in FHIRPath §5.3. Before the fix the analyzer raised
+   * "Expected SystemType" for every FHIR-typed input.
+   */
+  @TestFactory
+  Stream<DynamicTest> testConversionFunctionsAcceptFhirPrimitives() {
+    return builder()
+        .withSubject(
+            patientType(),
+            sb ->
+                sb.string("id", "patient-1")
+                    .bool("active", true)
+                    .string("gender", "male")
+                    .string("birthDate", "2024-01-15"))
+        .group("toString() on FHIR primitives (#180)")
+        .testEquals("patient-1", "id.toString()", "FHIR.id → System.String")
+        .testEquals("true", "active.toString()", "FHIR.boolean → System.String")
+        .testEquals("male", "gender.toString()", "FHIR.code → System.String")
+        .testEquals("2024-01-15", "birthDate.toString()", "FHIR.date → System.String")
+        .group("toBoolean()/toInteger() on FHIR primitives (#180)")
+        .testTrue("active.toBoolean()", "FHIR.boolean → System.Boolean via toBoolean()")
+        .testTrue("active.convertsToBoolean()", "convertsToBoolean() accepts FHIR boolean")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testToStringOnFhirDecimalAndInteger() {
+    final ResourceType observationType =
+        new InlineResourceType(
+            "Observation",
+            new FieldSpec("status", Shape.single(FhirPrimitiveType.of("code"))),
+            new FieldSpec("valueInteger", Shape.single(FhirPrimitiveType.of("integer"))));
+    return builder()
+        .withSubject(
+            observationType, sb -> sb.string("status", "final").integer("valueInteger", 42))
+        .group("toString() on FHIR numeric primitives (#180)")
+        .testEquals("42", "valueInteger.toString()", "FHIR.integer → System.String")
+        .testEquals("final", "status.toString()", "FHIR.code → System.String")
+        .build();
+  }
 }

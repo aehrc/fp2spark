@@ -3,10 +3,12 @@ package com.example.fhirpath.codegen.spark.ops;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
+import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationDef;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.codegen.spark.SparkTypeMapper;
 import com.example.fhirpath.codegen.spark.udf.QuantityConvertToUnit;
+import com.example.fhirpath.typing.FhirComplexType;
 import com.example.fhirpath.typing.QuantityValue;
 import com.example.fhirpath.typing.SystemType;
 import jakarta.annotation.Nonnull;
@@ -123,7 +125,7 @@ public final class ConversionOps {
       if (sourceType == SystemType.NULL) {
         return lit(null);
       }
-      final Column input = ctx.arg(0);
+      final Column input = normaliseQuantityColumn(ctx, 0);
       final Column unitArg = ctx.arg(1);
 
       final Column quantity = asQuantity(sourceType, input);
@@ -148,7 +150,7 @@ public final class ConversionOps {
       if (sourceType == SystemType.NULL) {
         return lit(null);
       }
-      final Column input = ctx.arg(0);
+      final Column input = normaliseQuantityColumn(ctx, 0);
       final Column unitArg = ctx.arg(1);
       final Column canConvert = validateToQuantity(sourceType, input);
 
@@ -161,6 +163,25 @@ public final class ConversionOps {
               .otherwise(canConvert);
       return nullPropagate(input, result);
     };
+  }
+
+  /**
+   * Returns the argument column, reshaping a Quantity-compatible FHIR complex type (Duration, Age,
+   * Count, Distance, Money, SimpleQuantity) onto the canonical 4-field {@code QUANTITY_TYPE}
+   * layout. Pathling's encoder decorates Quantity-family FHIR types with extra columns (id,
+   * value_scale, comparator, _value_canonicalized, _fid) that downstream UDFs do not handle.
+   */
+  @Nonnull
+  private static Column normaliseQuantityColumn(@Nonnull final SparkOpContext ctx, final int i) {
+    final Column raw = ctx.arg(i);
+    if (ctx.argType(i) instanceof final FhirComplexType fct && fct.isQuantityCompatible()) {
+      return functions.struct(
+          raw.getField("value").cast(SparkTypeMapper.DECIMAL_TYPE).as("value"),
+          raw.getField("unit").as("unit"),
+          raw.getField("system").as("system"),
+          raw.getField("code").as("code"));
+    }
+    return raw;
   }
 
   /** Converts input to quantity, returning identity if already QUANTITY. */

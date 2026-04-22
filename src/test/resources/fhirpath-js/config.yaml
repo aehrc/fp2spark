@@ -696,16 +696,6 @@ excludeSet:
   # The `any: [""]` matcher matches every test case in the target file; omitting `outcome`
   # turns the match into a plain skip (TestAbortedException).
   # ---------------------------------------------------------------------------
-  - title: fp2sql — skip entire 6.3_types.yaml
-    glob: "6.3_types.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          is/as operators require singleton input in fp2sql, whereas fhirpath.js applies them
-          element-wise. Needs either analyzer relaxation or per-case rewrites to ofType().
-        any:
-          - ""
   - title: fp2sql — 6.4_collection.yaml exclusions
     glob: "fhirpath-js/cases/6.4_collection.yaml"
     exclude:
@@ -997,99 +987,93 @@ excludeSet:
         outcome: error
         any:
           - "DiagnosticReport.issued = @2005-01-27T06:40:01Z"
-  - title: Types exclusions
+  - title: fp2sql — 6.3_types.yaml exclusions
     glob: "fhirpath-js/cases/6.3_types.yaml"
     exclude:
-      - title: "Primitive elements with extensions but no value not supported"
-        type: feature
-        outcome: failure
-        id: "#437"
-        comment: |
-          Pathling does not support accessing primitive elements that have extensions
-          but no value. In this test, Patient.name.given[3] exists only as an extension
-          in _given[3] but has no value in the given array. The is() function should
-          return true for such elements, but Pathling returns null because it doesn't
-          recognize the element as existing.
-        any:
-          - "Patient.name.given[3].is(FHIR.string)"
-      - title: "as() operator with count() on primitive elements with extensions but no value"
-        type: feature
-        outcome: failure
-        id: "#437"
-        comment: |
-          These tests use count() to verify that as() successfully converts
-          Patient.name.given[3], which is a primitive element with extensions but
-          no value. Since Pathling doesn't support accessing such elements, count()
-          returns 0 instead of 1, causing the comparison to fail.
-        any:
-          - "(Patient.name.given[3] as FHIR.string).count() = 1"
-          - "Patient.name.given[3].as(FHIR.string).count() = 1"
-      - title: "fhirpath.js operator precedence: is vs comparison"
-        type: ref-impl-bug
+      - title: "is/as operators on many-cardinality input rejected at compile time"
+        type: design
         outcome: error
         comment: |
-          R3. Spec defines is/as (#06) higher than comparison (#08). '1 > 2 is Boolean'
-          parses as '1 > (2 is Boolean)' = '1 > true', a type error. fhirpath.js parses
-          as '(1 > 2) is Boolean'. See SPEC_DIVERGENCES.md R3.
+          D1. `is`/`as` require `?` cardinality input in fp2sql; fhirpath.js
+          evaluates element-wise on `*`-cardinality collections. fp2sql raises
+          a CardinalityMismatchException at analysis time. See SPEC_DIVERGENCES.md D1.
         any:
-          - "1 > 2 is Boolean"
-      - title: "'is' operator on fields accessed through polymorphic collections"
-        type: wontfix
+          - "coll.a is Integer"
+          - "Patient.contact is BackboneElement"
+          - "Patient.contact is Element"
+          - "Patient.contact.name is HumanName"
+          - "Patient.contact.name.given is string"
+          - "Patient.photo is Attachment"
+          - "QuestionnaireResponse.item.select(answer.value as FHIR.Quantity).count()"
+          - "QuestionnaireResponse.item.select(answer.value.as(FHIR.Quantity)).count()"
+      - title: "is/as/ofType() do not traverse FHIR type hierarchy"
+        type: feature
+        outcome: failure
+        id: "#236"
         comment: |
-          Tests require traversing Observation.value (polymorphic) before applying 'is'.
-          Pathling requires ofType() for polymorphic field traversal.
+          fp2sql performs exact-type matching for is/as/ofType(); FHIR subtype
+          relationships (e.g. Observation is DomainResource / Resource) are not
+          recognised. Spec §6.3 requires true when the left operand's type is
+          the specified type or a subtype.
+        any:
+          - "Observation is DomainResource"
+          - "Observation is Resource"
+      - title: "Primitive-elements-with-extensions traversal not supported"
+        type: design
+        outcome: failure
+        comment: |
+          D3. fp2sql does not support accessing primitive elements that exist
+          only via sidecar extensions (e.g. `_given[3]` with no value in `given`),
+          nor extensions on primitive element values. See SPEC_DIVERGENCES.md D3.
+        any:
+          - "Patient.name.given[3].is(FHIR.string)"
+          - "Patient.name.given[3] is FHIR.string"
+          - "(Patient.name.given[3] as FHIR.string).count() = 1"
+          - "Patient.name.given[3].as(FHIR.string).count() = 1"
+          - "Patient.contact.name.family.extension('http://hl7.org/fhir/StructureDefinition/humanname-own-prefix').value is string"
+          - "Patient.contact.name.family.extension('http://hl7.org/fhir/StructureDefinition/humanname-own-prefix').url is System.String"
+      - title: "'is' on choice-type field traversal without ofType() narrowing"
+        type: design
+        outcome: failure
+        comment: |
+          D6. `Observation.value.X` traverses an unnarrowed choice type field;
+          fp2sql cannot statically resolve the variant and returns empty,
+          whereas fhirpath.js auto-narrows at runtime. Requires explicit
+          `.value.ofType(Quantity).X`. See SPEC_DIVERGENCES.md D6.
         any:
           - "Observation.value.value is decimal"
           - "Observation.value.value is Element"
           - "Observation.value.system is uri"
           - "Observation.value.unit is string"
           - "Observation.value.unit is decimal"
-      - title: "'is' operator with extensions on primitive types not supported"
-        type: feature
-        outcome: failure
-        id: "#437"
+      - title: "fhirpath.js operator precedence: is vs comparison"
+        type: ref-impl-bug
+        outcome: error
         comment: |
-          Pathling does not support accessing extensions on primitive elements.
-          These tests involve the 'is' operator on extension values or primitive elements
-          with extensions, which return null instead of the expected type check result.
+          R3. Spec defines is/as (#06) higher than comparison (#08). `1 > 2 is Boolean`
+          parses as `1 > (2 is Boolean)` = `1 > true`, a type error. fhirpath.js
+          parses as `(1 > 2) is Boolean`. See SPEC_DIVERGENCES.md R3.
         any:
-          - "Patient.contact.name.family.extension('http://hl7.org/fhir/StructureDefinition/humanname-own-prefix').value is string"
-          - "Patient.contact.name.family.extension('http://hl7.org/fhir/StructureDefinition/humanname-own-prefix').url is System.String"
-          - "Patient.name.given[3] is FHIR.string"
-      - title: "Type hierarchy checking not yet implemented"
-        type: feature
-        outcome: failure
-        id: "#2524"
-        comment: |
-          The is, as, and ofType operations currently only support exact type matching
-          and do not check FHIR type hierarchy (e.g., checking if a value is a subtype
-          of the specified type). This will be implemented using HAPI FHIR implementation
-          classes and Class.isAssignableFrom() to check inheritance.
-        any:
-          - "Observation is DomainResource"
-          - "Observation is Resource"
-          - "Observation.value is Element"
-          - "Patient.contact is Element"
+          - "1 > 2 is Boolean"
       - title: "FHIR and System type namespace distinction not preserved (as)"
         type: bug
-        id: "#188"
         outcome: failure
+        id: "#188"
         comment: |
-          Per FHIR FHIRPath spec, as() must distinguish FHIR types from System types.
-          '1 year' is System.Quantity; as(FHIR.Quantity) should return empty.
-          Same root cause as the fhir-r4 is(Boolean) exclusion.
+          fp2sql does not distinguish `FHIR.Quantity` from `System.Quantity`
+          in `is`/`as`/`ofType`. `1 year as FHIR.Quantity` succeeds instead of
+          returning empty. Tracked under #188.
         any:
           - "1 year.as(FHIR.Quantity)"
           - "1 year as FHIR.Quantity"
-      - title: "Mixed-type collections not supported"
+      - title: "Mixed-type collections select() with as/casting"
         type: design
         outcome: failure
         comment: |
-          D4. fp2sql only supports monomorphic collections. mixedTypeVals contains
-          heterogeneous types which cannot be represented. See SPEC_DIVERGENCES.md D4.
+          D4. Monomorphic collections: fp2sql stores collection elements with a
+          single static type; `mixedTypeVals` with heterogeneous elements cannot
+          be narrowed via `as` per-element. See SPEC_DIVERGENCES.md D4.
         any:
-          - "mixedTypeVals.as(Integer)"
-          - "mixedTypeVals as Integer"
           - "mixedTypeVals.select($this as Integer)"
           - "mixedTypeVals.select($this.as(Integer))"
   - title: fp2sql — 5.5_conversion.yaml exclusions

@@ -105,17 +105,14 @@ public record SparkOpContext(
   @Nonnull
   public SystemType systemArgType(final int i) {
     final Type type = argType(i);
-    if (type instanceof SystemType pt) {
-      return pt;
-    }
-    if (type instanceof FhirPrimitiveType fpt) {
-      return fpt.getSystemType();
-    }
-    if (type instanceof FhirComplexType fct && fct.isQuantityCompatible()) {
-      return SystemType.QUANTITY;
-    }
-    throw new IllegalArgumentException(
-        "Expected SystemType at argument " + i + ", got: " + type.getClass());
+    return switch (type) {
+      case final SystemType pt -> pt;
+      case final FhirPrimitiveType fpt -> fpt.getSystemType();
+      case final FhirComplexType fct when fct.isQuantityCompatible() -> SystemType.QUANTITY;
+      default ->
+          throw new IllegalArgumentException(
+              "Expected SystemType at argument " + i + ", got: " + type.getClass());
+    };
   }
 
   /**

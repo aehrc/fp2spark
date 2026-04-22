@@ -73,6 +73,12 @@ public final class QuantityArithmetic {
       return null;
     }
 
+    // Arithmetic on quantities with UCUM "special" units (non-linear units like 'B', 'dB',
+    // '[pH]', 'Np') is undefined per the FHIRPath spec — return empty.
+    if (hasSpecialUcumUnit(leftSystem, leftCode) || hasSpecialUcumUnit(rightSystem, rightCode)) {
+      return null;
+    }
+
     return switch (op) {
       case OP_ADD, OP_SUB ->
           addOrSubtract(
@@ -221,5 +227,15 @@ public final class QuantityArithmetic {
       @Nonnull final String system,
       @Nonnull final String code) {
     return RowFactory.create(value, unit, system, code);
+  }
+
+  /**
+   * Returns true if the given system/code pair resolves to a UCUM special unit. Calendar durations
+   * are never special. Non-UCUM/non-calendar systems return false (they are rejected elsewhere).
+   */
+  private static boolean hasSpecialUcumUnit(
+      @Nonnull final String system, @Nonnull final String code) {
+    final String ucumCode = UcumService.toUcumCode(system, code);
+    return ucumCode != null && UcumService.isSpecialUnit(ucumCode);
   }
 }

@@ -67,7 +67,22 @@ public class QuantityEqualityAndComparisonTest extends FhirPathTestBase {
         .group("Calendar duration equality")
         .testTrue("1 year = 1 year", "Same calendar unit")
         .testTrue("1 month = 1 month", "Same calendar month")
-        .testEmpty("1 year = 12 months", "Non-definite different calendar codes → empty")
+        // Year ↔ month: spec-exact calendar conversion (1 year = 12 months per §3.3)
+        .testTrue("1 year = 12 months", "1 year equals 12 months (spec-exact)")
+        .testTrue("12 months = 1 year", "12 months equals 1 year (commutative)")
+        .testTrue("2 years = 24 months", "2 years equals 24 months")
+        .testTrue("1.5 years = 18 months", "Fractional year normalises to months")
+        .testFalse("1 year = 11 months", "1 year is not 11 months")
+        .testFalse("1 year = 13 months", "1 year is not 13 months")
+        .testTrue("1 year != 11 months", "Inequality reflects year/month conversion")
+        .testTrue("2 years > 1 year", "Comparison within calendar year unchanged")
+        .testTrue("1 year > 11 months", "Comparison bridges year ↔ month")
+        .testTrue("12 months >= 1 year", "Comparison: 12 months >= 1 year")
+        .testTrue("11 months < 1 year", "Comparison: 11 months < 1 year")
+        // Other non-definite calendar pairs remain incomparable (no spec-exact factor)
+        .testEmpty("1 day = 24 hours", "day↔hour is not spec-exact → empty (unchanged)")
+        .testEmpty("1 week = 7 days", "week↔day is not spec-exact → empty (unchanged)")
+        .testEmpty("1 month = 30 days", "month↔day is not spec-exact → empty (unchanged)")
         .build();
   }
 

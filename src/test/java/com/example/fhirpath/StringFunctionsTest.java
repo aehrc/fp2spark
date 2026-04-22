@@ -219,6 +219,13 @@ public class StringFunctionsTest extends FhirPathTestBase {
             "'a\nb\nc'.matches('a.b.c')", "'.' matches multiple newlines across a multiline string")
         .testTrue(
             "'abc'.matches('a.c')", "'.' still matches a non-newline character when DOTALL is on")
+        .testTrue("'a\rb'.matches('a.b')", "'.' matches carriage return under DOTALL")
+        .testFalse(
+            "'a\nb'.matches('^b$')",
+            "DOTALL does not imply MULTILINE — ^/$ remain single-line anchors")
+        .testTrue(
+            "'ABC\nDEF'.matches('(?i)abc.def')",
+            "User-provided (?i) inline flag combines with prepended (?s)")
         .group("matches() empty propagation")
         .testEmpty("{}.matches('abc')", "Empty input returns empty")
         .testEmpty("'abc'.matches({})", "Empty regex returns empty")

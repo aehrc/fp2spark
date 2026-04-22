@@ -34,8 +34,7 @@ public final class StringOps {
     registry.register("startsWith", binary(Column::startsWith));
     registry.register("endsWith", binary(Column::endsWith));
     registry.register("contains", binary(Column::contains));
-    // matches: FHIRPath spec §5.6.8 requires DOTALL semantics (. matches newlines).
-    // Prepend the (?s) inline flag to the pattern to enable DOTALL in Spark/Java regex.
+    // FHIRPath spec §5.6.8 requires DOTALL semantics (. matches newlines).
     registry.register(
         "matches",
         binary((input, pattern) -> functions.rlike(input, concat(lit("(?s)"), pattern))));

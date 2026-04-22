@@ -56,17 +56,15 @@ final class QuantitySupport {
    */
   @Nonnull
   private static Column bothYearOrMonth(@Nonnull final Column left, @Nonnull final Column right) {
-    final Column calendarSystem = lit(QuantityValue.CALENDAR_SYSTEM);
-    final Column leftIsYearOrMonth =
-        left.getField("system")
-            .equalTo(calendarSystem)
-            .and(left.getField("code").isin(YEAR_CODE, MONTH_CODE));
-    final Column rightIsYearOrMonth =
-        right
-            .getField("system")
-            .equalTo(calendarSystem)
-            .and(right.getField("code").isin(YEAR_CODE, MONTH_CODE));
-    return leftIsYearOrMonth.and(rightIsYearOrMonth);
+    return isYearOrMonth(left).and(isYearOrMonth(right));
+  }
+
+  @Nonnull
+  private static Column isYearOrMonth(@Nonnull final Column operand) {
+    return operand
+        .getField("system")
+        .equalTo(lit(QuantityValue.CALENDAR_SYSTEM))
+        .and(operand.getField("code").isin(YEAR_CODE, MONTH_CODE));
   }
 
   /**

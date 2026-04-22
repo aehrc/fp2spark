@@ -162,42 +162,36 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
       return visitExtensionTraversal(trav);
     }
 
+    // Resolve the raw field access. For a resource-rooted traversal this is a top-level column
+    // (or a getField on the current lambda root); otherwise it is getField on the target column.
     Column result;
     if (trav.target() instanceof Resource) {
-      // Flat schema: resource fields are top-level columns when rootColumn is null.
-      // When rootColumn is set, field access is relative to the root column (e.g., a lambda
-      // parameter for forEach/repeat evaluation).
       result =
           rootColumn != null
               ? rootColumn.getField(trav.fieldSpec().getName())
               : col(trav.fieldSpec().getName());
-      // Top-level primitive arrays (e.g. Patient.address from a root where name[0] is null due
-      // to the JSON positional-null convention) need nulls filtered out. See issue #192.
-      if (!trav.fieldSpec().isSingular()) {
-        result = functions.filter(result, Column::isNotNull);
-        result = CollectionValue.nullIfEmpty(result);
-      }
     } else {
-      final Column target = trav.target().accept(this);
-      result = target.getField(trav.fieldSpec().getName());
-
-      // Handle collection traversals - need to filter nulls and flatten if necessary.
-      // FHIRPath collections cannot contain null (spec "Null and empty"); the JSON positional-
-      // null convention used to align `given` with `_given` must be filtered out during field
-      // traversal. Mirrors Pathling's DefaultRepresentation.traverse() → removeNulls().flatten().
+      result = trav.target().accept(this).getField(trav.fieldSpec().getName());
+      // Plural target: filter outer-array nulls, then flatten when the field is itself plural
+      // (giving an array-of-arrays that must be concatenated). Mirrors Pathling's
+      // DefaultRepresentation.traverse() → removeNulls().flatten().
       if (!trav.target().isSingular()) {
         result = functions.filter(result, Column::isNotNull);
         if (!trav.fieldSpec().isSingular()) {
-          // array-of-arrays: flatten, then filter inner nulls (JSON positional-null gaps).
-          result = functions.filter(functions.flatten(result), Column::isNotNull);
+          result = functions.flatten(result);
         }
-        // Convert empty arrays to null (FHIRPath empty collection = null in Spark)
-        result = CollectionValue.nullIfEmpty(result);
-      } else if (!trav.fieldSpec().isSingular()) {
-        // Singular target, plural field: plain array — filter JSON positional-null gaps.
-        result = functions.filter(result, Column::isNotNull);
-        result = CollectionValue.nullIfEmpty(result);
       }
+    }
+    // Plural field: filter JSON positional-null gaps (FHIRPath collections cannot contain null,
+    // per spec "Null and empty"). See issue #192. Combined with nullIfEmpty so an all-null input
+    // collapses to null (FHIRPath empty = null in Spark); this also absorbs the post-flatten
+    // null-if-empty for the plural-target case above.
+    if (!trav.fieldSpec().isSingular()) {
+      result = CollectionValue.nullIfEmpty(functions.filter(result, Column::isNotNull));
+    } else if (!trav.target().isSingular()) {
+      // Plural target, singular field: preserve the pre-#192 behaviour of collapsing an
+      // empty filtered array to null.
+      result = CollectionValue.nullIfEmpty(result);
     }
 
     // FHIR.instant is encoded by the Pathling encoder as Spark TimestampType, but fp2sql

@@ -134,8 +134,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
   // Invocation handling
   @Override
   public AstNode visitMemberInvocation(final FhirPathParser.MemberInvocationContext ctx) {
-    final String identifier = ctx.identifier().getText();
-    return new AstTraversal(identifier); // Uses convenience constructor (target = null)
+    return new AstTraversal(extractIdentifier(ctx.identifier()));
   }
 
   @Override
@@ -145,7 +144,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
   @Override
   public AstNode visitFunction(final FhirPathParser.FunctionContext ctx) {
-    final String functionName = ctx.identifier().getText();
+    final String functionName = extractIdentifier(ctx.identifier());
     final List<AstNode> arguments = new ArrayList<>();
 
     if (ctx.paramList() != null) {
@@ -159,7 +158,23 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
 
   @Override
   public AstNode visitIdentifier(final FhirPathParser.IdentifierContext ctx) {
-    return new AstTraversal(ctx.getText()); // Uses convenience constructor (target = null)
+    return new AstTraversal(extractIdentifier(ctx));
+  }
+
+  /**
+   * Extracts the textual identifier from an {@code identifier} context.
+   *
+   * <p>Handles backtick-delimited identifiers per FHIRPath §Lexical Elements by stripping the
+   * surrounding backticks and processing FHIRPath escape sequences (e.g. {@code `foo\`bar`} →
+   * {@code foo`bar}). Undelimited identifiers are returned verbatim.
+   */
+  private static String extractIdentifier(final FhirPathParser.IdentifierContext ctx) {
+    if (ctx.DELIMITEDIDENTIFIER() != null) {
+      final String raw = ctx.DELIMITEDIDENTIFIER().getText();
+      // Strip surrounding backticks and process FHIRPath escape sequences.
+      return StringEscapeUtils.unescapeFhirPathString(raw.substring(1, raw.length() - 1));
+    }
+    return ctx.getText();
   }
 
   // Default behavior for unsupported expressions - throw informative errors
@@ -328,7 +343,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
   public AstNode visitExternalConstant(final FhirPathParser.ExternalConstantContext ctx) {
     final String variableName;
     if (ctx.identifier() != null) {
-      variableName = "%" + ctx.identifier().getText();
+      variableName = "%" + extractIdentifier(ctx.identifier());
     } else if (ctx.STRING() != null) {
       final String stringText = ctx.STRING().getText();
       // Remove surrounding quotes

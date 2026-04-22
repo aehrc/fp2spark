@@ -161,7 +161,7 @@ IDENTIFIER
         ;
 
 DELIMITEDIDENTIFIER
-        : '`' (ESC | .)*? '`'
+        : '`' (ESC | ~[\\`])* '`'
         ;
 
 STRING

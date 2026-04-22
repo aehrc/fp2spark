@@ -498,17 +498,6 @@ excludeSet:
         outcome: error
         any:
           - "1 > 2 is Boolean"
-      - title: "Tick quotes identifiers not supported"
-        outcome: failure
-        id: "#211"
-        type: bug
-        comment: |
-          Tracked under the tick-quoted-identifier umbrella (#211). fp2sql's
-          ANTLR grammar / analyzer does not accept backtick-quoted identifiers
-          in path segments (e.g. name.`given`, `Patient`.name.`given`).
-        any:
-          - "** testEscapedIdentifier"
-          - "** testSimpleBackTick1"
       - title: Choice polymorphism for Observation.value chained access
         type: design
         outcome: failure
@@ -615,22 +604,6 @@ excludeSet:
           so repeat(contains) only finds top-level entries.
         any:
           - "** testRepeat1"
-  - title: fp2sql — 4.1_literals.yaml exclusions
-    glob: "fhirpath-js/cases/4.1_literals.yaml"
-    exclude:
-      - title: "Backtick-wrapped literal with invalid escape sequences"
-        type: bug
-        id: "#211"
-        outcome: failure
-        comment: |
-          fp2sql's ANTLR grammar for DELIMITEDIDENTIFIER is too permissive
-          (uses `.` instead of the spec's `~[\\`]`), so escapes like `\"`
-          inside backticks are consumed silently rather than raising a
-          parse error. fhirpath.js errors correctly per spec. Tracked
-          under #211 bullet 3 (backtick-wrapped strings as literals —
-          spec says parse error).
-        any:
-          - "`a\\\\b\\'\\\"\\`\\r\\n\\t\\u0065`"
   - title: fp2sql — hasValue.yaml exclusions
     glob: "hasValue.yaml"
     exclude:
@@ -1138,13 +1111,6 @@ excludeSet:
   - title: fp2sql — simple.yaml exclusions
     glob: "fhirpath-js/cases/simple.yaml"
     exclude:
-      - title: "Tick quotes identifiers not supported"
-        id: "#211"
-        type: bug
-        outcome: failure
-        comment: "Tracked under the tick-quoted-identifier umbrella (#211)."
-        any:
-          - "name.`family`"
       - title: "exists(criteria) with non-boolean collection criteria"
         type: design
         outcome: error

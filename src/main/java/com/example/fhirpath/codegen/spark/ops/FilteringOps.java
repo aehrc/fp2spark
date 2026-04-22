@@ -60,8 +60,11 @@ public final class FilteringOps {
             // Lambda returns singular: transform gives array of values, filter out nulls
             result = functions.filter(transformed, Column::isNotNull);
           } else {
-            // Lambda returns MANY: transform gives array of arrays, flatten then filter nulls
-            result = functions.filter(functions.flatten(transformed), Column::isNotNull);
+            // Lambda returns MANY: transform gives array of arrays. Drop NULL sub-arrays
+            // (empty FHIRPath collections are encoded as NULL by nullIfEmpty) before
+            // flattening — Spark's flatten() returns NULL if any sub-array is NULL.
+            final Column nonNullArrays = functions.filter(transformed, Column::isNotNull);
+            result = functions.filter(functions.flatten(nonNullArrays), Column::isNotNull);
           }
           return CollectionValue.nullIfEmpty(result);
         },

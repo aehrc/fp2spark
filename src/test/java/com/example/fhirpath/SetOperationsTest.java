@@ -127,8 +127,25 @@ class SetOperationsTest extends FhirPathTestBase {
         .testEquals(List.of(1, 2, 3), "(1 ; 2 ; 3).exclude(4 ; 5)", "Nothing to exclude")
         .group("exclude(): spec example")
         .testEquals(List.of(1, 3), "(1 | 2 | 3).exclude(2)", "Spec: (1|2|3).exclude(2)")
+        .group(
+            "exclude(): duplicate preservation (spec §5.3.9 'Duplicate items will not be"
+                + " eliminated')")
+        .testEquals(
+            List.of(1, 1), "1.combine(1).exclude(2)", "Duplicates preserved when none excluded")
+        .testEquals(2, "1.combine(1).exclude(2).count()", "Count preserves duplicates")
+        .testEquals(
+            7,
+            "1.combine(1 | 3 | 4 | 5 | 6 | 7).exclude(2).count()",
+            "Combined duplicates preserved through exclude")
+        .testEquals(
+            List.of(1, 1, 2), "(1 ; 1 ; 2 ; 3).exclude(3)", "Exclude preserves leading duplicates")
+        .testEquals(
+            List.of(2, 2, 2), "(1 ; 2 ; 2 ; 2).exclude(1)", "Exclude preserves trailing duplicates")
+        .group("exclude(): order preservation")
+        .testEquals(List.of(3, 1, 2), "(3 ; 1 ; 2 ; 4).exclude(4)", "Original order retained")
         .group("exclude(): empty operands")
         .testEquals(List.of(1, 2), "(1 ; 2).exclude({})", "Right empty returns input")
+        .testEquals(List.of(1, 1, 2), "(1 ; 1 ; 2).exclude({})", "Right empty preserves duplicates")
         .testEmpty("{}.exclude(1 ; 2)", "Left empty")
         .testEmpty("{}.exclude({})", "Both empty")
         .group("exclude(): singular values")
@@ -136,6 +153,10 @@ class SetOperationsTest extends FhirPathTestBase {
         .testEquals(List.of(1), "1.exclude(2)", "Exclude different singular")
         .group("exclude(): string type")
         .testEquals(List.of("a"), "('a' ; 'b').exclude('b' ; 'c')", "String exclusion")
+        .testEquals(
+            List.of("a", "a", "b"),
+            "('a' ; 'a' ; 'b' ; 'c').exclude('c')",
+            "String exclude preserves duplicates")
         .build();
   }
 

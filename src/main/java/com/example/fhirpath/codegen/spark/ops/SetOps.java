@@ -4,7 +4,6 @@ import static org.apache.spark.sql.functions.aggregate;
 import static org.apache.spark.sql.functions.array;
 import static org.apache.spark.sql.functions.array_distinct;
 import static org.apache.spark.sql.functions.array_except;
-import static org.apache.spark.sql.functions.array_intersect;
 import static org.apache.spark.sql.functions.array_union;
 import static org.apache.spark.sql.functions.concat;
 import static org.apache.spark.sql.functions.exists;
@@ -38,6 +37,18 @@ import org.apache.spark.sql.types.DataTypes;
  * ({@code array_union}, {@code array_distinct}, etc.). For types with custom equality semantics
  * (Quantity, temporal), custom implementations using {@code filter}/{@code exists}/{@code
  * aggregate} with type-aware comparators are used instead.
+ *
+ * <p>Two operations intentionally deviate from the obvious built-in choice:
+ *
+ * <ul>
+ *   <li>{@code exclude} uses {@code filter(left, !exists-in-right)} rather than {@code
+ *       array_except} because the spec (§5.3.9) requires duplicates in the input to be preserved,
+ *       while {@code array_except} performs set difference with deduplication.
+ *   <li>{@code intersect} uses {@code filter(distinct(left), exists-in-right)} rather than {@code
+ *       array_intersect} because the latter returns {@code NULL} when evaluated inside a
+ *       higher-order function (e.g. {@code transform} produced by {@code select()}), even for
+ *       non-empty intersections.
+ * </ul>
  */
 public final class SetOps {
 
@@ -173,14 +184,18 @@ public final class SetOps {
     final Column leftArr = normalizeArray(ctx.collectionArg(0).asArray(), type);
     final Column rightArr = normalizeArray(ctx.collectionArg(1).asArray(), type);
 
+    // Spec §5.3.8: duplicates are eliminated. Distinct the left side first so filter
+    // walks each left element at most once. See class javadoc for why array_intersect is
+    // not used.
     if (type == Types.NULL || EqualityOps.usesDefaultEquality(type)) {
-      return CollectionValue.nullIfEmpty(array_intersect(leftArr, rightArr));
+      return CollectionValue.nullIfEmpty(
+          filter(array_distinct(leftArr), elem -> exists(rightArr, x -> x.equalTo(elem))));
     }
 
-    // distinct(filter(left, elem -> exists(right, x -> eq(x, elem))))
     final BiFunction<Column, Column, Column> eq = EqualityOps.equalityForType(type);
-    final Column filtered = filter(leftArr, elem -> existsWithEquality(rightArr, elem, eq));
-    return CollectionValue.nullIfEmpty(arrayDistinctWithEquality(filtered, eq));
+    final Column distinctLeft = arrayDistinctWithEquality(leftArr, eq);
+    return CollectionValue.nullIfEmpty(
+        filter(distinctLeft, elem -> existsWithEquality(rightArr, elem, eq)));
   }
 
   // ========== exclude ==========
@@ -198,12 +213,12 @@ public final class SetOps {
     final Column leftArr = normalizeArray(ctx.collectionArg(0).asArray(), type);
     final Column rightArr = normalizeArray(ctx.collectionArg(1).asArray(), type);
 
-    if (type == Types.NULL || EqualityOps.usesDefaultEquality(type)) {
-      return CollectionValue.nullIfEmpty(array_except(leftArr, rightArr));
-    }
-
-    // filter(left, elem -> !exists(right, x -> eq(x, elem)))
-    final BiFunction<Column, Column, Column> eq = EqualityOps.equalityForType(type);
+    // Spec §5.3.9: duplicates preserved and order retained. See class javadoc for why
+    // array_except is not used.
+    final BiFunction<Column, Column, Column> eq =
+        (type == Types.NULL || EqualityOps.usesDefaultEquality(type))
+            ? Column::equalTo
+            : EqualityOps.equalityForType(type);
     return CollectionValue.nullIfEmpty(
         filter(leftArr, elem -> not(existsWithEquality(rightArr, elem, eq))));
   }

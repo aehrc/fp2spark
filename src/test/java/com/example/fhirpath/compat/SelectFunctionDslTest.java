@@ -109,4 +109,34 @@ public class SelectFunctionDslTest extends CompatTestBase {
             "select() evaluates a comparison expression for each element")
         .build();
   }
+
+  @FhirPathTest
+  public Stream<DynamicTest> testSelectMultiValuedWithEmptyRows() {
+    // Regression test for #209: when a MANY-valued projection returns an empty collection
+    // for some input rows, select() must skip them rather than propagate NULL through
+    // the flatten step. Exercised here via intersect(), which is common in practice, and
+    // via a direct scenario where the projection is empty for some inputs.
+    return builder()
+        .withSubject(
+            sb ->
+                sb.elementArray(
+                    "groups",
+                    g1 -> g1.stringArray("items", "a", "b"),
+                    g2 -> g2.stringArray("items", "x", "y"),
+                    g3 -> g3.stringArray("items", "a", "c")))
+        .group("select(): MANY projection skips rows whose result is empty")
+        .testEquals(
+            List.of("a", "b", "a", "c"),
+            "groups.select(items.intersect('a' | 'b' | 'c'))",
+            "intersect inside select: empty-row skipped, duplicates flattened")
+        .testEquals(
+            List.of("a", "b", "a", "c"),
+            "groups.select(('a' | 'b' | 'c').intersect(items))",
+            "reversed intersect inside select: empty-row skipped, duplicates flattened")
+        .testEquals(
+            List.of("a", "b", "a", "c"),
+            "groups.select(items.exclude('x' | 'y'))",
+            "exclude inside select: excluded-rows-empty skipped, duplicates preserved")
+        .build();
+  }
 }

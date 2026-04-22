@@ -840,7 +840,21 @@ public class Analyzer {
                 List.of(targetIr.getType(), Types.BOOLEAN), Shape.single(Types.BOOLEAN));
         yield new Operation("is", List.of(targetIr, new Literal(matches, Types.BOOLEAN)), sig);
       }
-      case "as", "ofType" -> matches ? targetIr : new Literal(null, Types.NULL);
+      case "as" -> matches ? targetIr : new Literal(null, Types.NULL);
+      case "ofType" -> {
+        if (!matches) {
+          yield new Literal(null, Types.NULL);
+        }
+        // For plural collections, filter out null elements per FHIRPath spec §5.6.7 —
+        // ofType()'s type filter necessarily excludes null items. Singular values pass through
+        // since a null singleton already represents an empty collection.
+        if (targetIr.getCardinality() != Cardinality.MANY) {
+          yield targetIr;
+        }
+        final ResolvedSignature sig =
+            new ResolvedSignature(List.of(targetIr.getType()), targetIr.getShape());
+        yield new Operation("ofType", List.of(targetIr), sig);
+      }
       default -> throw new IllegalStateException("Unexpected type operation: " + operation);
     };
   }

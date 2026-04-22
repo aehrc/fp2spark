@@ -28,11 +28,13 @@ import org.apache.spark.sql.functions;
  *
  * <p>The {@code as} and {@code ofType} operators are normally resolved to {@link
  * com.example.fhirpath.ir.Traversal} nodes by the Analyzer (choice types) or static literals
- * (non-choice types). For resolved references, they are emitted as runtime operations that filter
- * by type name string comparison.
+ * (non-choice types). For non-choice {@code ofType} on plural collections, a 1-arg {@code ofType}
+ * operation is emitted to strip null elements. For resolved references, a 2-arg variant filters by
+ * type name string comparison.
  *
  * <p>The {@code type} function (non-choice) takes 4 args: [target, namespace, name, baseType] and
- * returns a constant TypeInfo struct for each non-null element.
+ * returns a TypeInfo struct for each element (including null elements of primitive collections,
+ * whose declared type is statically known).
  *
  * <p>The {@code typeChoice} function takes 4n args in groups: [variantCol, namespace, name,
  * baseType, ...] and builds a CASE WHEN chain checking which variant is non-null.
@@ -71,10 +73,19 @@ public final class TypeOps {
     // Resolved reference as: returns typeString if it matches, null otherwise
     registry.register("as", ctx -> when(ctx.arg(0).equalTo(ctx.arg(1)), ctx.arg(0)));
 
-    // Resolved reference ofType: filters collection keeping only matching type strings
+    // ofType: two forms dispatched by argument count.
+    //  - 1 arg: filter null elements from a plural collection (static type match; see
+    //    Analyzer.resolveNonChoiceTypeOperation). Singular inputs pass through unchanged.
+    //  - 2 args: resolved-reference runtime filtering, keeping elements whose type string matches.
     registry.register(
         "ofType",
         ctx -> {
+          if (ctx.args().size() == 1) {
+            final CollectionValue coll = ctx.collectionArg(0);
+            return coll.isSingular()
+                ? coll.column()
+                : CollectionValue.nullIfEmpty(coll.filterNulls().column());
+          }
           final CollectionValue coll = ctx.collectionArg(0);
           final Column typeName = ctx.arg(1);
           return coll.apply(
@@ -82,13 +93,17 @@ public final class TypeOps {
               col -> when(col.equalTo(typeName), col));
         });
 
-    // Non-choice type(): static type info applied to each non-null element
+    // Non-choice type(): static type info. For arrays, emit a TypeInfo struct unconditionally per
+    // element — null-valued primitives still have a declared type (#182). For singular inputs, the
+    // null-check preserves empty-collection propagation.
     registry.register(
         "type",
         ctx -> {
           final CollectionValue target = ctx.collectionArg(0);
           final Column typeInfoStruct = typeInfoStruct(ctx.arg(1), ctx.arg(2), ctx.arg(3));
-          return target.map(elem -> when(elem.isNotNull(), typeInfoStruct)).column();
+          return target.apply(
+              arr -> functions.transform(arr, elem -> typeInfoStruct),
+              col -> when(col.isNotNull(), typeInfoStruct));
         });
 
     // Choice type() singular: CASE WHEN chain over pre-evaluated variant columns

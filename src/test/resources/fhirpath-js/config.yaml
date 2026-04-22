@@ -1202,22 +1202,22 @@ excludeSet:
         comment: "Test infrastructure cannot compare complex FHIR structures returned by fp2sql with expected JSON."
         any:
           - "Patient.telecom.where($this.use = 'work')"
-      - title: "type() on null collection elements returns null"
-        id: "#182"
-        type: bug
+      - title: "type() TypeInfo struct includes baseType (D5)"
+        type: design
         outcome: failure
-        comment: >-
-          type() returns null for null elements (#182) and TypeInfo struct includes baseType
-          per CI build spec (D5). After #182 is fixed, reclassify this exclusion to design (D5).
+        comment: "D5: TypeInfo struct includes baseType per CI build FHIRPath reflection spec."
         desc:
           - "type() function for the null element of a collection"
-      - title: "ofType() does not filter null collection elements"
-        id: "#182"
-        type: bug
+      - title: "ofType()[n] preserves primitive-extension slot position (D3)"
+        type: design
         outcome: failure
-        comment: "ofType(string) should exclude null elements; fp2sql includes them."
+        comment: >-
+          D3: fhirpath.js preserves the positional slot of a primitive array element that exists
+          only via its _given/extension counterpart; indexing into ofType(string) returns empty
+          at those slots. fp2sql has no parallel representation for primitive extensions, so after
+          filtering nulls the remaining elements are densely indexed.
         desc:
-          - "ofType() function for the null element of a collection (2)"
+          - "ofType() function for the null element of a collection (1)"
   - title: fp2sql — 5.4_combining.yaml exclusions
     glob: "fhirpath-js/cases/5.4_combining.yaml"
     exclude:

@@ -97,17 +97,6 @@ excludeSet:
         id: "#205"
         function:
           - comparable
-      - title: Registered functions with known gaps
-        type: bug
-        id: "#209"
-        comment: |
-          These functions are registered in OperationRegistry but still fail
-          specific fhirpath.js compat tests: exclude()/intersect() duplicate
-          handling. Skipped here until per-file PRs (Phase 3) move them into
-          targeted exclusions.
-        function:
-          - intersect
-          - exclude
       - title: Tick-quoted FHIR type names in is()/as()/ofType()
         type: feature
         id: "#211"

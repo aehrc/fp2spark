@@ -4,7 +4,6 @@ import static org.apache.spark.sql.functions.aggregate;
 import static org.apache.spark.sql.functions.array;
 import static org.apache.spark.sql.functions.array_distinct;
 import static org.apache.spark.sql.functions.array_except;
-import static org.apache.spark.sql.functions.array_intersect;
 import static org.apache.spark.sql.functions.array_union;
 import static org.apache.spark.sql.functions.concat;
 import static org.apache.spark.sql.functions.exists;
@@ -38,6 +37,18 @@ import org.apache.spark.sql.types.DataTypes;
  * ({@code array_union}, {@code array_distinct}, etc.). For types with custom equality semantics
  * (Quantity, temporal), custom implementations using {@code filter}/{@code exists}/{@code
  * aggregate} with type-aware comparators are used instead.
+ *
+ * <p>Two operations intentionally deviate from the obvious built-in choice:
+ *
+ * <ul>
+ *   <li>{@code exclude} uses {@code filter(left, !exists-in-right)} rather than {@code
+ *       array_except} because the spec (§5.3.9) requires duplicates in the input to be preserved,
+ *       while {@code array_except} performs set difference with deduplication.
+ *   <li>{@code intersect} uses {@code filter(distinct(left), exists-in-right)} rather than {@code
+ *       array_intersect} because the latter returns {@code NULL} when evaluated inside a
+ *       higher-order function (e.g. {@code transform} produced by {@code select()}), even for
+ *       non-empty intersections.
+ * </ul>
  */
 public final class SetOps {
 
@@ -173,14 +184,23 @@ public final class SetOps {
     final Column leftArr = normalizeArray(ctx.collectionArg(0).asArray(), type);
     final Column rightArr = normalizeArray(ctx.collectionArg(1).asArray(), type);
 
+    // Per FHIRPath §5.3.8: "Duplicate items will be eliminated by this function." We
+    // implement intersect as filter(distinct(left), exists-in-right). Dedup first so the
+    // filter walks over at most one instance of each left element.
+    //
+    // We avoid Spark's built-in array_intersect() because it misbehaves when evaluated
+    // inside a higher-order function (e.g. transform in select()), returning NULL even
+    // when a non-empty intersection exists. The filter/exists form evaluates reliably in
+    // every context.
     if (type == Types.NULL || EqualityOps.usesDefaultEquality(type)) {
-      return CollectionValue.nullIfEmpty(array_intersect(leftArr, rightArr));
+      return CollectionValue.nullIfEmpty(
+          filter(array_distinct(leftArr), elem -> exists(rightArr, x -> x.equalTo(elem))));
     }
 
-    // distinct(filter(left, elem -> exists(right, x -> eq(x, elem))))
     final BiFunction<Column, Column, Column> eq = EqualityOps.equalityForType(type);
-    final Column filtered = filter(leftArr, elem -> existsWithEquality(rightArr, elem, eq));
-    return CollectionValue.nullIfEmpty(arrayDistinctWithEquality(filtered, eq));
+    final Column distinctLeft = arrayDistinctWithEquality(leftArr, eq);
+    return CollectionValue.nullIfEmpty(
+        filter(distinctLeft, elem -> existsWithEquality(rightArr, elem, eq)));
   }
 
   // ========== exclude ==========
@@ -198,12 +218,14 @@ public final class SetOps {
     final Column leftArr = normalizeArray(ctx.collectionArg(0).asArray(), type);
     final Column rightArr = normalizeArray(ctx.collectionArg(1).asArray(), type);
 
-    if (type == Types.NULL || EqualityOps.usesDefaultEquality(type)) {
-      return CollectionValue.nullIfEmpty(array_except(leftArr, rightArr));
-    }
-
-    // filter(left, elem -> !exists(right, x -> eq(x, elem)))
-    final BiFunction<Column, Column, Column> eq = EqualityOps.equalityForType(type);
+    // Per FHIRPath §5.3.9: "Duplicate items will not be eliminated by this function, and
+    // order will be preserved." Spark's array_except() performs set difference with
+    // deduplication, so we filter the left array element-wise against the right array,
+    // which preserves duplicates and order from the left input.
+    final BiFunction<Column, Column, Column> eq =
+        (type == Types.NULL || EqualityOps.usesDefaultEquality(type))
+            ? Column::equalTo
+            : EqualityOps.equalityForType(type);
     return CollectionValue.nullIfEmpty(
         filter(leftArr, elem -> not(existsWithEquality(rightArr, elem, eq))));
   }

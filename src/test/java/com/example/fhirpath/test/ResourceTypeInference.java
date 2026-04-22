@@ -182,7 +182,7 @@ class ResourceTypeInference {
 
     // Use first element to determine type
     final Object firstElement = list.get(0);
-    if (firstElement instanceof Map<?, ?> map) {
+    if (firstElement instanceof Map<?, ?>) {
       // List of complex types - merge field specs across all elements
       // to capture types that are null in the first element but present in others
       final ComplexType elementType = mergeComplexTypes(list, depth + 1);

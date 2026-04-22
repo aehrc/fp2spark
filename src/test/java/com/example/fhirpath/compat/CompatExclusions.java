@@ -166,7 +166,16 @@ public final class CompatExclusions {
                       "@T11:45 < @T10",
                       "@T12:31:45 >= @T12:30",
                       "@T13:15 > @T14:15:30",
-                      "@T23:59:59.999999999 > @T00:00"))
+                      "@T23:59:59.999999999 > @T00:00"),
+
+              // --- Year ↔ month calendar equality/comparison (spec-exact, #178) ---
+              // fp2sql applies the spec-exact factor 1 year = 12 months per §3.3,
+              // which Pathling does not implement. fp2sql is ahead of Pathling here.
+              expectedDifference("Year ↔ month calendar-duration equality per FHIRPath §3.3 (#178)")
+                  .scope(CombiningOperatorsDslTest.class)
+                  .expressions("1 year | 12 months")
+                  .scope(ComparisonOperatorsDslTest.class)
+                  .expressions("1 year > 1 month"))
           .flatMap(g -> g.build().stream())
           .toList();
 

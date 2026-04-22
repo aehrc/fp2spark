@@ -848,8 +848,11 @@ excludeSet:
         type: feature
         outcome: failure
         id: "#224"
+        comment: |
+          fp2sql does not yet support cross-unit equality for non-definite
+          calendar durations below year (day, week, hour, minute, month),
+          except for the spec-exact year ↔ month factor (see #178).
         any:
-          - "12 months = 1 year"
           - "1 month = 30 days"
           - "1 week = 7 day"
           - "1 day = 24 hours"
@@ -901,9 +904,12 @@ excludeSet:
         type: feature
         outcome: failure
         id: "#224"
+        comment: |
+          fp2sql does not yet support cross-unit comparison of non-definite
+          calendar durations whose UCUM equivalents are non-definite
+          (minute, hour, day, week), except for the spec-exact year ↔ month
+          factor (see #178).
         any:
-          - "1 year > 12 months"
-          - "1 year < 12 months"
           - "1 minute > 59 seconds"
           - "1 minute < 61 seconds"
       - title: Empty list [] inferred as MANY cardinality in comparison
@@ -1187,16 +1193,6 @@ excludeSet:
         comment: "D4: fp2sql only supports monomorphic collections."
         any:
           - "Functions.attrdouble | Functions.coll1.colltrue.attr"
-      - title: "Calendar duration year/month conversion missing for equality"
-        type: bug
-        outcome: failure
-        id: "#178"
-        comment: |
-          fp2sql does not implement the spec's year-to-month conversion factor
-          (1 year = 12 months) for quantity equality comparison. The reference
-          implementation correctly deduplicates (1 year | 12 months) to '1 year'.
-        any:
-          - "(1 year | 12 months)"
       - title: "Primitive elements with extensions but no value are invisible"
         type: design
         outcome: failure

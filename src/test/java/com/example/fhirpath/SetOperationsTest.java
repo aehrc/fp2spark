@@ -233,6 +233,18 @@ class SetOperationsTest extends FhirPathTestBase {
         .group("exclude: calendar duration")
         .testEquals(
             1, "(1 week ; 2 weeks).exclude(1 weeks).count()", "week/weeks excluded correctly")
+        .group("union/intersect: year ↔ month spec-exact conversion (1 year = 12 months)")
+        .testEquals(1, "(1 year | 12 months).count()", "1 year and 12 months deduplicate")
+        .testEquals(1, "(2 years | 24 months).count()", "2 years and 24 months deduplicate")
+        .testEquals(2, "(1 year | 11 months).count()", "1 year and 11 months stay distinct")
+        .testEquals(
+            1,
+            "(1 year ; 12 months).intersect(12 months).count()",
+            "Intersect bridges year ↔ month")
+        .testEquals(
+            0,
+            "(1 year ; 12 months).distinct().exclude(1 year).count()",
+            "Exclude bridges year ↔ month")
         .build();
   }
 

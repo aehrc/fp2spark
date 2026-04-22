@@ -359,16 +359,6 @@ excludeSet:
         outcome: error
         expression:
           - "^Functions\\.str\\."
-      - title: matches() does not enable dotAll mode
-        type: bug
-        id: "#167"
-        comment: |
-          FHIRPath spec says matches() uses dotAll semantics (. matches any character
-          including newlines). fp2sql's implementation does not enable Pattern.DOTALL,
-          so multiline tests fail.
-        outcome: failure
-        desc:
-          - "matches with dotAll"
       - title: Union of string literals with '|' without surrounding whitespace
         type: design
         outcome: error

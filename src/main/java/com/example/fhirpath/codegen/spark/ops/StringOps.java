@@ -4,6 +4,7 @@ import static com.example.fhirpath.codegen.spark.SparkDefs.binary;
 import static com.example.fhirpath.codegen.spark.SparkDefs.ternary;
 import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
 import static org.apache.spark.sql.functions.call_function;
+import static org.apache.spark.sql.functions.concat;
 import static org.apache.spark.sql.functions.lit;
 
 import com.example.fhirpath.codegen.spark.SparkOpContext;
@@ -33,7 +34,10 @@ public final class StringOps {
     registry.register("startsWith", binary(Column::startsWith));
     registry.register("endsWith", binary(Column::endsWith));
     registry.register("contains", binary(Column::contains));
-    registry.register("matches", binary(functions::rlike));
+    // FHIRPath spec §5.6.8 requires DOTALL semantics (. matches newlines).
+    registry.register(
+        "matches",
+        binary((input, pattern) -> functions.rlike(input, concat(lit("(?s)"), pattern))));
     registry.register("indexOf", binary(StringSupport::indexOf));
 
     // Ternary string functions

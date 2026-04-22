@@ -233,9 +233,10 @@ class TypeReflectionTest extends FhirPathTestBase {
     final Patient patient = new Patient();
     patient.setId("null-given");
     final org.hl7.fhir.r4.model.HumanName name = patient.addName().setFamily("Chalmers");
-    // Build a given list containing a null-valued StringType followed by two real values. The
-    // declared FHIR type is still 'string' for every slot, so type() must return three TypeInfo
-    // structs and ofType(string) must drop the null slot.
+    // Build a given list containing a null-valued StringType followed by two real values. Per
+    // issue #192 and the FHIRPath spec ("Null and empty"), collections cannot contain null, so
+    // the null-valued primitive slot is filtered out during traversal. type() and ofType()
+    // therefore see the two remaining non-null elements.
     name.getGiven().add(new StringType());
     name.getGiven().add(new StringType("Peter"));
     name.getGiven().add(new StringType("James"));
@@ -244,18 +245,19 @@ class TypeReflectionTest extends FhirPathTestBase {
         .withSubject(patient)
         .group("type() on plural primitive collection with a null element")
         .testEquals(
-            3,
+            2,
             "name.given.type().count()",
-            "type() emits a TypeInfo struct for every element, including null-valued primitives")
+            "Null-valued primitive slots are filtered during traversal, so type() sees only the"
+                + " two non-null elements")
         .testEquals(
             "string",
             "name.given.type().first().name",
-            "Declared type is preserved for null element slots")
+            "Declared type is preserved for the surviving non-null elements")
         .group("ofType() on plural primitive collection with a null element")
         .testEquals(
             2,
             "name.given.ofType(string).count()",
-            "ofType() filters null elements from the result collection")
+            "ofType() operates on the already-filtered collection (nulls removed at traversal)")
         .testEquals(
             "Peter",
             "name.given.ofType(string).first()",

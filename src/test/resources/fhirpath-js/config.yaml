@@ -706,16 +706,6 @@ excludeSet:
           element-wise. Needs either analyzer relaxation or per-case rewrites to ofType().
         any:
           - ""
-  - title: fp2sql — skip entire 6.4_collections.yaml
-    glob: "6.4_collections.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Arbitrary subject with nested Maps ({a: 1} style elements) plus a handful of
-          strict-typing differences. Follow-up work.
-        any:
-          - ""
   - title: fp2sql — 6.4_collection.yaml exclusions
     glob: "fhirpath-js/cases/6.4_collection.yaml"
     exclude:
@@ -731,6 +721,16 @@ excludeSet:
         desc:
           - "in operator for the null element of a collection"
           - "contains operator for the null element of a collection"
+  - title: fp2sql — 6.4_collections.yaml exclusions
+    glob: "fhirpath-js/cases/6.4_collections.yaml"
+    exclude:
+      - title: "Complex structure comparison: union of map collections"
+        id: "#185"
+        type: test-infra
+        outcome: failure
+        comment: "Test harness cannot compare list-of-maps ({a: N}) against fp2sql's Spark row representation. Same root cause as Patient.telecom.where(...) under #185."
+        any:
+          - "coll | coll2"
   - title: fp2sql — 5.3_subsetting.yaml exclusions
     glob: "fhirpath-js/cases/5.3_subsetting.yaml"
     exclude:
@@ -1092,17 +1092,6 @@ excludeSet:
           - "mixedTypeVals as Integer"
           - "mixedTypeVals.select($this as Integer)"
           - "mixedTypeVals.select($this.as(Integer))"
-  - title: Collections exclusions
-    glob: "fhirpath-js/cases/6.4_collections.yaml"
-    exclude:
-      - title: Unsupported equality for complex types
-        type: feature
-        id: "#2420"
-        expression:
-          - "el in coll"
-          - "not_el in coll"
-          - "^coll contains el"
-          - "coll contains not_el"
   - title: fp2sql — 5.5_conversion.yaml exclusions
     glob: "fhirpath-js/cases/5.5_conversion.yaml"
     exclude:

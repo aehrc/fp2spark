@@ -5,6 +5,8 @@ import com.example.fhirpath.ir.Lambda;
 import com.example.fhirpath.ir.Literal;
 import com.example.fhirpath.ir.Operation;
 import com.example.fhirpath.ir.Resource;
+import com.example.fhirpath.typing.FhirComplexType;
+import com.example.fhirpath.typing.FhirPrimitiveType;
 import com.example.fhirpath.typing.SystemType;
 import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
@@ -82,21 +84,35 @@ public record SparkOpContext(
   }
 
   /**
-   * Returns the type of argument at the given index as a {@link SystemType}, throwing if it is not
-   * one.
+   * Returns the type of argument at the given index as a {@link SystemType}, applying implicit
+   * FHIR→System coercion per FHIRPath §5.3.
+   *
+   * <ul>
+   *   <li>{@link FhirPrimitiveType} unwraps to its underlying System type (e.g. FHIR.string →
+   *       System.String).
+   *   <li>{@link FhirComplexType} whose HAPI class extends {@code Quantity} (Duration, Age, Count,
+   *       Distance, Money, SimpleQuantity) maps to System.Quantity — all share the Quantity struct
+   *       layout.
+   * </ul>
+   *
+   * <p>Used by conversion functions (toString, toQuantity, …) that declare {@code ANY} parameters
+   * and dispatch internally on the resolved System type.
    *
    * @param i the argument index
    * @return the argument type as a SystemType
-   * @throws IllegalArgumentException if the argument type is not a SystemType
+   * @throws IllegalArgumentException if the argument type cannot be resolved to a SystemType
    */
   @Nonnull
   public SystemType systemArgType(final int i) {
     final Type type = argType(i);
-    if (!(type instanceof SystemType pt)) {
-      throw new IllegalArgumentException(
-          "Expected SystemType at argument " + i + ", got: " + type.getClass());
-    }
-    return pt;
+    return switch (type) {
+      case final SystemType pt -> pt;
+      case final FhirPrimitiveType fpt -> fpt.getSystemType();
+      case final FhirComplexType fct when fct.isQuantityCompatible() -> SystemType.QUANTITY;
+      default ->
+          throw new IllegalArgumentException(
+              "Expected SystemType at argument " + i + ", got: " + type.getClass());
+    };
   }
 
   /**

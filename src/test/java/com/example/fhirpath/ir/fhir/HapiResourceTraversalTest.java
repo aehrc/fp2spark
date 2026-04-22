@@ -1,9 +1,12 @@
 package com.example.fhirpath.ir.fhir;
 
 import com.example.fhirpath.test.FhirPathTestBase;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Stream;
+import org.hl7.fhir.r4.model.Duration;
 import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.MedicationRequest;
 import org.hl7.fhir.r4.model.Patient;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -114,6 +117,57 @@ class HapiResourceTraversalTest extends FhirPathTestBase {
             List.of("Smith"),
             "name.where(use = 'official').family",
             "Filter then traverse yields filtered result")
+        .build();
+  }
+
+  /**
+   * Regression for #180 — {@code toString()} with an {@code ANY} parameter must accept FHIR
+   * primitive arguments via implicit FHIR→System coercion. Previously the analyzer rejected these
+   * with "Expected SystemType".
+   */
+  @TestFactory
+  Stream<DynamicTest> testToStringOnHapiFhirPrimitives() {
+    return builder()
+        .withSubject(createPatient())
+        .group("HAPI toString() on FHIR primitives (#180)")
+        .testEquals("patient-1", "id.toString()", "FHIR.id → System.String")
+        .testEquals("true", "active.toString()", "FHIR.boolean → System.String")
+        .testEquals("male", "gender.toString()", "FHIR.code → System.String")
+        .testEquals("2024-01-15", "birthDate.toString()", "FHIR.date → System.String")
+        .build();
+  }
+
+  /**
+   * Regression for #180 — {@code toQuantity()} with an {@code ANY} parameter must accept
+   * Quantity-compatible FHIR complex types (Duration, Age, Count, Distance, Money, SimpleQuantity)
+   * via implicit coercion to System.Quantity. The Pathling encoder attaches extra columns
+   * (_value_canonicalized, _fid, ...) to Quantity-family structs; the codegen projects them back to
+   * the canonical (value, unit, system, code) layout.
+   */
+  @TestFactory
+  Stream<DynamicTest> testToQuantityOnHapiDuration() {
+    final MedicationRequest request = new MedicationRequest();
+    request.setId("rx-1");
+    final Duration duration = new Duration();
+    duration.setValue(new BigDecimal("3"));
+    duration.setUnit("days");
+    duration.setSystem("http://unitsofmeasure.org");
+    duration.setCode("d");
+    request.getDispenseRequest().setExpectedSupplyDuration(duration);
+    return builder()
+        .withSubject(request)
+        .group("HAPI toQuantity() on FHIR Duration (#180)")
+        .testEquals(
+            new BigDecimal("3"),
+            "dispenseRequest.expectedSupplyDuration.toQuantity().value",
+            "FHIR.Duration → System.Quantity preserves value")
+        .testEquals(
+            "d",
+            "dispenseRequest.expectedSupplyDuration.toQuantity().code",
+            "FHIR.Duration → System.Quantity preserves code")
+        .testTrue(
+            "dispenseRequest.expectedSupplyDuration.convertsToQuantity()",
+            "convertsToQuantity() accepts FHIR Duration")
         .build();
   }
 }

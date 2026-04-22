@@ -184,14 +184,9 @@ public final class SetOps {
     final Column leftArr = normalizeArray(ctx.collectionArg(0).asArray(), type);
     final Column rightArr = normalizeArray(ctx.collectionArg(1).asArray(), type);
 
-    // Per FHIRPath §5.3.8: "Duplicate items will be eliminated by this function." We
-    // implement intersect as filter(distinct(left), exists-in-right). Dedup first so the
-    // filter walks over at most one instance of each left element.
-    //
-    // We avoid Spark's built-in array_intersect() because it misbehaves when evaluated
-    // inside a higher-order function (e.g. transform in select()), returning NULL even
-    // when a non-empty intersection exists. The filter/exists form evaluates reliably in
-    // every context.
+    // Spec §5.3.8: duplicates are eliminated. Distinct the left side first so filter
+    // walks each left element at most once. See class javadoc for why array_intersect is
+    // not used.
     if (type == Types.NULL || EqualityOps.usesDefaultEquality(type)) {
       return CollectionValue.nullIfEmpty(
           filter(array_distinct(leftArr), elem -> exists(rightArr, x -> x.equalTo(elem))));
@@ -218,10 +213,8 @@ public final class SetOps {
     final Column leftArr = normalizeArray(ctx.collectionArg(0).asArray(), type);
     final Column rightArr = normalizeArray(ctx.collectionArg(1).asArray(), type);
 
-    // Per FHIRPath §5.3.9: "Duplicate items will not be eliminated by this function, and
-    // order will be preserved." Spark's array_except() performs set difference with
-    // deduplication, so we filter the left array element-wise against the right array,
-    // which preserves duplicates and order from the left input.
+    // Spec §5.3.9: duplicates preserved and order retained. See class javadoc for why
+    // array_except is not used.
     final BiFunction<Column, Column, Column> eq =
         (type == Types.NULL || EqualityOps.usesDefaultEquality(type))
             ? Column::equalTo

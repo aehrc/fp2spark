@@ -706,16 +706,6 @@ excludeSet:
           element-wise. Needs either analyzer relaxation or per-case rewrites to ofType().
         any:
           - ""
-  - title: fp2sql — skip entire 6.4_collection.yaml
-    glob: "6.4_collection.yaml"
-    exclude:
-      - title: Pending triage
-        type: feature
-        comment: |
-          Subject is a top-level list of maps, not a FHIR resource. fp2sql has no adapter
-          for that shape.
-        any:
-          - ""
   - title: fp2sql — skip entire 6.4_collections.yaml
     glob: "6.4_collections.yaml"
     exclude:
@@ -726,6 +716,21 @@ excludeSet:
           strict-typing differences. Follow-up work.
         any:
           - ""
+  - title: fp2sql — 6.4_collection.yaml exclusions
+    glob: "fhirpath-js/cases/6.4_collection.yaml"
+    exclude:
+      - title: "Membership/containership on null-gap primitive element"
+        comment: |
+          Patient.name.given[3] exists only via _given[3] (extension, no value).
+          fp2sql filters null gaps from primitive collections, so in/contains
+          against that index returns [] instead of [true]. Same root cause as
+          extensions.yaml "exclude null values from the result".
+        type: bug
+        outcome: failure
+        id: "#192"
+        desc:
+          - "in operator for the null element of a collection"
+          - "contains operator for the null element of a collection"
   - title: fp2sql — 5.3_subsetting.yaml exclusions
     glob: "fhirpath-js/cases/5.3_subsetting.yaml"
     exclude:

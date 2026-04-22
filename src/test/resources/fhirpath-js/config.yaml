@@ -232,6 +232,24 @@ excludeSet:
   - title: fp2sql — 6.6_math.yaml exclusions
     glob: "6.6_math.yaml"
     exclude:
+      - title: "String concatenation with a null-valued primitive element"
+        type: design
+        outcome: failure
+        comment: |
+          D3. These cases apply '+' and '&' to Patient.name.given[0] on
+          patient-example-2.json, where index 0 in fhirpath.js is a null-valued
+          primitive with extension metadata (absent value). fhirpath.js treats
+          the empty-valued element as propagating empty through '+'; fp2sql
+          filters JSON positional nulls at traversal (spec: collections cannot
+          contain null), so given[0] resolves to "Peter" and concatenation
+          produces a non-empty string. The underlying reason fp2sql cannot reach
+          fhirpath.js's answer is D3 — it has no representation for a primitive
+          element with only attribute metadata. See SPEC_DIVERGENCES.md D3.
+        any:
+          - "Patient.name.given[0] + 'c'"
+          - "'c' + Patient.name.given[0]"
+          - "Patient.name.given[0] & 'c'"
+          - "'c' & Patient.name.given[0]"
       - title: Empty list [] inferred as MANY cardinality
         type: bug
         id: "#156"
@@ -327,6 +345,35 @@ excludeSet:
   - title: fp2sql — 5.6_string_manipulation.yaml exclusions
     glob: "5.6_string_manipulation.yaml"
     exclude:
+      - title: "String functions on a null-valued primitive element"
+        type: design
+        outcome: failure
+        comment: |
+          D3. These cases apply string functions to Patient.name.given[0] on
+          patient-example-2.json, where index 0 in fhirpath.js is a null-valued
+          primitive with extension metadata (absent value). fhirpath.js propagates
+          the empty value through each string function; fp2sql filters JSON
+          positional nulls at traversal (spec: collections cannot contain null),
+          which shifts indices so given[0] resolves to "Peter" and each string
+          function produces a non-empty result. The underlying reason fp2sql cannot
+          reach fhirpath.js's answer is D3 — it has no representation for a
+          primitive element with only attribute metadata. See SPEC_DIVERGENCES.md
+          D3 (no support for attributes on primitive types).
+        any:
+          - "** indexOf on a singleton with null value"
+          - "** substring on a singleton with null value"
+          - "** startsWith on a singleton with null value"
+          - "** endsWith on a singleton with null value"
+          - "** contains on a singleton with null value"
+          - "** upper on a singleton with null value"
+          - "** lower on a singleton with null value"
+          - "** replace on a singleton with null value"
+          - "** matches on a singleton with null value"
+          - "** replaceMatches on a singleton with null value"
+          - "** length on a singleton with null value"
+          - "** toChars on a singleton with null value"
+          - "** split on a singleton with null value"
+          - "** trim on a singleton with null value"
       - title: Array subject field Functions.str has MANY cardinality
         type: design
         comment: |
@@ -634,13 +681,13 @@ excludeSet:
     exclude:
       - title: "Membership/containership on null-gap primitive element"
         comment: |
-          Patient.name.given[3] exists only via _given[3] (extension, no value).
-          fp2sql filters null gaps from primitive collections, so in/contains
-          against that index returns [] instead of [true]. Same root cause as
-          extensions.yaml "exclude null values from the result".
-        type: bug
+          D3. Patient.name.given[3] exists in fhirpath.js only via _given[3] (extension,
+          no value). fp2sql does not represent attributes on primitive types, so the
+          null-valued element at index 3 is not visible and in/contains return empty
+          instead of [true]. See SPEC_DIVERGENCES.md D3 (no support for attributes on
+          primitive types).
+        type: design
         outcome: failure
-        id: "#192"
         desc:
           - "in operator for the null element of a collection"
           - "contains operator for the null element of a collection"
@@ -726,30 +773,24 @@ excludeSet:
   - title: fp2sql — 5.1_existence.yaml exclusions
     glob: "fhirpath-js/cases/5.1_existence.yaml"
     exclude:
-      - title: "Primitive elements with extensions but no value are invisible"
-        type: design
-        outcome: failure
-        comment: "D3: fp2sql does not support attributes on primitive types."
-        any:
-          - "** null is not empty"
-          - "** exists for null should return true"
       - title: "Static typing rejects multi-valued boolean at compile time"
         type: design
         outcome: failure
         comment: "D1: fp2sql requires statically single-valued operands for not()."
         any:
           - "** error for collection that is not a singleton"
-      - title: "isDistinct() on primitives with null values but present extensions"
+      - title: "Primitive elements with extensions but no value are invisible"
         type: design
         outcome: failure
         comment: |
           D3. fp2sql treats primitive elements with only extensions (no value)
-          as absent. fhirpath.js includes them as distinct "null" items, so
-          combine() followed by isDistinct() disagrees on collections backed by
-          _given extension-only slots.
-          See SPEC_DIVERGENCES.md D3.
+          as absent. fhirpath.js includes them as positional null items with
+          attribute metadata, so operations that depend on that position or on
+          `.id` / extension access disagree. See SPEC_DIVERGENCES.md D3.
         any:
           - "(Patient.name.given[0]).combine(Patient.name.given[3]).isDistinct()"
+          - "** all for a collection with a null value that has an id"
+          - "** should work with nodes that have null values"
   - title: fp2sql — 5.2_filtering_and_projection.yaml exclusions
     glob: "fhirpath-js/cases/5.2_filtering_and_projection.yaml"
     exclude:
@@ -1054,17 +1095,6 @@ excludeSet:
   - title: fp2sql — extensions.yaml exclusions
     glob: "fhirpath-js/cases/extensions.yaml"
     exclude:
-      - title: "Primitive collection traversal does not filter null values"
-        comment: |
-          FHIRPath collections cannot contain null (spec "Null and empty"); the JSON
-          positional-null convention used to align `given` with `_given` must be filtered
-          out during primitive field traversal. fp2sql returns [null, Peter, James]
-          instead of [Peter, James].
-        type: bug
-        outcome: failure
-        id: "#192"
-        any:
-          - "** exclude null values from the result"
       - title: "ID on primitive types not supported"
         comment: |
           D3. FHIR primitive elements can carry id/extension attributes alongside their
@@ -1164,6 +1194,4 @@ excludeSet:
         outcome: failure
         comment: "D3: fp2sql does not support attributes on primitive types."
         any:
-          - "(Patient.name.given[0] | Patient.name.given[3]).count()"
           - "(Patient.name.given[0]).combine(Patient.name.given[3]).count()"
-          - "Patient.name.given[0].union(Patient.name.given[3]).count()"

@@ -171,17 +171,31 @@ public class SparkCodeGenerator implements IRNodeVisitor<Column> {
           rootColumn != null
               ? rootColumn.getField(trav.fieldSpec().getName())
               : col(trav.fieldSpec().getName());
+      // Top-level primitive arrays (e.g. Patient.address from a root where name[0] is null due
+      // to the JSON positional-null convention) need nulls filtered out. See issue #192.
+      if (!trav.fieldSpec().isSingular()) {
+        result = functions.filter(result, Column::isNotNull);
+        result = CollectionValue.nullIfEmpty(result);
+      }
     } else {
       final Column target = trav.target().accept(this);
       result = target.getField(trav.fieldSpec().getName());
 
-      // Handle collection traversals - need to filter nulls and flatten if necessary
+      // Handle collection traversals - need to filter nulls and flatten if necessary.
+      // FHIRPath collections cannot contain null (spec "Null and empty"); the JSON positional-
+      // null convention used to align `given` with `_given` must be filtered out during field
+      // traversal. Mirrors Pathling's DefaultRepresentation.traverse() → removeNulls().flatten().
       if (!trav.target().isSingular()) {
         result = functions.filter(result, Column::isNotNull);
         if (!trav.fieldSpec().isSingular()) {
-          result = functions.flatten(result);
+          // array-of-arrays: flatten, then filter inner nulls (JSON positional-null gaps).
+          result = functions.filter(functions.flatten(result), Column::isNotNull);
         }
         // Convert empty arrays to null (FHIRPath empty collection = null in Spark)
+        result = CollectionValue.nullIfEmpty(result);
+      } else if (!trav.fieldSpec().isSingular()) {
+        // Singular target, plural field: plain array — filter JSON positional-null gaps.
+        result = functions.filter(result, Column::isNotNull);
         result = CollectionValue.nullIfEmpty(result);
       }
     }

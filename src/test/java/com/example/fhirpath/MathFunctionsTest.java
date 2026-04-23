@@ -125,6 +125,32 @@ public class MathFunctionsTest extends FhirPathTestBase {
         .build();
   }
 
+  /**
+   * round() with a non-foldable (column-valued) precision argument. Regression test for #247:
+   * Spark's built-in round() requires a foldable scale, so fp2sql expands the operation manually
+   * when precision is a column reference.
+   */
+  @TestFactory
+  Stream<DynamicTest> testRoundWithColumnPrecision() {
+    return builder()
+        .withSubject(
+            "Patient",
+            p ->
+                p.integer("precision0", 0)
+                    .integer("precision2", 2)
+                    .integer("precision3", 3)
+                    .integerEmpty("nullPrecision"))
+        .group("round() with column-valued precision")
+        .testEquals(3.142, "3.14159.round(precision3)", "Precision from resource field")
+        .testEquals(1.23, "1.234.round(precision2)", "Two decimal places from column")
+        .testEquals(2.0, "1.5.round(precision0)", "Zero precision from column")
+        .group("round() with empty column precision defaults to 0")
+        .testEquals(-1.0, "(-1.1).round(nullPrecision)", "Null precision column → scale 0")
+        .group("round() empty value propagation with column precision")
+        .testEmpty("{}.round(precision3)", "Empty value → empty regardless of precision")
+        .build();
+  }
+
   // ---------------------------------------------------------------------------
   // exp()
   // ---------------------------------------------------------------------------

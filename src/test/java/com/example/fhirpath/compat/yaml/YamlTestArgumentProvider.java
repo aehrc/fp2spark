@@ -40,6 +40,8 @@ public class YamlTestArgumentProvider implements ArgumentsProvider {
         configPath.isEmpty()
             ? YamlTestFormat.getDefault()
             : YamlTestFormat.cached(configPath, () -> loadResourceUnchecked(configPath));
+    final YamlSubjectResolver subjectResolver =
+        new YamlSubjectResolver(definition.subject(), resourceBase);
 
     return definition.cases().stream()
         .filter(tc -> !tc.disable())
@@ -47,7 +49,7 @@ public class YamlTestArgumentProvider implements ArgumentsProvider {
             tc -> {
               final Optional<ExcludeRule> exclusion = format.findExclusion(testFilePath, tc);
               final DefaultYamlTestExecutor executor =
-                  new DefaultYamlTestExecutor(tc, definition.subject(), resourceBase, exclusion);
+                  new DefaultYamlTestExecutor(tc, subjectResolver, exclusion);
               return Arguments.of((Object) executor);
             });
   }

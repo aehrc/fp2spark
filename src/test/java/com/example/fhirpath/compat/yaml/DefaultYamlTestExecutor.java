@@ -14,7 +14,6 @@ import jakarta.annotation.Nullable;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.Dataset;
@@ -38,19 +37,16 @@ public final class DefaultYamlTestExecutor implements YamlTestExecutor {
   private static final Logger log = LoggerFactory.getLogger(DefaultYamlTestExecutor.class);
 
   @Nonnull private final TestCase spec;
-  @Nonnull private final Map<Object, Object> defaultSubject;
-  @Nonnull private final String resourceBase;
+  @Nonnull private final YamlSubjectResolver subjectResolver;
   @Nonnull private final Optional<ExcludeRule> exclusion;
   @Nonnull private final String displayName;
 
   public DefaultYamlTestExecutor(
       @Nonnull final TestCase spec,
-      @Nullable final Map<Object, Object> defaultSubject,
-      @Nonnull final String resourceBase,
+      @Nonnull final YamlSubjectResolver subjectResolver,
       @Nonnull final Optional<ExcludeRule> exclusion) {
     this.spec = spec;
-    this.defaultSubject = defaultSubject != null ? defaultSubject : Map.of();
-    this.resourceBase = resourceBase;
+    this.subjectResolver = subjectResolver;
     this.exclusion = exclusion;
     this.displayName = buildDisplayName(spec);
   }
@@ -80,7 +76,7 @@ public final class DefaultYamlTestExecutor implements YamlTestExecutor {
 
     final ResolvedSubject subject;
     try {
-      subject = YamlSubjectFactory.resolve(spark, defaultSubject, spec.inputFile(), resourceBase);
+      subject = subjectResolver.resolve(spark, spec.inputFile());
     } catch (final Exception e) {
       // Subject loading can fail for synthetic (non-FHIR) resource types, resources unsupported
       // by Pathling's encoders (e.g. Bundle, StructureDefinition), or JSON parse errors. None of

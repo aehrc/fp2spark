@@ -239,20 +239,6 @@ excludeSet:
           - "'c' + Patient.name.given[0]"
           - "Patient.name.given[0] & 'c'"
           - "'c' & Patient.name.given[0]"
-      - title: UCUM quantity literals in date/time arithmetic
-        type: bug
-        id: "#158"
-        comment: |
-          FHIRPath date arithmetic requires calendar duration keywords, not UCUM
-          literals ('a', 'mo', 'd', 'wk'). Pathling has the same behavior (#2391).
-        outcome: failure
-        any:
-          - "1 'a' = @2019"
-          - "@2018-02 + 1 'mo'"
-          - "+ 29 'd'"
-          - "+ 30 'd'"
-          - "+ 1 'wk'"
-          - "+ 1.5 'wk'"
       - title: Calendar duration quantity arithmetic gaps
         type: feature
         id: "#159"

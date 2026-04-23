@@ -54,10 +54,14 @@ public class IsOperatorDslTest extends CompatTestBase {
             "stringValue is System.String",
             "'is' returns true when value matches System.String type")
         .testTrue("integerValue is Integer", "'is' returns true when value matches Integer type")
-        .testTrue("decimalValue is decimal", "'is' returns true when value matches decimal type")
         .testTrue(
+            "decimalValue is Decimal", "'is' returns true when value matches System.Decimal type")
+        .testFalse(
+            "decimalValue is decimal",
+            "'is' returns false — inline System.Decimal does not match FHIR.decimal (#188)")
+        .testFalse(
             "booleanValue is FHIR.boolean",
-            "'is' returns true when value matches FHIR.boolean type")
+            "'is' returns false — inline System.Boolean does not match FHIR.boolean (#188)")
         .group("'is' operator - type mismatches")
         // Negative type matches
         .testFalse("stringValue is Integer", "'is' returns false when type doesn't match")
@@ -66,9 +70,12 @@ public class IsOperatorDslTest extends CompatTestBase {
         .group("'is' operator - complex types")
         // Complex type matching
         .testTrue("quantityValue is Quantity", "'is' returns true for Quantity complex type")
-        .testTrue(
-            "quantityValue is FHIR.Quantity", "'is' returns true with explicit FHIR namespace")
-        .testTrue("codingValue is FHIR.Coding", "'is' returns true for Coding with FHIR namespace")
+        .testFalse(
+            "quantityValue is FHIR.Quantity",
+            "'is' returns false — inline System.Quantity ≠ FHIR.Quantity (#188)")
+        .testFalse(
+            "codingValue is FHIR.Coding",
+            "'is' returns false — inline System.Coding ≠ FHIR.Coding (#188)")
         .testTrue(
             "codingValue is System.Coding", "'is' returns true for Coding with System namespace")
         .testTrue("codingValue is Coding", "'is' returns true for Coding with unqualified name")

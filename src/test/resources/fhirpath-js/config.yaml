@@ -602,19 +602,6 @@ excludeSet:
           - "7 days = 1 week"
           - "6 days < 1 week"
           - "8 days > 1 week"
-      - title: "FHIR and System type namespace distinction not preserved"
-        type: bug
-        id: "#188"
-        outcome: failure
-        comment: |
-          Per FHIR FHIRPath spec, is() and as() must distinguish FHIR primitive types
-          from System types (e.g., FHIR.boolean vs System.Boolean). Pathling maps FHIR
-          primitives to System types internally, causing is(Boolean) to return true for
-          FHIR.boolean values. The spec explicitly calls is() an exception to automatic
-          FHIR-to-System type conversion.
-        any:
-          - "Patient.active.is(Boolean).not()"
-          - "Patient.active.is(System.Boolean).not()"
       - title: "fhirpath.js operator precedence: is vs union"
         type: ref-impl-bug
         outcome: error
@@ -977,6 +964,19 @@ excludeSet:
           - "Patient.name.given[3].as(FHIR.string).count() = 1"
           - "Patient.contact.name.family.extension('http://hl7.org/fhir/StructureDefinition/humanname-own-prefix').value is string"
           - "Patient.contact.name.family.extension('http://hl7.org/fhir/StructureDefinition/humanname-own-prefix').url is System.String"
+      - title: "fhirpath.js types Patient.id as System.String (FHIR.id lost)"
+        type: ref-impl-bug
+        outcome: failure
+        comment: |
+          R7. fhirpath.js reports `Patient.id.type() = System.String` rather than
+          FHIR.id, so `Patient.id is System.String` returns true even though fp2sql
+          (correctly per FHIR spec) types Patient.id as FHIR.id. This is the inverse
+          of #188: fhirpath.js drops the FHIR namespace for `id` specifically, while
+          it preserves FHIR.boolean for `Patient.active` (so `Patient.active is
+          System.Boolean` returns false). The strict namespace fix for #188 now
+          correctly returns false here. See SPEC_DIVERGENCES.md R7.
+        any:
+          - "Patient.id is System.String"
       - title: "'is' on choice-type field traversal without ofType() narrowing"
         type: design
         outcome: failure
@@ -1000,17 +1000,6 @@ excludeSet:
           parses as `(1 > 2) is Boolean`. See SPEC_DIVERGENCES.md R3.
         any:
           - "1 > 2 is Boolean"
-      - title: "FHIR and System type namespace distinction not preserved (as)"
-        type: bug
-        outcome: failure
-        id: "#188"
-        comment: |
-          fp2sql does not distinguish `FHIR.Quantity` from `System.Quantity`
-          in `is`/`as`/`ofType`. `1 year as FHIR.Quantity` succeeds instead of
-          returning empty. Tracked under #188.
-        any:
-          - "1 year.as(FHIR.Quantity)"
-          - "1 year as FHIR.Quantity"
       - title: "Mixed-type collections select() with as/casting"
         type: design
         outcome: failure

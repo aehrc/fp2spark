@@ -62,11 +62,16 @@ public class AsOperatorDslTest extends CompatTestBase {
             "'as' operator returns value when it matches Integer type")
         .testEquals(
             3.14,
+            "decimalValue as Decimal",
+            "'as' operator returns value when it matches System.Decimal type")
+        .testEmpty(
             "decimalValue as decimal",
-            "'as' operator returns value when it matches decimal type")
-        .testTrue(
+            "'as' operator returns empty — inline System.Decimal does not match FHIR.decimal"
+                + " (#188)")
+        .testEmpty(
             "booleanValue as FHIR.boolean",
-            "'as' operator returns value when it matches FHIR.boolean type")
+            "'as' operator returns empty — inline System.Boolean does not match FHIR.boolean"
+                + " (#188)")
         .group("'as' operator - type mismatches (negative cases)")
         // Negative type matches - should return empty collection
         .testEmpty("stringValue as Integer", "'as' operator returns empty when type doesn't match")
@@ -83,12 +88,14 @@ public class AsOperatorDslTest extends CompatTestBase {
             "'as' operator returns Quantity value and allows traversal")
         .testEquals(
             "mg",
+            "((11.5 'mg') as Quantity).unit",
+            "'as' operator works with unqualified Quantity (bare = System.Quantity)")
+        .testEmpty(
             "((11.5 'mg') as FHIR.Quantity).unit",
-            "'as' operator works with explicit FHIR namespace")
-        .testEquals(
-            "code2",
+            "'as' operator returns empty — System.Quantity literal ≠ FHIR.Quantity (#188)")
+        .testEmpty(
             "(codingValue as FHIR.Coding).code",
-            "'as' operator returns Coding value and allows traversal")
+            "'as' operator returns empty — inline System.Coding ≠ FHIR.Coding (#188)")
         .testEquals(
             "code2",
             "(codingValue as System.Coding).code",
@@ -103,10 +110,9 @@ public class AsOperatorDslTest extends CompatTestBase {
             toQuantity("12 'cm'"),
             "(12 'cm') as System.Quantity",
             "'as' operator works with System namespace for Quantity")
-        .testEquals(
-            toQuantity("13 'mg'"),
+        .testEmpty(
             "(13 'mg') as FHIR.Quantity",
-            "'as' operator works for System.Quantity with FHIR namespace")
+            "'as' operator returns empty — System.Quantity literal ≠ FHIR.Quantity (#188)")
         .group("'as' operator - edge cases")
         // Empty collections
         .testEmpty(

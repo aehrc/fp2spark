@@ -4,37 +4,17 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.example.fhirpath.compat.yaml.YamlSubjectFactory.ResolvedSubject;
-import com.example.fhirpath.test.SparkSessionFactory;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import org.apache.spark.sql.SparkSession;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 
 /**
  * Verifies that {@link YamlSubjectResolver} resolves each distinct {@code inputfile} (or the
  * default/no-subject case) exactly once per instance.
  */
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class YamlSubjectResolverTest {
+class YamlSubjectResolverTest extends YamlTestBase {
 
   private static final String RESOURCE_BASE = "fhirpath-js/resources";
-
-  private SparkSession spark;
-
-  @BeforeAll
-  void setupSpark() {
-    spark = SparkSessionFactory.createTestSession();
-  }
-
-  @AfterAll
-  void teardownSpark() {
-    if (spark != null) {
-      spark.stop();
-    }
-  }
 
   @Test
   void reusesResolvedSubjectForNoSubjectPath() {

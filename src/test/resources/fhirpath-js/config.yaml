@@ -405,25 +405,6 @@ excludeSet:
         any:
           - "('a'|'2023-05-28'.toDate()|'c').join(',')"
   # ---------------------------------------------------------------------------
-  # fp2sql — 5.7_math.yaml exclusions
-  # ---------------------------------------------------------------------------
-  - title: fp2sql — 5.7_math.yaml exclusions
-    glob: "5.7_math.yaml"
-    exclude:
-      - title: round() with non-foldable precision argument
-        type: bug
-        id: "#247"
-        comment: |
-          Math.n2.round(n3) reaches Spark codegen after #156 (empty list is now
-          inferred as optional singleton) but fails with Spark's
-          DATATYPE_MISMATCH.NON_FOLDABLE_INPUT: Spark's built-in round() requires
-          a foldable (constant) scale argument, but fp2sql's implementation passes
-          coalesce(precision_column, 0) which is not foldable.
-          See #247.
-        outcome: error
-        any:
-          - "Math.n2.round(n3)"
-  # ---------------------------------------------------------------------------
   # fp2sql — 3.2_paths.yaml exclusions
   # ---------------------------------------------------------------------------
   - title: fp2sql — 3.2_paths.yaml exclusions

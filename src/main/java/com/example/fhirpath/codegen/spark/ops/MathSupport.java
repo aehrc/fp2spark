@@ -47,12 +47,22 @@ final class MathSupport {
   }
 
   /**
-   * round(value, precision): rounds to the specified number of decimal places (default 0). Uses
-   * Spark SQL's round() via call_function to accept a Column precision argument.
+   * round(value, precision): rounds to the specified number of decimal places (default 0).
+   *
+   * <p>Spark's built-in {@code round(col, scale)} requires its {@code scale} argument to be a
+   * foldable (compile-time constant) integer, so it cannot be used directly when {@code precision}
+   * is a column reference. We expand the operation manually as {@code round(value * 10^precision) /
+   * 10^precision}, which works uniformly for literal and column-valued precision. The
+   * single-argument Spark {@code round()} (implicit scale 0) is still foldable and retains HALF_UP
+   * semantics matching FHIRPath.
+   *
+   * <p>See issue #247.
    */
   @Nonnull
   static Column round(@Nonnull final Column value, @Nonnull final Column precision) {
-    return call_function("round", value.cast(DECIMAL_TYPE), coalesce(precision, lit(0)));
+    final Column scale = pow(lit(10), coalesce(precision, lit(0)));
+    final Column scaled = value.cast(DECIMAL_TYPE).multiply(scale);
+    return call_function("round", scaled).divide(scale).cast(DECIMAL_TYPE);
   }
 
   /**

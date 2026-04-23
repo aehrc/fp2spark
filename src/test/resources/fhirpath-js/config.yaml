@@ -1010,15 +1010,19 @@ excludeSet:
           - "Functions.collWithNullsAndTrue[0].toDecimal()"
           - "Functions.collWithNullsAndTrue[0].toQuantity()"
           - "Patient.name.given[0].toString()"
-      - title: Duration → Quantity (UCUM day) not equal to calendar-day literal
+      - title: FHIR Quantity UCUM time code not mapped to calendar-duration unit
         comment: |
-          `expectedSupplyDuration.toQuantity()` produces {3, UCUM, d} but `3 days`
-          is {3, calendar, day}. QuantitySupport's three-tier comparator cannot
-          bridge them: canonicalize on calendar `day` returns null, the year↔month
-          tier does not apply, and tier 3 requires matching system+code. fhirpath.js
-          treats them as equal. Tracked under #249.
-        type: bug
-        id: "#249"
+          FHIR→FHIRPath §Quantity binding requires UCUM time codes (a/mo/wk/d/h/
+          min/s) on FHIR.Quantity values to be implicitly mapped to calendar-
+          duration units (year/month/week/day/hour/minute/second) during
+          conversion to System.Quantity. fp2sql's `UcumService.CALENDAR_TO_UCUM`
+          covers only second/millisecond; the extended calendar mapping is a
+          feature gap tracked by #231. fhirpath.js performs this mapping at
+          resource read time, so `expectedSupplyDuration.toQuantity() = 3 days`
+          evaluates to true there. (Previously tracked as #249, closed as
+          duplicate of #231.)
+        type: feature
+        id: "#231"
         outcome: failure
         any:
           - "MedicationRequest.dispenseRequest.expectedSupplyDuration.toQuantity() = 3 days"

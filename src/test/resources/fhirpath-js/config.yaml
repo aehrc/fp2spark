@@ -546,7 +546,7 @@ excludeSet:
           - "** testLiteralDecimalLessThanInteger"
       - title: "Incorrect multiplication/division of quantity literals"
         id: "#228"
-        type: bug
+        type: feature
         comment: |
           Quantity arithmetic does not canonicalize units when multiplying or
           dividing two Quantity values (per FHIRPath spec §6.6 / UCUM).

@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.spark.sql.Row;
@@ -96,6 +97,21 @@ public final class TemporalArithmetic {
           Map.entry("min", Precision.MINUTE),
           Map.entry("s", Precision.SECOND),
           Map.entry("ms", Precision.MILLISECOND));
+
+  /**
+   * UCUM duration codes forbidden as right-hand operands of Date/DateTime/Time {@code +} and {@code
+   * -}. Per FHIRPath spec §9, definite-duration quantities above the second boundary cannot be used
+   * in date/time arithmetic because their calendar meaning is ambiguous (e.g. UCUM {@code 'a'} is
+   * 365.25 days, which does not match the calendar year's 365 or 366 days). Only calendar-duration
+   * keywords ({@code year}, {@code month}, {@code week}, {@code day}, {@code hour}, {@code minute})
+   * and definite UCUM codes at or below the second boundary ({@code 's'}, {@code 'ms'}) are valid.
+   *
+   * <p>Units below the second boundary ({@code 's'}, {@code 'ms'}) are intentionally omitted — per
+   * spec §5.3 they are definite-equal to calendar {@code second}/{@code millisecond} and ARE valid
+   * in date arithmetic.
+   */
+  private static final Set<String> FORBIDDEN_UCUM_DURATION_CODES =
+      Set.of("a", "mo", "wk", "d", "h", "min");
 
   /**
    * Standard conversion factors for converting between precision levels. Used when a quantity is
@@ -199,6 +215,20 @@ public final class TemporalArithmetic {
 
       if (qValue == null || qSystem == null || qCode == null) {
         return null;
+      }
+
+      // Guard: reject UCUM definite-duration codes above the second boundary. Per FHIRPath spec
+      // §9, only calendar-duration keywords and UCUM codes 's'/'ms' are valid right-hand operands
+      // of Date/DateTime/Time +/-. Empty Quantities are caught by the null check above, so this
+      // guard only fires when all three fields are present and match the forbidden set.
+      if (QuantityValue.UCUM_SYSTEM.equals(qSystem)
+          && FORBIDDEN_UCUM_DURATION_CODES.contains(qCode)) {
+        throw new IllegalArgumentException(
+            "Date/time arithmetic with UCUM duration unit '"
+                + qCode
+                + "' is not allowed (FHIRPath spec §9): definite-duration quantities above the"
+                + " second boundary cannot be used in date/time arithmetic. Use the calendar"
+                + " duration keyword (year, month, week, day, hour, minute) instead.");
       }
 
       // Resolve the effective calendar duration code

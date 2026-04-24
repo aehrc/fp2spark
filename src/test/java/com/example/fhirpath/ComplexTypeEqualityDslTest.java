@@ -67,13 +67,9 @@ class ComplexTypeEqualityDslTest extends FhirPathTestBase {
     return builder()
         .withSubject(patientWithTwoIdenticalNames())
         .group("HumanName equality ignoring _fid")
-        .testTrue(
-            "name.first() = name.last()",
-            "Two structurally identical names at different positions are equal")
-        .testFalse(
-            "name.first() != name.last()",
-            "Negation: structurally identical names are not not-equal")
-        .testTrue("name = name", "Full name collection equals itself")
+        .testTrue("name.first() = name.last()", "Identical names at different positions")
+        .testFalse("name.first() != name.last()", "Negation of identical names")
+        .testTrue("name = name", "Collection equals itself")
         .build();
   }
 
@@ -82,10 +78,8 @@ class ComplexTypeEqualityDslTest extends FhirPathTestBase {
     return builder()
         .withSubject(patientWithTwoDifferentNames())
         .group("HumanName inequality on visible field")
-        .testFalse("name.first() = name.last()", "Names with differing family are not equal")
-        .testTrue(
-            "name.first() != name.last()",
-            "Names with differing family are correctly reported not-equal")
+        .testFalse("name.first() = name.last()", "Differing family → not equal")
+        .testTrue("name.first() != name.last()", "Differing family → not-equals true")
         .build();
   }
 
@@ -94,9 +88,7 @@ class ComplexTypeEqualityDslTest extends FhirPathTestBase {
     return builder()
         .withSubject(patientWithIdenticalPeriods())
         .group("Nested complex equality")
-        .testTrue(
-            "name.first().period = name.last().period",
-            "Nested Period structs with same start/end are equal regardless of nested _fid")
+        .testTrue("name.first().period = name.last().period", "Nested Period ignoring nested _fid")
         .build();
   }
 
@@ -105,10 +97,8 @@ class ComplexTypeEqualityDslTest extends FhirPathTestBase {
     return builder()
         .withSubject(patientWithTwoIdenticalAddresses())
         .group("Address equality ignoring _fid")
-        .testTrue(
-            "address.first() = address.last()",
-            "Structurally identical addresses at different positions are equal")
-        .testTrue("address = address", "Address collection equals itself")
+        .testTrue("address.first() = address.last()", "Identical addresses at different positions")
+        .testTrue("address = address", "Collection equals itself")
         .build();
   }
 }

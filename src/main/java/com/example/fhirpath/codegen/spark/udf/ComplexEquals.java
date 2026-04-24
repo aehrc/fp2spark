@@ -37,6 +37,13 @@ import org.apache.spark.sql.types.StructType;
  */
 public final class ComplexEquals {
 
+  /**
+   * Prefix marking Pathling-encoder synthetic fields (currently {@code _fid}, {@code _extension},
+   * {@code _value_canonicalized}). These are not user data and must not participate in structural
+   * equality.
+   */
+  private static final String SYNTHETIC_FIELD_PREFIX = "_";
+
   private ComplexEquals() {}
 
   /** Spark UDF: {@code (Row, Row) → Boolean}. */
@@ -57,7 +64,7 @@ public final class ComplexEquals {
     final StructField[] fields = schema.fields();
     for (int i = 0; i < fields.length; i++) {
       final StructField field = fields[i];
-      if (field.name().startsWith("_")) {
+      if (field.name().startsWith(SYNTHETIC_FIELD_PREFIX)) {
         continue;
       }
       final boolean leftNull = left.isNullAt(i);
@@ -107,6 +114,9 @@ public final class ComplexEquals {
     return true;
   }
 
+  // Keys are compared via Map.containsKey / Object.equals (primitive keys only); no keyType
+  // parameter. Pathling's schema uses MapType only for the synthetic _extension map, which is
+  // filtered by the `_`-prefix rule and never reaches this method in practice.
   private static boolean mapEquals(
       @Nonnull final Map<Object, Object> left,
       @Nonnull final Map<Object, Object> right,

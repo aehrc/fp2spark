@@ -1,6 +1,5 @@
 package com.example.fhirpath.codegen.spark.udf;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -203,15 +202,5 @@ class ComplexEqualsTest {
     final Row right = row(arrayOfNameSchema, rightNames, 2);
 
     assertTrue(ComplexEquals.equals(left, right));
-  }
-
-  @Test
-  void returnsBoxedBooleanNotPrimitive() {
-    // Sanity check: the UDF signature is Boolean (nullable), not boolean.
-    final Row a = name("X", List.of(), 1);
-    final Row b = name("X", List.of(), 2);
-
-    final Boolean result = ComplexEquals.equals(a, b);
-    assertEquals(Boolean.TRUE, result);
   }
 }

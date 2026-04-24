@@ -9,6 +9,8 @@ import static org.apache.spark.sql.functions.zip_with;
 import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
+import com.example.fhirpath.codegen.spark.udf.ComplexEquals;
+import com.example.fhirpath.typing.FhirComplexType;
 import com.example.fhirpath.typing.Type;
 import com.example.fhirpath.typing.Types;
 import jakarta.annotation.Nonnull;
@@ -152,6 +154,9 @@ public final class EqualityOps {
     if (TemporalSupport.isTemporalType(type)) {
       return TemporalSupport::temporalEquals;
     }
+    if (type instanceof FhirComplexType) {
+      return (l, r) -> ComplexEquals.UDF.apply(l, r);
+    }
     return Column::equalTo;
   }
 
@@ -165,6 +170,9 @@ public final class EqualityOps {
    * @return true if Spark's built-in array functions use correct equality for this type
    */
   static boolean usesDefaultEquality(@Nonnull final Type type) {
-    return type != Types.QUANTITY && type != Types.CODING && !TemporalSupport.isTemporalType(type);
+    return type != Types.QUANTITY
+        && type != Types.CODING
+        && !TemporalSupport.isTemporalType(type)
+        && !(type instanceof FhirComplexType);
   }
 }

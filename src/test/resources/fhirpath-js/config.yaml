@@ -551,16 +551,6 @@ excludeSet:
           the divergent root cause. See SPEC_DIVERGENCES.md D3.
         any:
           - "Patient.birthDate.extension('http://hl7.org/fhir/StructureDefinition/patient-birthTime1').empty()"
-      - title: Unsupported equality for complex types
-        type: bug
-        id: "#134"
-        comment: |
-          Equality on complex types (e.g. HumanName) incorrectly returns false
-          due to the implicit _fid (family id) field polluting the structural
-          comparison. Tracked under #134.
-        expression:
-          - "name = name"
-          - "name != name"
       - title: Unsupported comparison above second calendar durations
         type: feature
         id: "#224"
@@ -778,24 +768,6 @@ excludeSet:
         any:
           - "** equality for null values"
           - "** inequality for null values"
-      - title: Unsupported equality for complex types
-        type: bug
-        id: "#134"
-        comment: |
-          Complex type equality: Pathling _fid synthetic fields cause false
-          negatives on Column.equalTo over encoded structs. See #134.
-        any:
-          - "** two objects"
-          - "** two objects not"
-      - title: Unsupported equality for collections of complex types
-        type: bug
-        id: "#134"
-        comment: |
-          Complex type equality: Pathling _fid synthetic fields cause false
-          negatives on Column.equalTo over encoded structs. See #134.
-        expression:
-          - "Ops.coll = Ops.collsame"
-          - "Ops.coll = Ops.collother"
       - title: Unsupported calendar-duration equality across unit scales
         type: feature
         outcome: failure

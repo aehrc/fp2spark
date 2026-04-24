@@ -200,7 +200,7 @@ For every RE-ID / MISSING_REF row, file an issue on `piotrszul/fp2spark`:
 gh issue create --repo piotrszul/fp2spark \
   --title "<descriptive title>" \
   --body "<affected expressions, spec reference, link to the re-review PR once created>" \
-  --label <bug|enhancement> --label "compat:fhirpath-js"
+  --label <type:bug|type:spec-gap|type:not-implemented> --label "compat:fhirpath-js"
 ```
 
 Prefer **umbrella issues** when a cluster of rules share a root cause (e.g., "unsupported

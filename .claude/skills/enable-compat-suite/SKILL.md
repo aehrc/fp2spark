@@ -293,7 +293,7 @@ issue, file one:
 gh issue create --repo piotrszul/fp2spark \
   --title "<descriptive title>" \
   --body "<description with affected expressions, spec reference, and link to #NUMBER>" \
-  --label <bug|enhancement> --label "compat:fhirpath-js"
+  --label <type:bug|type:spec-gap|type:not-implemented> --label "compat:fhirpath-js"
 ```
 
 Then update the exclusions in `config.yaml` with the new issue `id` values.

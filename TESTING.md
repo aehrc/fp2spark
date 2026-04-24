@@ -234,14 +234,20 @@ excludeSet:
 Each exclusion must have a `type` that classifies why the test is excluded. This
 determines how the exclusion is tracked and what label to use when filing issues.
 
-| Type | Meaning | GitHub labels | Traceability |
-|------|---------|---------------|--------------|
-| `feature` | FHIRPath capability not yet implemented | `enhancement` `compat:fhirpath-js` | File an issue or reference an existing one via `id` |
-| `bug` | fp2sql produces incorrect results | `bug` `compat:fhirpath-js` | File an issue via `id`; fix is expected |
+| Type | Meaning | GitHub labels on linked issue | Traceability |
+|------|---------|-------------------------------|--------------|
+| `feature` | FHIRPath capability not yet implemented | `type:spec-gap` or `type:not-implemented`, plus `compat:fhirpath-js` | File an issue or reference an existing one via `id` |
+| `bug` | fp2sql produces incorrect results | `type:bug` + `compat:fhirpath-js` | File an issue via `id`; fix is expected |
 | `design` | Intentional fp2sql divergence from the spec | — | **MUST** trace to a D-entry in SPEC_DIVERGENCES.md |
 | `ref-impl-bug` | fhirpath.js reference implementation disagrees with the spec; fp2sql is correct | — | **MUST** trace to an R-entry in SPEC_DIVERGENCES.md |
-| `test-infra` | Test infrastructure limitation (e.g. YAML variable injection) | — | Comment explaining the limitation |
+| `test-infra` | Test infrastructure limitation (e.g. YAML variable injection) | `type:test-infra` (if tracked as an issue) | Comment explaining the limitation |
 | ~~`wontfix`~~ | **Obsolete.** Do not use for new exclusions. Existing uses to be reclassified (#173). | — | — |
+
+Pick `type:spec-gap` when the linked feature already works for the common
+case and only needs to be extended; pick `type:not-implemented` when the
+function or operator is wholly absent. See the
+[Issue Labels](CONTRIBUTING.md#issue-labels) section of CONTRIBUTING.md for
+the full label scheme.
 
 Outcome semantics:
 

@@ -136,6 +136,44 @@ A contribution is considered complete when ALL applicable criteria are met:
 - All PRs require review before merging
 - Address all review comments
 
+## Issue Labels
+
+Issues are classified on two axes. Every open issue must carry exactly one
+`type:*` label and zero or more `area:*` labels.
+
+### Type (`type:*`) — required, one per issue
+
+| Label | Meaning |
+|---|---|
+| `type:bug` | Feature is present but produces wrong or unintended output. |
+| `type:spec-gap` | Feature is implemented but does not cover all required cases (partial coverage). |
+| `type:not-implemented` | Feature is absent from the codebase. |
+| `type:tech-debt` | Internal refactor or architecture work; no user-visible behavior change expected. |
+| `type:test-infra` | Test harness, scaffolding, or compat-suite infrastructure. |
+| `type:epic` | Umbrella tracking multiple child issues. |
+
+The distinction between `type:spec-gap` and `type:not-implemented` is intent:
+a spec gap has working code that fails on uncovered inputs (extend the
+existing implementation); not-implemented means the function/operator does
+not exist in the codebase at all (new implementation). See
+[SPEC_DIVERGENCES.md](SPEC_DIVERGENCES.md) for intentional divergences, which
+are separate from bugs or gaps.
+
+### Area (`area:*`) — optional, any number
+
+Component tags narrow the functional area:
+`equality`, `temporal`, `quantity`, `types`, `strings`, `numeric`,
+`variables`, `terminology`, `tree`, `aggregation`, `codegen`, `encoder`,
+`control-flow`.
+
+### Other labels
+
+- `compat:fhirpath-js` — issue surfaced by the fhirpath.js reference compatibility suite.
+- `documentation`, `good first issue`, `help wanted` — standard GitHub conventions.
+
+Priority and effort are tracked in the GitHub Project (not as labels), since
+they change over the life of an issue.
+
 ## Questions or Issues?
 
 - Check existing issues before creating a new one

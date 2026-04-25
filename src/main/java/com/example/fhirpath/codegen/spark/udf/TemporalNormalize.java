@@ -73,6 +73,9 @@ public final class TemporalNormalize {
   /** Number of fractional digits to pad seconds to (nanosecond precision). */
   private static final int NANO_DIGITS = 9;
 
+  /** Pre-built padding string of {@value #NANO_DIGITS} zeros, used when no fractional seconds. */
+  private static final String NANO_ZEROS = "0".repeat(NANO_DIGITS);
+
   /**
    * Build a base {@link DateTimeFormatterBuilder} for ISO date-times with optional minutes,
    * seconds, and fractional seconds up to 9 digits. Missing components default to zero. Shared by
@@ -204,13 +207,27 @@ public final class TemporalNormalize {
     return switch (precision) {
       case HOUR -> DATETIME_HOURS.format(ldt);
       case MINUTE -> DATETIME_MINUTES.format(ldt);
-      case SECOND -> DATETIME_SECONDS.format(ldt) + "." + String.format("%09d", ldt.getNano());
+      case SECOND -> DATETIME_SECONDS.format(ldt) + "." + padNanos(ldt.getNano());
     };
   }
 
   /**
-   * Determine the time-component precision of a DateTime value from the count of {@code :}
-   * separators after the {@code T}. Zero colons → hour precision; one → minute; two → second.
+   * Format a nanosecond value (0..999_999_999) as a {@value #NANO_DIGITS}-digit zero-padded string.
+   * Hand-rolled to avoid the reflective {@link String#format} machinery on the per-row UDF path.
+   */
+  private static String padNanos(final int nanos) {
+    final String s = Integer.toString(nanos);
+    final int len = s.length();
+    if (len >= NANO_DIGITS) {
+      return s;
+    }
+    return NANO_ZEROS.substring(0, NANO_DIGITS - len) + s;
+  }
+
+  /**
+   * Determine the time-component precision of a temporal value from the count of {@code :}
+   * separators in the time portion. Zero colons → hour precision; one → minute; two → second. Works
+   * for both DateTime values (where the time portion follows {@code T}) and bare Time values.
    */
   private static TimePrecision timePrecisionOf(final String value) {
     final int first = value.indexOf(':');
@@ -220,19 +237,13 @@ public final class TemporalNormalize {
     return value.indexOf(':', first + 1) >= 0 ? TimePrecision.SECOND : TimePrecision.MINUTE;
   }
 
-  /** Check if a time string has seconds component (two or more colons). */
-  private static boolean hasSeconds(final String value) {
-    final int first = value.indexOf(':');
-    return first >= 0 && value.indexOf(':', first + 1) >= 0;
-  }
-
   /**
    * Pad seconds component to fixed fractional width for Time and Date-only values. If the value has
    * seconds (HH:mm:ss or HH:mm:ss.fff), pad fractional part to {@value NANO_DIGITS} digits.
    * Otherwise return unchanged.
    */
   private static String padSeconds(final String value) {
-    if (!hasSeconds(value)) {
+    if (timePrecisionOf(value) != TimePrecision.SECOND) {
       return value;
     }
 
@@ -245,14 +256,15 @@ public final class TemporalNormalize {
       return beforeFrac + "." + padRight(frac, NANO_DIGITS);
     }
     // No fractional seconds — add .000000000
-    return value + "." + "0".repeat(NANO_DIGITS);
+    return value + "." + NANO_ZEROS;
   }
 
-  /** Pad a string with trailing zeros to the desired length. */
+  /** Pad a string with trailing zeros to the desired length, or truncate if longer. */
   private static String padRight(final String s, final int length) {
-    if (s.length() >= length) {
+    final int len = s.length();
+    if (len >= length) {
       return s.substring(0, length);
     }
-    return s + "0".repeat(length - s.length());
+    return s + NANO_ZEROS.substring(0, length - len);
   }
 }

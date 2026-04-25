@@ -794,27 +794,6 @@ excludeSet:
         outcome: failure
         any:
           - "10 'kg.m/s2' = 5 'kg'"
-      - title: Different-precision temporal equality
-        type: feature
-        id: "#174"
-        comment: |
-          FHIRPath equality of date/time/dateTime values at different precisions
-          should return empty. fp2sql returns empty for some but not all cases.
-        outcome: failure
-        any:
-          - "@2018 = @2019-02"
-          - "@2018-02-03 != @2018-01"
-          - "@T12:35 != time1.toTime()"
-      - title: Timezone-aware dateTime equality
-        type: feature
-        id: "#175"
-        comment: |
-          DateTime equality should normalize timezones before comparing.
-          fp2sql does not perform timezone normalization.
-        outcome: failure
-        any:
-          - "@2018-02-02T22-04:00 = @2018-02-03T06+04:00"
-          - "@2018-02-02T22-04:00 = @2018-02-03T05:03+04:00"
   - title: fp2sql — 6.2_comparision.yaml exclusions
     glob: "fhirpath-js/cases/6.2_comparision.yaml"
     exclude:
@@ -830,19 +809,6 @@ excludeSet:
         any:
           - "1 minute > 59 seconds"
           - "1 minute < 61 seconds"
-      - title: Different-precision temporal comparison
-        type: feature
-        id: "#174"
-        comment: |
-          FHIRPath comparison of date/time/dateTime values at different precisions
-          should compare based on the lesser precision. fp2sql returns empty instead.
-        outcome: failure
-        any:
-          - "@2018 > @2017-01"
-          - "@2018-12-20T12 > @2018-12-20T11:01"
-          - "@T12:02:34.324 > @T12:01"
-          - "@2020 >= date.toDate()"
-          - "@2018 >= date.toDate()"
       - title: Choice type polymorphism for DiagnosticReport.effective
         type: design
         comment: |

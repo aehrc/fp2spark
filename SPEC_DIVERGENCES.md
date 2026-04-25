@@ -318,10 +318,9 @@ a raw-key lookup on the JSON object when the model has no such element.
 fp2sql is FHIR-schema-bound: undefined identifiers resolve to an empty
 collection in the analyzer (`Literal(null, NULL)` via
 `Analyzer.resolveTraversal`), matching Pathling's
-`traverse(...).orElse(EmptyCollection)` (`Paths.java:221`). The empty-collection
-result is consistent with FHIRPath's empty-propagation discipline; we do not
-raise the strict-spec error because it would break expressions over
-heterogeneous data.
+`traverse(...).orElse(EmptyCollection)`. fp2sql does not raise the
+strict-spec error and instead follows FHIRPath's empty-propagation
+discipline.
 
 Affected expressions: `CustomField = 'test'`, `Observation.CustomField = 'test'`
 (3.2_paths.yaml).

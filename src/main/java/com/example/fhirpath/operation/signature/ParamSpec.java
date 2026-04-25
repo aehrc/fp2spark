@@ -5,12 +5,11 @@ import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 
 /**
- * Parameter specification for Phase 1: simple type + cardinality.
+ * Parameter specification: a concrete element type plus cardinality.
  *
- * <p>In Phase 1, we enumerate types explicitly without type variables. Each parameter has a
- * concrete type and cardinality.
- *
- * <p>Phase 2 will add support for type variables and constraints.
+ * <p>Polymorphism is currently expressed by enumeration via {@code forTypes(GROUP).define(...)}
+ * rather than by type variables — see #260 for the refactor that would introduce type variables and
+ * type-set constraints if/when the enumeration approach starts to bite.
  *
  * @param type the element type of the parameter
  * @param cardinality the cardinality of the parameter (SINGLE or MANY)

@@ -35,7 +35,10 @@ import org.apache.spark.sql.types.DataTypes;
  *
  * <p>After normalization, the output is structured so that lexicographic prefix comparison
  * implements the FHIRPath spec component-walk semantics: same-precision values compare
- * lexicographically; different-precision values compare on their common prefix.
+ * lexicographically; different-precision values compare on their common prefix. Date-only DateTime
+ * partials (e.g. {@code 2014T}) have their trailing {@code T} stripped, so they share the same
+ * output lengths as the corresponding Date values — the type system at the analyzer layer prevents
+ * cross-type Date vs DateTime comparison from reaching this UDF.
  *
  * <p><b>Output length → precision mapping (DateTime / Date):</b>
  *
@@ -78,8 +81,10 @@ public final class TemporalNormalize {
 
   /**
    * Build a base {@link DateTimeFormatterBuilder} for ISO date-times with optional minutes,
-   * seconds, and fractional seconds up to 9 digits. Missing components default to zero. Shared by
-   * {@link #FLEXIBLE_DATETIME} and {@link #OFFSET_DATETIME}.
+   * seconds, and fractional seconds up to 9 digits. Missing components default to zero.
+   *
+   * <p>Package-private so that {@code TemporalArithmetic} in the same package can reuse the same
+   * format definition.
    */
   static DateTimeFormatterBuilder flexibleDateTimeBuilder() {
     return new DateTimeFormatterBuilder()

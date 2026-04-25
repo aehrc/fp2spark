@@ -79,6 +79,9 @@ final class TemporalSupport {
       final Column prefixRight = normRight.substr(lit(1), commonLen);
       final Column precisionMismatch =
           prefixLeft.equalTo(prefixRight).and(length(normLeft).notEqual(length(normRight)));
+      // The otherwise branch covers two sub-cases that both reduce to comparing the prefixes:
+      // (a) prefixes differ → values disagree at the highest shared precision; (b) lengths are
+      // equal → prefixes equal the full normalized strings, so a same-precision comparison.
       return when(precisionMismatch, lit(null))
           .otherwise(comparator.apply(prefixLeft, prefixRight));
     };

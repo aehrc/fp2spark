@@ -103,6 +103,7 @@ class TemporalEqualityAndComparisonTest extends FhirPathTestBase {
     return builder()
         .group("Time equality - different precision")
         .testEmpty("@T14:30 = @T14:30:00", "Minutes vs seconds")
+        .testEmpty("@T14 = @T14:30", "Hour vs minute time precision")
         .build();
   }
 
@@ -258,6 +259,10 @@ class TemporalEqualityAndComparisonTest extends FhirPathTestBase {
             "@2018-02-02T22+04:00 = @2018-02-02T22+04:00",
             "Same hour-precision literal with offset")
         .testTrue("@2018-02-02T11 != @2018-02-02T12", "Different hours, no offset")
+        // Full-date bare-T DateTime: post-normalization shares output length with Date; the
+        // analyzer prevents cross-type Date vs DateTime equality from reaching the UDF, but
+        // same-type comparisons must still work correctly.
+        .testTrue("@2014-01-25T = @2014-01-25T", "Full-date bare-T DateTime same as itself")
         .build();
   }
 
@@ -318,6 +323,10 @@ class TemporalEqualityAndComparisonTest extends FhirPathTestBase {
         .testEmpty(
             "@2018-02-02T22-04:00 = @2018-02-03T02:30+00:00",
             "Hours match in UTC, minute precision differs → empty")
+        // Mirror of the fhirpath-js compat case: 22:00-04:00 = 02 UTC vs 06:03+04:00 = 02:03 UTC.
+        .testEmpty(
+            "@2018-02-02T22-04:00 = @2018-02-03T06:03+04:00",
+            "fhirpath-js mirror: hours match in UTC, minute precision differs")
         .testEmpty(
             "@2018-02-02T22-04:00 != @2018-02-03T02:30+00:00",
             "!= propagates empty for precision mismatch")

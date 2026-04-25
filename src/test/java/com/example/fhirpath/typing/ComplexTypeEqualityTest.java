@@ -29,6 +29,7 @@ class ComplexTypeEqualityTest {
   }
 
   @Test
+  @SuppressWarnings("java:S5863") // deliberate reflexivity check on equals
   void reflexivity() {
     final FhirComplexType a = humanNameType();
     assertEquals(a, a);

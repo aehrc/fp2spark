@@ -8,7 +8,7 @@ description: >
   when the user provides an issue number and expects implementation work, even if they don't say "implement"
   explicitly (e.g., "let's do #42", "work on issue 15", "pick up #28"). Covers the full lifecycle:
   spec research, design (with approval gates for framework changes), implementation, tests, compat
-  exclusion cleanup, code review, simplification, CI wait, and squash-merge back to main.
+  exclusion cleanup, simplification, code review, CI wait, and squash-merge back to main.
 ---
 
 # Implement FHIRPath Feature
@@ -21,7 +21,7 @@ The repo is `piotrszul/fp2spark` on GitHub.
 
 When an issue covers multiple functions or operators, assess whether they can all be implemented in a single commit or whether splitting into multiple commits makes more sense (e.g., when functions have different complexity levels or touch different parts of the codebase).
 
-If splitting, create a brief plan listing the commits, then execute Steps 3–8 for each commit before proceeding to Step 9 (push/PR) and the post-PR steps (compat, review, simplify, merge). All commits go on the same feature branch and into a single PR.
+If splitting, create a brief plan listing the commits, then execute Steps 3–8 for each commit before proceeding to Step 9 (push/PR) and the post-PR steps (compat, simplify, review, merge). All commits go on the same feature branch and into a single PR.
 
 ## Workflow
 
@@ -264,15 +264,42 @@ EOF
 git push
 ```
 
-### Step 11: Code Review
+### Step 11: Simplify
 
-Invoke the `pr-review-toolkit:review-pr` skill (i.e. call `Skill` with `skill: "pr-review-toolkit:review-pr"`, default aspects). Do NOT use the built-in `/review` command — the toolkit orchestrates multiple specialized agents (code-reviewer, pr-test-analyzer, comment-analyzer, silent-failure-hunter, type-design-analyzer) and produces a richer report.
+Run a simplification pass first — invoke the `simplify` skill (i.e. call `Skill` with `skill: "simplify"`). It reviews changed code for reuse, quality, and efficiency and applies the fixes in place. Doing this before code review keeps the diff lean so the reviewer focuses on substantive issues rather than soon-to-be-deleted code. After it returns, run the full test suite to confirm no regressions, format, and commit:
+
+```bash
+mvn spotless:apply
+mvn test
+git add <files>
+git commit -m "$(cat <<'EOF'
+refactor(#<NUMBER>): simplify per code-simplifier
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+EOF
+)"
+git push
+```
+
+If simplification produces nothing, skip the commit and proceed.
+
+### Step 12: Code Review
+
+Invoke the `code-review:code-review` skill (i.e. call `Skill` with `skill: "code-review:code-review"`, args: the PR number) — this is the marketplace plugin command, not the built-in `/review`. The skill orchestrates multiple parallel agents (CLAUDE.md adherence, shallow bug scan, git history, prior-PR comments, code comments), scores each finding 0–100 for confidence, drops anything below 80, and posts a single review comment back to the PR.
+
+Because the findings land on the PR rather than in this conversation, fetch them after the skill completes:
+
+```bash
+gh pr view <PR> --repo piotrszul/fp2spark --comments
+```
+
+Look for the most recent comment titled **Code review** authored by the skill. If it says "No issues found", skip to Step 13. Otherwise, work through the numbered findings.
 
 Triage the findings:
 
-- **Apply automatically** — bugs, correctness issues, missing test cases for behavior the implementation already claims to support, dead code, hygiene violations, obvious naming/typing fixes, and any other clear-cut recommendations the reviewer marks as critical or important and that have an unambiguous fix.
+- **Apply automatically** — bugs, correctness issues, missing test cases for behavior the implementation already claims to support, dead code, hygiene violations, obvious naming/typing fixes, and any other clear-cut finding with an unambiguous fix. The skill has already filtered to confidence ≥ 80, so default to fixing rather than re-litigating.
 - **Surface to the user** — anything that would change the public API, alter spec semantics, expand scope beyond the issue, require a new D/R entry in `SPEC_DIVERGENCES.md`, or modify/extend the existing framework. Do not silently apply these. The same `SPEC_DIVERGENCES` and design-extension guardrails from Steps 4 and 10 apply here.
-- **Defer / decline** — purely stylistic suggestions, speculative refactors, or recommendations that conflict with established patterns elsewhere in the codebase. Note them briefly but do not act.
+- **Defer / decline** — findings that conflict with established patterns elsewhere in the codebase, or that the linked CLAUDE.md/code does not actually support on a closer read. Note them briefly but do not act. Confidence-80 is a strong signal but not infallible.
 
 After applying fixes:
 
@@ -292,25 +319,6 @@ git push
 ```
 
 If the reviewer surfaces nothing actionable, skip the commit and proceed.
-
-### Step 12: Simplify
-
-Once the review pass is clean, run a simplification pass — invoke the `pr-review-toolkit:review-pr` skill again with the `simplify` aspect (`skill: "pr-review-toolkit:review-pr"`, args: `"simplify"`), or fall back to the local `simplify` skill. Apply the simplifications, run the full test suite to confirm no regressions, format, and commit:
-
-```bash
-mvn spotless:apply
-mvn test
-git add <files>
-git commit -m "$(cat <<'EOF'
-refactor(#<NUMBER>): simplify per code-simplifier
-
-Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
-EOF
-)"
-git push
-```
-
-If simplification produces nothing, skip the commit.
 
 ### Step 13: Wait for CI, Merge, Return to main
 
@@ -346,8 +354,8 @@ git branch             # feature branch should no longer exist locally
 - **FHIRPath collections are one-dimensional.** No nested arrays, ever.
 - **Design approval gate (Step 4).** Modifying or extending the framework — new IR nodes, new type system features, new code generation patterns, changes to the analyzer/registry shape — requires explicit user approval before coding. Slotting into the existing patterns does not.
 - **Compat exclusion hygiene (Step 10).** Never `wontfix`. Never carry Pathling ids. Every `feature|bug|test-infra` rule has a fp2sql `id`. Every `design` cites a D-entry; every `ref-impl-bug` cites an R-entry.
-- **`SPEC_DIVERGENCES.md` requires explicit approval.** Whether the trigger is a new compat exclusion (Step 10) or a review-driven divergence (Step 11), propose the D/R entry to the user and wait. Never edit `SPEC_DIVERGENCES.md` autonomously.
-- **Use `pr-review-toolkit:review-pr`, not `/review`.** Apply clear-cut fixes; surface anything that touches the framework, public API, or spec semantics.
+- **`SPEC_DIVERGENCES.md` requires explicit approval.** Whether the trigger is a new compat exclusion (Step 10) or a review-driven divergence (Step 12), propose the D/R entry to the user and wait. Never edit `SPEC_DIVERGENCES.md` autonomously.
+- **Use `code-review:code-review`, not `/review`.** Findings land as a PR comment after parallel-agent review and confidence filtering. Apply clear-cut fixes; surface anything that touches the framework, public API, or spec semantics.
 - **Squash-merge only.** Match the project's merge strategy — one commit per PR on `main`.
 - **CI must be green to merge.** No bypasses. Investigate root cause on red.
 - **Ask when stuck, not when clear.** Pause for user feedback on ambiguous spec requirements, architectural changes, or `SPEC_DIVERGENCES` entries — not on routine implementation choices.

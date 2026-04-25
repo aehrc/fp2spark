@@ -29,18 +29,20 @@ import org.apache.spark.sql.types.DataTypes;
  *       precision level. All seconds-precision values are padded to 9 fractional digits so that
  *       length-based precision comparison works correctly (e.g., {@code :31} and {@code :31.1} are
  *       both seconds precision).
+ *   <li>Trailing {@code T} stripping: date-only DateTime partials (e.g. {@code 2014T}) drop the
+ *       {@code T} so that prefix comparison aligns positionally with full DateTime values.
  * </ol>
  *
- * <p>After normalization, precision maps to string length, so same-precision values can be compared
- * lexicographically (ISO 8601 is lexicographically ordered for same-precision UTC strings).
+ * <p>After normalization, the output is structured so that lexicographic prefix comparison
+ * implements the FHIRPath spec component-walk semantics: same-precision values compare
+ * lexicographically; different-precision values compare on their common prefix.
  *
- * <p><b>Output length → precision mapping:</b>
+ * <p><b>Output length → precision mapping (DateTime / Date):</b>
  *
  * <ul>
- *   <li>Date: year=4, year-month=7, full=10
- *   <li>DateTime partial: yearT=5, year-monthT=8, fullT=11
- *   <li>DateTime with time: HH:mm=16, HH:mm:ss.nnnnnnnnn=29
- *   <li>Time: HH:mm=5, HH:mm:ss.nnnnnnnnn=14
+ *   <li>year=4, year-month=7, full date=10
+ *   <li>DateTime hour=13, minute=16, second=29
+ *   <li>Time: hour=2, minute=5, second=18
  * </ul>
  */
 public final class TemporalNormalize {
@@ -54,52 +56,64 @@ public final class TemporalNormalize {
 
   /**
    * Pattern matching a DateTime value with time components and an explicit timezone offset. Group
-   * 1: the date-time portion before the offset. Group 2: the offset ({@code Z} or {@code +hh:mm} /
-   * {@code -hh:mm}).
+   * 1: the date-time portion before the offset (hours required, minutes/seconds/fraction optional).
+   * Group 2: the offset ({@code Z} or {@code +hh:mm} / {@code -hh:mm}).
    */
   private static final Pattern DATETIME_WITH_OFFSET =
-      Pattern.compile("^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?)([Z+-].*)$");
+      Pattern.compile(
+          "^(\\d{4}-\\d{2}-\\d{2}T\\d{2}(?::\\d{2}(?::\\d{2}(?:\\.\\d+)?)?)?)([Z+-].*)$");
 
   /**
    * Pattern matching a DateTime value with time components but no timezone offset (has 'T' followed
-   * by at least hours:minutes).
+   * by at least hours, with minutes/seconds/fraction optional).
    */
   private static final Pattern DATETIME_WITH_TIME_NO_OFFSET =
-      Pattern.compile("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}(?::\\d{2}(?:\\.\\d+)?)?$");
+      Pattern.compile("^\\d{4}-\\d{2}-\\d{2}T\\d{2}(?::\\d{2}(?::\\d{2}(?:\\.\\d+)?)?)?$");
 
   /** Number of fractional digits to pad seconds to (nanosecond precision). */
   private static final int NANO_DIGITS = 9;
 
   /**
-   * Build a base {@link DateTimeFormatterBuilder} for ISO date-times with optional seconds and
-   * optional fractional seconds up to 9 digits. Shared by {@link #FLEXIBLE_DATETIME} and {@link
-   * #OFFSET_DATETIME}.
+   * Build a base {@link DateTimeFormatterBuilder} for ISO date-times with optional minutes,
+   * seconds, and fractional seconds up to 9 digits. Missing components default to zero. Shared by
+   * {@link #FLEXIBLE_DATETIME} and {@link #OFFSET_DATETIME}.
    */
   static DateTimeFormatterBuilder flexibleDateTimeBuilder() {
     return new DateTimeFormatterBuilder()
-        .appendPattern("yyyy-MM-dd'T'HH:mm")
+        .appendPattern("yyyy-MM-dd'T'HH")
+        .optionalStart()
+        .appendLiteral(':')
+        .appendValue(ChronoField.MINUTE_OF_HOUR, 2)
         .optionalStart()
         .appendLiteral(':')
         .appendValue(ChronoField.SECOND_OF_MINUTE, 2)
         .optionalStart()
         .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
         .optionalEnd()
-        .optionalEnd();
+        .optionalEnd()
+        .optionalEnd()
+        .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
+        .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
+        .parseDefaulting(ChronoField.NANO_OF_SECOND, 0);
   }
 
   /**
-   * Flexible formatter that can parse ISO date-times with optional seconds and optional fractional
-   * seconds up to 9 digits.
+   * Flexible formatter that can parse ISO date-times with optional minutes, seconds, and fractional
+   * seconds.
    */
   private static final DateTimeFormatter FLEXIBLE_DATETIME =
       flexibleDateTimeBuilder().toFormatter();
 
   /**
    * Flexible OffsetDateTime formatter that handles Z, +hh:mm, and -hh:mm offsets, with optional
-   * seconds and fractional seconds.
+   * minutes, seconds, and fractional seconds.
    */
   private static final DateTimeFormatter OFFSET_DATETIME =
       flexibleDateTimeBuilder().appendOffset("+HH:MM", "Z").toFormatter();
+
+  /** Formatter for DateTime output at hour precision. */
+  private static final DateTimeFormatter DATETIME_HOURS =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH");
 
   /** Formatter for DateTime output at minutes precision. */
   private static final DateTimeFormatter DATETIME_MINUTES =
@@ -108,6 +122,13 @@ public final class TemporalNormalize {
   /** Formatter for DateTime output at seconds precision. */
   private static final DateTimeFormatter DATETIME_SECONDS =
       DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+
+  /** Time-component precision of a DateTime literal. */
+  private enum TimePrecision {
+    HOUR,
+    MINUTE,
+    SECOND
+  }
 
   /**
    * Normalize a temporal string for comparison.
@@ -132,9 +153,14 @@ public final class TemporalNormalize {
       return normalizeWithSystemTimezone(value);
     }
 
-    // Date-only values (2014, 2014-01, 2014-01-25),
-    // Date-only DateTime partials (2014T, 2014-01T, 2014-01-25T),
-    // and Time values (12:00, 12:00:00, 12:00:00.123) — no timezone conversion needed
+    // Date-only DateTime partials (2014T, 2014-01T, 2014-01-25T) — strip the trailing T so the
+    // output aligns positionally with full DateTime values for prefix-based comparison.
+    if (value.endsWith("T")) {
+      return value.substring(0, value.length() - 1);
+    }
+
+    // Date-only values (2014, 2014-01, 2014-01-25)
+    // and Time values (12, 12:30, 12:00:00, 12:00:00.123) — no timezone conversion needed
     return padSeconds(value);
   }
 
@@ -148,7 +174,7 @@ public final class TemporalNormalize {
   private static String normalizeWithOffset(final String value, final String withoutOffset) {
     final OffsetDateTime odt = OffsetDateTime.parse(value, OFFSET_DATETIME);
     final OffsetDateTime utc = odt.withOffsetSameInstant(ZoneOffset.UTC);
-    return formatUtcDateTime(utc.toLocalDateTime(), hasSeconds(withoutOffset));
+    return formatUtcDateTime(utc.toLocalDateTime(), timePrecisionOf(withoutOffset));
   }
 
   /**
@@ -162,29 +188,39 @@ public final class TemporalNormalize {
     final LocalDateTime ldt = LocalDateTime.parse(value, FLEXIBLE_DATETIME);
     final OffsetDateTime zoned = ldt.atZone(ZoneId.systemDefault()).toOffsetDateTime();
     final OffsetDateTime utc = zoned.withOffsetSameInstant(ZoneOffset.UTC);
-    return formatUtcDateTime(utc.toLocalDateTime(), hasSeconds(value));
+    return formatUtcDateTime(utc.toLocalDateTime(), timePrecisionOf(value));
   }
 
   /**
-   * Format a UTC LocalDateTime with appropriate precision.
+   * Format a UTC LocalDateTime at the given time-component precision. Seconds-precision values are
+   * padded to 9 fractional digits so that the FHIRPath spec's "seconds and milliseconds are a
+   * single precision" rule holds under string comparison.
    *
    * @param ldt the UTC date-time
-   * @param includeSeconds whether the original value had seconds precision
-   * @return formatted string with seconds padded to fixed width if applicable
+   * @param precision the time-component precision of the original value
+   * @return formatted string at the given precision
    */
-  private static String formatUtcDateTime(final LocalDateTime ldt, final boolean includeSeconds) {
-    if (!includeSeconds) {
-      return DATETIME_MINUTES.format(ldt);
-    }
-    // Seconds precision: always pad to 9 fractional digits
-    final String base = DATETIME_SECONDS.format(ldt);
-    return base + "." + String.format("%09d", ldt.getNano());
+  private static String formatUtcDateTime(final LocalDateTime ldt, final TimePrecision precision) {
+    return switch (precision) {
+      case HOUR -> DATETIME_HOURS.format(ldt);
+      case MINUTE -> DATETIME_MINUTES.format(ldt);
+      case SECOND -> DATETIME_SECONDS.format(ldt) + "." + String.format("%09d", ldt.getNano());
+    };
   }
 
   /**
-   * Check if a time string has seconds component (two or more colons for DateTime, or the pattern
-   * HH:mm:ss for Time values).
+   * Determine the time-component precision of a DateTime value from the count of {@code :}
+   * separators after the {@code T}. Zero colons → hour precision; one → minute; two → second.
    */
+  private static TimePrecision timePrecisionOf(final String value) {
+    final int first = value.indexOf(':');
+    if (first < 0) {
+      return TimePrecision.HOUR;
+    }
+    return value.indexOf(':', first + 1) >= 0 ? TimePrecision.SECOND : TimePrecision.MINUTE;
+  }
+
+  /** Check if a time string has seconds component (two or more colons). */
   private static boolean hasSeconds(final String value) {
     final int first = value.indexOf(':');
     return first >= 0 && value.indexOf(':', first + 1) >= 0;

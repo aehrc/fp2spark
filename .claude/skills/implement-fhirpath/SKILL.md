@@ -285,21 +285,27 @@ If simplification produces nothing, skip the commit and proceed.
 
 ### Step 12: Code Review
 
-Invoke the `code-review:code-review` skill (i.e. call `Skill` with `skill: "code-review:code-review"`, args: the PR number) — this is the marketplace plugin command, not the built-in `/review`. The skill orchestrates multiple parallel agents (CLAUDE.md adherence, shallow bug scan, git history, prior-PR comments, code comments), scores each finding 0–100 for confidence, drops anything below 80, and posts a single review comment back to the PR.
+Invoke the `superpowers:requesting-code-review` skill (i.e. call `Skill` with `skill: "superpowers:requesting-code-review"`). The skill dispatches a `superpowers:code-reviewer` subagent that reviews a specific git range and returns findings categorized by severity (**Critical** / **Important** / **Minor**) directly in this conversation — no PR comment is posted.
 
-Because the findings land on the PR rather than in this conversation, fetch them after the skill completes:
+Compute the range to review — everything this PR has added on top of `main`, including the simplification commit from Step 11:
 
 ```bash
-gh pr view <PR> --repo piotrszul/fp2spark --comments
+BASE_SHA=$(git merge-base origin/main HEAD)
+HEAD_SHA=$(git rev-parse HEAD)
 ```
 
-Look for the most recent comment titled **Code review** authored by the skill. If it says "No issues found", skip to Step 13. Otherwise, work through the numbered findings.
+When the skill prompts for its template fields, fill them as follows:
 
-Triage the findings:
+- `WHAT_WAS_IMPLEMENTED`: one or two sentences naming the FHIRPath function/operator/capability and the layers touched (analyzer / IR / codegen / tests).
+- `PLAN_OR_REQUIREMENTS`: `Issue #<NUMBER>` plus the relevant FHIRPath spec section(s). If a Pathling reference shaped the design, mention that too.
+- `BASE_SHA`, `HEAD_SHA`: from above.
+- `DESCRIPTION`: a tight one-liner — the reviewer reads this first to set context.
 
-- **Apply automatically** — bugs, correctness issues, missing test cases for behavior the implementation already claims to support, dead code, hygiene violations, obvious naming/typing fixes, and any other clear-cut finding with an unambiguous fix. The skill has already filtered to confidence ≥ 80, so default to fixing rather than re-litigating.
+The returned report has Strengths, Issues (Critical / Important / Minor), Recommendations, and an Assessment verdict. Triage the issues:
+
+- **Apply automatically** — Critical and Important findings that are clear-cut: bugs, correctness issues, missing test cases for behavior the implementation already claims to support, dead code, hygiene violations, obvious naming/typing fixes. Default to fixing rather than re-litigating.
 - **Surface to the user** — anything that would change the public API, alter spec semantics, expand scope beyond the issue, require a new D/R entry in `SPEC_DIVERGENCES.md`, or modify/extend the existing framework. Do not silently apply these. The same `SPEC_DIVERGENCES` and design-extension guardrails from Steps 4 and 10 apply here.
-- **Defer / decline** — findings that conflict with established patterns elsewhere in the codebase, or that the linked CLAUDE.md/code does not actually support on a closer read. Note them briefly but do not act. Confidence-80 is a strong signal but not infallible.
+- **Defer / decline** — Minor findings that conflict with established patterns elsewhere in the codebase, or any finding that does not survive a closer read of the cited code. Note them briefly but do not act. The reviewer is not infallible — push back with technical reasoning rather than mechanically applying every suggestion.
 
 After applying fixes:
 
@@ -318,7 +324,7 @@ EOF
 git push
 ```
 
-If the reviewer surfaces nothing actionable, skip the commit and proceed.
+If the reviewer's verdict is "Ready to merge: Yes" with no actionable Critical/Important findings, skip the commit and proceed.
 
 ### Step 13: Wait for CI, Merge, Return to main
 
@@ -355,7 +361,7 @@ git branch             # feature branch should no longer exist locally
 - **Design approval gate (Step 4).** Modifying or extending the framework — new IR nodes, new type system features, new code generation patterns, changes to the analyzer/registry shape — requires explicit user approval before coding. Slotting into the existing patterns does not.
 - **Compat exclusion hygiene (Step 10).** Never `wontfix`. Never carry Pathling ids. Every `feature|bug|test-infra` rule has a fp2sql `id`. Every `design` cites a D-entry; every `ref-impl-bug` cites an R-entry.
 - **`SPEC_DIVERGENCES.md` requires explicit approval.** Whether the trigger is a new compat exclusion (Step 10) or a review-driven divergence (Step 12), propose the D/R entry to the user and wait. Never edit `SPEC_DIVERGENCES.md` autonomously.
-- **Use `code-review:code-review`, not `/review`.** Findings land as a PR comment after parallel-agent review and confidence filtering. Apply clear-cut fixes; surface anything that touches the framework, public API, or spec semantics.
+- **Use `superpowers:requesting-code-review` for review (Step 12).** Findings come back in this conversation, severity-graded. Apply clear-cut Critical/Important fixes; surface anything that touches the framework, public API, or spec semantics; push back on Minor findings that conflict with established patterns.
 - **Squash-merge only.** Match the project's merge strategy — one commit per PR on `main`.
 - **CI must be green to merge.** No bypasses. Investigate root cause on red.
 - **Ask when stuck, not when clear.** Pause for user feedback on ambiguous spec requirements, architectural changes, or `SPEC_DIVERGENCES` entries — not on routine implementation choices.

@@ -1,6 +1,5 @@
 package com.example.fhirpath.compat;
 
-import static com.example.fhirpath.compat.ExclusionGroup.bug;
 import static com.example.fhirpath.compat.ExclusionGroup.expectedDifference;
 import static com.example.fhirpath.compat.ExclusionGroup.notImplemented;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -145,28 +144,6 @@ public final class CompatExclusions {
               expectedDifference("Comparison with empty uncomparable type throws instead of empty")
                   .scope(ComparisonOperatorsDslTest.class)
                   .expressions("true > {}", "{} >= codingVal"),
-
-              // --- Comparison: date/dateTime cross-precision comparison (#137) ---
-              bug("Date/DateTime comparison with different precision returns empty")
-                  .scope(ComparisonOperatorsDslTest.class)
-                  .expressions(
-                      "@2020-03-01 >= @2020-02",
-                      "@2020-01-01T12:00 >= @2020-01-01T11",
-                      "@2020-01-02 > @2020-01-01T10:00:00Z",
-                      "@2020-02-01T10 <= @2020-01",
-                      "@2018-03-01 < @2018-03-02T00:00:00 =>",
-                      "@2018-03-01 < @2018-03-02T00:00:00Z",
-                      "@2018-03-01 < @2018-03-02T00:00:00-01:00"),
-
-              // --- Comparison: time with different precision (#137) ---
-              bug("Time comparison with different precision returns empty")
-                  .scope(ComparisonOperatorsDslTest.class)
-                  .expressions(
-                      "@T10 < @T11:30",
-                      "@T11:45 < @T10",
-                      "@T12:31:45 >= @T12:30",
-                      "@T13:15 > @T14:15:30",
-                      "@T23:59:59.999999999 > @T00:00"),
 
               // --- Year ↔ month calendar equality/comparison (spec-exact, #178) ---
               // fp2sql applies the spec-exact factor 1 year = 12 months per §3.3,

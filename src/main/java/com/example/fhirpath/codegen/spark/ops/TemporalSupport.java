@@ -1,6 +1,8 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static org.apache.spark.sql.functions.least;
 import static org.apache.spark.sql.functions.length;
+import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.udf.TemporalNormalize;
@@ -13,12 +15,22 @@ import org.apache.spark.sql.Column;
 /**
  * Spark column expression helpers for precision-aware temporal comparison.
  *
- * <p>Uses a Spark UDF ({@code normalize_temporal}) to normalize temporal strings to UTC with
- * trailing fractional zeros stripped. After normalization, precision maps to string length, so
- * same-precision values can be compared lexicographically.
+ * <p>Uses a Spark UDF ({@code normalize_temporal}) to normalize temporal strings to UTC, with
+ * trailing {@code T} stripped from date-only DateTime partials and seconds padded to a fixed
+ * fractional width. After normalization, precision maps to string length, and the format is
+ * positionally aligned across precisions so that lexicographic prefix comparison implements the
+ * FHIRPath spec's component-walk equality and comparison semantics.
  *
- * <p>When two temporal values have different precision levels, equality and comparison return
- * {@code null} (empty collection) per the FHIRPath specification.
+ * <p>For the shared prefix length {@code n = min(len(L), len(R))}:
+ *
+ * <ul>
+ *   <li>If the prefixes differ → apply the comparator to the prefixes (values differ at the highest
+ *       shared precision).
+ *   <li>If the prefixes match and lengths are equal → apply the comparator to the full strings
+ *       (values are equal at the same precision).
+ *   <li>If the prefixes match and lengths differ → return {@code null} / empty (precision
+ *       mismatch).
+ * </ul>
  */
 final class TemporalSupport {
 
@@ -36,12 +48,13 @@ final class TemporalSupport {
   }
 
   /**
-   * Precision-aware temporal equality. Normalizes both values, compares string lengths (precision).
-   * Same precision → {@code equalTo}. Different precision → {@code null} (empty).
+   * Precision-aware temporal equality. See {@link TemporalSupport} class doc for the comparison
+   * algorithm.
    *
    * @param left the left temporal column
    * @param right the right temporal column
-   * @return a Boolean column: true/false for same precision, null for different precision
+   * @return a Boolean column: true/false when comparable, null when precisions differ but values
+   *     agree to the shared precision
    */
   @Nonnull
   static Column temporalEquals(@Nonnull final Column left, @Nonnull final Column right) {
@@ -49,9 +62,8 @@ final class TemporalSupport {
   }
 
   /**
-   * Precision-aware temporal comparator factory. Returns a {@link BinaryOperator} that normalizes
-   * both values, compares string lengths (precision). Same precision → applies the given
-   * comparator. Different precision → {@code null} (empty).
+   * Precision-aware temporal comparator factory. Returns a {@link BinaryOperator} that compares
+   * normalized prefixes per the FHIRPath component-walk semantics.
    *
    * @param comparator the comparison function (e.g., {@code Column::gt})
    * @return a binary operator that performs precision-aware temporal comparison
@@ -62,8 +74,16 @@ final class TemporalSupport {
     return (left, right) -> {
       final Column normLeft = normalize(left);
       final Column normRight = normalize(right);
-      final Column samePrecision = length(normLeft).equalTo(length(normRight));
-      return when(samePrecision, comparator.apply(normLeft, normRight));
+      final Column commonLen = least(length(normLeft), length(normRight));
+      final Column prefixLeft = normLeft.substr(lit(1), commonLen);
+      final Column prefixRight = normRight.substr(lit(1), commonLen);
+      final Column precisionMismatch =
+          prefixLeft.equalTo(prefixRight).and(length(normLeft).notEqual(length(normRight)));
+      // The otherwise branch covers two sub-cases that both reduce to comparing the prefixes:
+      // (a) prefixes differ → values disagree at the highest shared precision; (b) lengths are
+      // equal → prefixes equal the full normalized strings, so a same-precision comparison.
+      return when(precisionMismatch, lit(null))
+          .otherwise(comparator.apply(prefixLeft, prefixRight));
     };
   }
 

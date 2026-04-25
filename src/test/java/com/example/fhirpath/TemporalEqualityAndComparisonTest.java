@@ -10,8 +10,10 @@ import org.junit.jupiter.api.TestFactory;
  *
  * <p>Based on FHIRPath specification section 6.1 (Equality) and section 6.2 (Comparison).
  *
- * <p>Key semantic rule: when two temporal values have different precision levels, equality and
- * comparison return empty ({@code {}}), not false.
+ * <p>Key semantic rule: comparison considers each precision in order. If values differ at any
+ * shared precision, the result is {@code false}; if values agree through the shared precision but
+ * the precisions themselves differ, the result is empty ({@code {}}). DateTime values are
+ * normalized to UTC before comparison.
  *
  * <p>Covers:
  *
@@ -101,6 +103,7 @@ class TemporalEqualityAndComparisonTest extends FhirPathTestBase {
     return builder()
         .group("Time equality - different precision")
         .testEmpty("@T14:30 = @T14:30:00", "Minutes vs seconds")
+        .testEmpty("@T14 = @T14:30", "Hour vs minute time precision")
         .build();
   }
 
@@ -242,6 +245,124 @@ class TemporalEqualityAndComparisonTest extends FhirPathTestBase {
         .testEmpty("{} > @2012", "Empty greater than date")
         .testEmpty("@2012 > {}", "Date greater than empty")
         .testEmpty("{} != @2012", "Empty not-equals date")
+        .build();
+  }
+
+  // ========== Issue #175: hour-precision DateTime literal sanity ==========
+
+  @TestFactory
+  Stream<DynamicTest> testHourPrecisionDateTimeLiterals() {
+    return builder()
+        .group("Hour-precision DateTime literal sanity")
+        .testTrue("@2018-02-02T22 = @2018-02-02T22", "Same hour-precision literal, no offset")
+        .testTrue(
+            "@2018-02-02T22+04:00 = @2018-02-02T22+04:00",
+            "Same hour-precision literal with offset")
+        .testTrue("@2018-02-02T11 != @2018-02-02T12", "Different hours, no offset")
+        // Full-date bare-T DateTime: post-normalization shares output length with Date; the
+        // analyzer prevents cross-type Date vs DateTime equality from reaching the UDF, but
+        // same-type comparisons must still work correctly.
+        .testTrue("@2014-01-25T = @2014-01-25T", "Full-date bare-T DateTime same as itself")
+        .build();
+  }
+
+  // ========== Issue #175: timezone normalization at hour precision ==========
+
+  @TestFactory
+  Stream<DynamicTest> testTimezoneNormalizationHourPrecision() {
+    return builder()
+        .group("Timezone normalization — hour precision")
+        // Issue #175 case 1: 22:00-04:00 = 02:00 UTC; 06:00+04:00 = 02:00 UTC (same day)
+        .testTrue(
+            "@2018-02-02T22-04:00 = @2018-02-03T06+04:00",
+            "Issue #175 case 1: equal instants across opposite offsets")
+        .testTrue(
+            "@2018-02-02T22-06:00 = @2018-02-03T04Z", "Day rollover with negative offset to Z")
+        .testTrue(
+            "@2018-02-02T03+06:00 = @2018-02-01T21Z", "Reverse rollover with positive offset to Z")
+        .testTrue(
+            "@2018-02-02T11Z = @2018-02-02T07-04:00",
+            "Z compared with negative offset, same UTC instant")
+        .testFalse(
+            "@2018-02-02T11-04:00 = @2018-02-02T11+04:00",
+            "Same wall hour but different offsets → different UTC")
+        .build();
+  }
+
+  // ========== Issue #175: precision mismatch where values differ at shared precision ==========
+
+  @TestFactory
+  Stream<DynamicTest> testTimezoneNormalizationPrecisionMismatchValuesDiffer() {
+    return builder()
+        .group("Timezone normalization — different precision, values differ at shared")
+        // Issue #175 case 2: 22:00-04:00 = 02:00 UTC (hour prec);
+        // 05:03+04:00 = 01:03 UTC (minute prec); hour 02 vs 01 differs → false (NOT empty).
+        .testFalse(
+            "@2018-02-02T22-04:00 = @2018-02-03T05:03+04:00",
+            "Issue #175 case 2: differ at shared hour precision after UTC normalization")
+        .testTrue(
+            "@2018-02-02T22-04:00 != @2018-02-03T05:03+04:00",
+            "!= inverts to true when equality is false")
+        .testTrue(
+            "@2018-02-02T22-04:00 > @2018-02-03T05:03+04:00",
+            "02 UTC > 01 UTC at shared hour precision")
+        .testFalse(
+            "@2018-02-02T22-04:00 < @2018-02-03T05:03+04:00",
+            "02 UTC not < 01 UTC at shared hour precision")
+        .build();
+  }
+
+  // ========== Issue #175: precision mismatch where values agree at shared precision ==========
+
+  @TestFactory
+  Stream<DynamicTest> testTimezoneNormalizationPrecisionMismatchValuesAgree() {
+    return builder()
+        .group("Timezone normalization — different precision, values agree at shared")
+        // 22:00-04:00 = 02:00 UTC (hour); 02:30+00:00 = 02:30 UTC (minute); hour 02 == 02
+        // → empty (precision mismatch with no value disagreement at shared precision).
+        .testEmpty(
+            "@2018-02-02T22-04:00 = @2018-02-03T02:30+00:00",
+            "Hours match in UTC, minute precision differs → empty")
+        // Mirror of the fhirpath-js compat case: 22:00-04:00 = 02 UTC vs 06:03+04:00 = 02:03 UTC.
+        .testEmpty(
+            "@2018-02-02T22-04:00 = @2018-02-03T06:03+04:00",
+            "fhirpath-js mirror: hours match in UTC, minute precision differs")
+        .testEmpty(
+            "@2018-02-02T22-04:00 != @2018-02-03T02:30+00:00",
+            "!= propagates empty for precision mismatch")
+        .testEmpty(
+            "@2018-02-02T22-04:00 < @2018-02-03T02:30+00:00",
+            "Cannot determine order: equal at shared precision, precision mismatch")
+        .build();
+  }
+
+  // ========== Issue #175: comparison operators with timezone normalization ==========
+
+  @TestFactory
+  Stream<DynamicTest> testTimezoneNormalizationComparison() {
+    return builder()
+        .group("Timezone normalization — comparison operators (equivalent instants)")
+        .testTrue("@2018-02-02T22-04:00 >= @2018-02-03T06+04:00", "Equivalent instants → >= true")
+        .testTrue("@2018-02-02T22-04:00 <= @2018-02-03T06+04:00", "Equivalent instants → <= true")
+        .testFalse(
+            "@2018-02-02T22-04:00 > @2018-02-03T06+04:00", "Equivalent instants → strict > false")
+        .build();
+  }
+
+  // ========== Different-precision values differ at shared precision (no timezone) ==========
+
+  @TestFactory
+  Stream<DynamicTest> testPrecisionMismatchValuesDifferNoTimezone() {
+    return builder()
+        .group("Different-precision equality — values differ at shared precision (no tz)")
+        .testFalse("@2018 = @2019-02", "Years differ at year precision")
+        .testTrue("@2018-02-03 != @2018-01", "Year-month differs; != inverts to true")
+        .testFalse("@2014-01-25T14:31 = @2014-01-25T14:30:00", "Minute precision: 31 vs 30 differ")
+        .testTrue("@2014T != @2015-01T", "Partial DateTime year vs year-month; years differ")
+        .testFalse("@T14:30 = @T15:00:00", "Time minute vs second; 14:30 vs 15:00 differ")
+        .group("Different-precision comparison — values differ at shared precision (no tz)")
+        .testTrue("@2018 < @2019-02", "At year precision, 2018 < 2019")
+        .testTrue("@2018-02-03 > @2018-01", "Year-month: 02 > 01")
         .build();
   }
 }

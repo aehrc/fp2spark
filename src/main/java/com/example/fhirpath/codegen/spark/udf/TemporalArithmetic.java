@@ -683,9 +683,12 @@ public final class TemporalArithmetic {
     if (nanos == 0) {
       return base + ".0";
     }
-    String frac = String.format("%09d", nanos);
-    frac = frac.replaceAll("0+$", "");
-    return base + "." + frac;
+    final String frac = String.format("%09d", nanos);
+    int end = frac.length();
+    while (end > 0 && frac.charAt(end - 1) == '0') {
+      end--;
+    }
+    return base + "." + frac.substring(0, end);
   }
 
   /** Truncates a BigDecimal toward zero to a long value. */

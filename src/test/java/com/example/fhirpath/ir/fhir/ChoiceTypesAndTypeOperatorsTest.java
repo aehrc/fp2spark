@@ -1,5 +1,6 @@
 package com.example.fhirpath.ir.fhir;
 
+import com.example.fhirpath.analyzer.InvalidExpressionException;
 import com.example.fhirpath.test.FhirPathTestBase;
 import java.util.stream.Stream;
 import org.hl7.fhir.r4.model.Enumerations;
@@ -146,6 +147,28 @@ class ChoiceTypesAndTypeOperatorsTest extends FhirPathTestBase {
         .group("ofType() on non-choice types")
         .testEquals(true, "active.ofType(boolean)", "ofType with matching type returns value")
         .testEmpty("active.ofType(string)", "ofType with non-matching type returns empty")
+        .build();
+  }
+
+  // --- Direct field traversal on choice types is rejected (D6) ---
+
+  @TestFactory
+  Stream<DynamicTest> testDirectFieldTraversalOnChoiceTypeRejected() {
+    return builder()
+        .withSubject(createQuantityObservation())
+        .group("Direct field traversal on unnarrowed choice type fails at compile time")
+        .testError(
+            InvalidExpressionException.class,
+            "value.value",
+            "Field traversal on Choice(value) without ofType/is/as")
+        .testError(
+            InvalidExpressionException.class,
+            "value.unit",
+            "Quantity-shaped traversal without explicit narrowing")
+        .testError(
+            InvalidExpressionException.class,
+            "value.value < 100",
+            "Comparison consumes traversal that should fail before overload resolution")
         .build();
   }
 

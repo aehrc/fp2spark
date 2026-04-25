@@ -481,6 +481,18 @@ public class Analyzer {
       return res;
     }
 
+    // Choice types must be narrowed via ofType()/is/as before field traversal (D6).
+    // Without explicit narrowing, the static analyzer cannot pick a variant.
+    if (targetIr.getType() instanceof ChoiceTypeLike choiceType) {
+      throw new InvalidExpressionException(
+          "Cannot traverse field '"
+              + resolvedTraversal.path()
+              + "' on choice type "
+              + choiceType.getName()
+              + "; narrow the choice with ofType(), is, or as first",
+          null);
+    }
+
     return targetIr
         .getType()
         .resolveField(resolvedTraversal.path())

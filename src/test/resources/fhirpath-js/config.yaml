@@ -412,14 +412,15 @@ excludeSet:
           See SPEC_DIVERGENCES.md D2.
         any:
           - "contained"
-      - title: Custom non-FHIR fields not in encoded schema
-        type: feature
-        id: "#170"
+      - title: Traversal to FHIR-undefined field
+        type: ref-impl-bug
         comment: |
-          The YAML subject defines a CustomField field not present in the FHIR
-          Observation schema. Pathling encoders only serialize FHIR-defined fields,
-          so CustomField is absent from the encoded dataset. Traversal to undefined
-          fields should return an empty collection.
+          R8. fhirpath.js evaluates traversal to fields that are not part of the
+          FHIR model by reading the raw JSON value, returning the verbatim value
+          (e.g. CustomField → "test") instead of the empty collection that the
+          spec implies for unresolvable identifiers. fp2sql's analyzer is
+          FHIR-schema-bound and resolves unknown fields to an empty collection,
+          matching Pathling. See SPEC_DIVERGENCES.md R8.
         outcome: failure
         any:
           - "CustomField"

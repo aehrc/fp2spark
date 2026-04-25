@@ -444,14 +444,6 @@ excludeSet:
   - title: fp2sql — fhir-r4.yaml exclusions
     glob: "fhir-r4.yaml"
     exclude:
-      - title: Choice type traversal without narrowing
-        type: design
-        outcome: failure
-        comment: |
-          D6. Observation.value is a choice type — direct field traversal (.value)
-          requires ofType() narrowing first. See SPEC_DIVERGENCES.md D6.
-        any:
-          - "Observation.value.value < 'test'"
       - title: Strict typing rejects not() on Integer
         type: design
         comment: |
@@ -498,13 +490,14 @@ excludeSet:
           - "1 > 2 is Boolean"
       - title: Choice polymorphism for Observation.value chained access
         type: design
-        outcome: failure
+        outcome: error
         comment: |
           D6. Observation.value is a choice type — direct chained traversal
           (e.g. .value.value, .value.unit) requires ofType() narrowing first.
-          These expressions slip past the global choice-type regex
-          (Observation\.value[^\.]) because the next character is a dot.
-          See SPEC_DIVERGENCES.md D6.
+          The analyzer rejects this at compile time with
+          InvalidExpressionException. These expressions slip past the global
+          choice-type regex (Observation\.value[^\.]) because the next
+          character is a dot. See SPEC_DIVERGENCES.md D6.
         any:
           - "Observation.value.unit"
           - "** testLiteralDecimalGreaterThanNonZeroTrue"
@@ -686,16 +679,16 @@ excludeSet:
           evaluates element-wise and returns `[]`. See SPEC_DIVERGENCES.md D1.
         any:
           - "QuestionnaireResponse.item[2].answer.value.toQuantity()"
-      - title: Field access on unnarrowed choice type returns empty (D6)
+      - title: Field access on unnarrowed choice type rejected at compile time (D6)
         type: design
-        outcome: failure
+        outcome: error
         comment: |
           D6. `.comparator` is a Quantity field; `.answer.value` is an unnarrowed
-          `?Choice(value)`. fp2sql resolves the traversal statically to null
-          because it cannot auto-narrow the choice. fhirpath.js dispatches
-          dynamically on the concrete Quantity variant and returns `['>']`.
-          Requires explicit `.value.ofType(Quantity).comparator`. See
-          SPEC_DIVERGENCES.md D6.
+          `?Choice(value)`. The analyzer rejects this traversal at compile time
+          with InvalidExpressionException because it cannot auto-narrow the
+          choice. fhirpath.js dispatches dynamically on the concrete Quantity
+          variant and returns `['>']`. Requires explicit
+          `.value.ofType(Quantity).comparator`. See SPEC_DIVERGENCES.md D6.
         any:
           - "QuestionnaireResponse.item[3].answer.value.comparator"
   - title: fp2sql — 5.1_existence.yaml exclusions
@@ -918,12 +911,13 @@ excludeSet:
           - "Patient.id is System.String"
       - title: "'is' on choice-type field traversal without ofType() narrowing"
         type: design
-        outcome: failure
+        outcome: error
         comment: |
           D6. `Observation.value.X` traverses an unnarrowed choice type field;
-          fp2sql cannot statically resolve the variant and returns empty,
-          whereas fhirpath.js auto-narrows at runtime. Requires explicit
-          `.value.ofType(Quantity).X`. See SPEC_DIVERGENCES.md D6.
+          the analyzer rejects this at compile time with
+          InvalidExpressionException, whereas fhirpath.js auto-narrows at
+          runtime. Requires explicit `.value.ofType(Quantity).X`.
+          See SPEC_DIVERGENCES.md D6.
         any:
           - "Observation.value.value is decimal"
           - "Observation.value.value is Element"

@@ -9,7 +9,6 @@ import com.example.fhirpath.typing.Shape;
 import java.util.List;
 import java.util.stream.Stream;
 import org.hl7.fhir.r4.model.Observation;
-import org.hl7.fhir.r4.model.StringType;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -24,7 +23,6 @@ class UndefinedFieldTraversalTest extends FhirPathTestBase {
   Stream<DynamicTest> hapiResourceUndefinedField() {
     final Observation obs = new Observation();
     obs.setId("obs-1");
-    obs.setValue(new StringType("high"));
     return builder()
         .withSubject(obs)
         .group("HAPI Observation — undefined field returns empty")

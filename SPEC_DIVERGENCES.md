@@ -299,8 +299,8 @@ Affected expressions: `Patient.id is System.String` (6.3_types.yaml, r4 and r5).
 
 ## R8. fhirpath.js evaluates undefined-field traversal against raw JSON
 
-FHIRPath spec §3 (and §15.1) states that when an identifier "cannot be resolved,
-the evaluation will end and signal an error to the calling environment."
+FHIRPath spec §3 ("Path selection") states that when an identifier "cannot be
+resolved, the evaluation will end and signal an error to the calling environment."
 fhirpath.js does not implement this — for paths that reference an identifier not
 present in the FHIR model (e.g. `Observation.CustomField`), it neither errors
 nor returns empty: it permissively looks the key up in the raw JSON object.

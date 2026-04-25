@@ -48,7 +48,7 @@ public final class OperationRegistry {
     return Map.ofEntries(
 
         // ARITHMETIC OPERATORS (FHIRPath Spec 6.2)
-        // Phase 1: Only numeric types (INTEGER, DECIMAL) and STRING
+        // Numeric (INTEGER, DECIMAL), STRING, QUANTITY, and temporal types.
 
         register(
             "add",
@@ -278,7 +278,8 @@ public final class OperationRegistry {
         // iif() evaluates collection-level conditional with lambda parameters
         // Collection<T>.iif(Lambda<Boolean>, Lambda<Collection<R>>) → Collection<R>
         // Both lambdas operate on entire collection (COLLECTION_WISE binding)
-        // Phase 1: Use ANY for generic types (Phase 2 will add type variables)
+        // Generic types use ANY here; type variables would let this be expressed as
+        // (*T, ?Lambda(?BOOLEAN), ?Lambda(S)) → S — see #260.
         register("iif", Signatures.conditionalIif(ANY, ANY)),
 
         // ANALYZER-INTERCEPTED FUNCTIONS

@@ -17,7 +17,7 @@ import java.util.List;
  *   <li><b>Dynamic</b> result types - computed from argument types
  * </ul>
  *
- * <p>Phase 1 uses both static and dynamic resolution:
+ * <p>Both static and dynamic forms are supported:
  *
  * <ul>
  *   <li>Static: {@code add(?INTEGER, ?INTEGER) → ?INTEGER}
@@ -25,7 +25,8 @@ import java.util.List;
  *   <li>Lambda body: {@code iif(*T, ?Lambda(?BOOL), ?Lambda(?R)) → ?R} (extracts from lambda body)
  * </ul>
  *
- * <p>Phase 2 will add type variables to eliminate need for dynamic resolution.
+ * <p>See #260 for the type-variable refactor that would let some of these dynamic variants be
+ * expressed declaratively (e.g. via {@code ?T} bound to an input parameter).
  */
 public sealed interface ResultTypeSpec
     permits ResultTypeSpec.Static,
@@ -202,8 +203,9 @@ public sealed interface ResultTypeSpec
    * <p>Result type = element type of first argument's type. Result cardinality is determined by the
    * {@link CardinalitySpec}: either explicit (fixed) or preserved from input.
    *
-   * <p>In Phase 1 (no collection wrapper types), this behaves the same as InputType. In Phase 2,
-   * this would unwrap collection types.
+   * <p>Currently behaves identically to InputType (the type system has no collection wrapper types
+   * — element type IS the input type). The variant exists to make the intent explicit and to give a
+   * stable hook for any future unwrapping logic.
    *
    * <p>Example: {@code first(*T) → ?T}, {@code skip(α T, ?INTEGER) → α T}
    *
@@ -216,7 +218,7 @@ public sealed interface ResultTypeSpec
       if (resolvedArgs.isEmpty()) {
         throw new IllegalArgumentException("EffectiveInputType requires at least one argument");
       }
-      // In Phase 1: Type is always the element type (no unwrapping needed)
+      // No collection wrapper types: input type IS the element type.
       final Type elementType = resolvedArgs.get(0).getType();
       final Cardinality resolved = cardinalitySpec.resolve(resolvedArgs.get(0).getCardinality());
       return Shape.of(elementType, resolved);

@@ -38,8 +38,8 @@ public record ResolvedSignature(
   }
 
   /**
-   * Create a resolved signature from a Phase 1 signature definition. In Phase 1, the result shape
-   * may be static or dynamic (computed from arguments).
+   * Create a resolved signature from a signature definition. The result shape may be static or
+   * dynamic (computed from the resolved arguments).
    *
    * @param definition the signature definition
    * @param resolvedArgs the resolved arguments (needed for dynamic type resolution)

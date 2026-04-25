@@ -8,20 +8,19 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Phase 1 signature definition: parameters and result with explicit cardinality.
+ * Signature definition: parameters and result with explicit cardinality.
  *
- * <p>In Phase 1, we enumerate types explicitly without type variables. Each parameter has a
- * concrete type + cardinality via ParamSpec. Result type + cardinality is specified via
- * ResultTypeSpec.
- *
- * <p>ResultTypeSpec supports both static and dynamic type resolution:
+ * <p>Each parameter has a concrete type + cardinality via {@link ParamSpec}. The result is
+ * specified via {@link ResultTypeSpec}, which supports both static and dynamic resolution:
  *
  * <ul>
  *   <li>Static: {@code ResultTypeSpec.single(INTEGER)} for fixed types
  *   <li>Dynamic: {@code ResultTypeSpec.inputType(MANY)} to preserve input type
  * </ul>
  *
- * <p>Phase 2 will add support for type variables and constraints.
+ * <p>Polymorphism is expressed by enumeration via {@code forTypes(GROUP).define(...)} rather than
+ * by type variables — see #260 for the refactor that would introduce type variables and type-set
+ * constraints.
  *
  * <p>Implements TypeGroup to enable zero-overhead usage in registry: a SignatureDefinition IS a
  * TypeGroup that expands to itself.

@@ -14,10 +14,11 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * Phase 1 signature factory methods with explicit cardinality.
+ * Signature factory methods with explicit cardinality.
  *
- * <p>Phase 1 uses ParamSpec and ResultTypeSpec to explicitly specify type and cardinality for each
- * parameter and result.
+ * <p>Each factory builds a {@link SignatureDefinition} from concrete {@link ParamSpec} and {@link
+ * ResultTypeSpec} entries. Polymorphism is currently expressed by enumeration over {@code
+ * TypeGroup}s rather than by type variables — see #260 for the deferred refactor.
  */
 public final class Signatures {
   private Signatures() {
@@ -159,8 +160,9 @@ public final class Signatures {
   /**
    * Element extractor from collection: *T → ?T Example: *T.first() → ?T
    *
-   * <p>Phase 1 workaround: Uses dynamic result type resolution (ResultTypeSpec.effectiveInputType)
-   * to extract the element type from the input collection, since we don't have type variables yet.
+   * <p>Uses dynamic result type resolution ({@link ResultTypeSpec#effectiveInputType}) to extract
+   * the element type from the input collection. With type variables (#260) this could be expressed
+   * declaratively as {@code (*T) → ?T}.
    */
   @Nonnull
   public static SignatureDefinition elementExtractor(@Nonnull final Type elementType) {
@@ -284,9 +286,9 @@ public final class Signatures {
    */
   @Nonnull
   public static SignatureDefinition collectionProjection(@Nonnull final Type elementType) {
-    // Phase 1 limitation: LambdaType uses Shape.single(elementType) as a placeholder because
-    // we lack type variables. The actual return type/cardinality is extracted dynamically at
-    // resolution time via ResultTypeSpec.lambdaBodyTypeMany().
+    // LambdaType uses Shape.single(elementType) as a placeholder; the actual return
+    // type/cardinality is extracted dynamically at resolution time via
+    // ResultTypeSpec.lambdaBodyTypeMany(). #260 would let this be expressed declaratively.
     final LambdaType lambdaType = new LambdaType(Shape.single(elementType));
 
     return new SignatureDefinition(
@@ -303,8 +305,8 @@ public final class Signatures {
    *
    * <p>Uses ELEMENT_WISE binding: $this = T (element type)
    *
-   * <p>Phase 1 workaround: Uses dynamic result type resolution (ResultTypeSpec.inputType) to
-   * preserve the input element type, since we don't have type variables yet.
+   * <p>Uses dynamic result type resolution ({@link ResultTypeSpec#inputType()}) to preserve the
+   * input element type and cardinality (the α variable in the type-system notation).
    */
   @Nonnull
   public static SignatureDefinition collectionFilter(@Nonnull final Type elementType) {
@@ -348,8 +350,9 @@ public final class Signatures {
    * <p>Used by both union ({@code |}) and combine ({@code ;}) operators. The result type is
    * resolved dynamically from the first argument's type, preserving MANY cardinality.
    *
-   * <p>Phase 1 limitation: both sides must have same type. Phase 2 will add type variable support
-   * for mixed types.
+   * <p>Both sides must currently resolve to the same element type (overloads in {@code
+   * OperationRegistry} cover the common cases via {@code forTypes(EQUATABLE)} plus NULL and ANY
+   * tiers). #260 would let mixed-type unions resolve via LUB.
    */
   @Nonnull
   public static SignatureDefinition union(@Nonnull final Type elementType) {
@@ -362,9 +365,8 @@ public final class Signatures {
    *
    * <p>Uses COLLECTION_WISE binding: $this = *T (entire collection)
    *
-   * <p>Phase 1 workaround: Uses dynamic result shape resolution (ResultTypeSpec.lambdaBodyType) to
-   * extract the result shape (type + cardinality) from the "then" lambda's body, since we don't
-   * have type variables yet.
+   * <p>Uses dynamic result shape resolution ({@link ResultTypeSpec#lambdaBodyType(int)}) to extract
+   * the result shape (type + cardinality) from the "then" lambda's body.
    *
    * <p>The result shape S is whatever the lambda body returns:
    *
@@ -373,7 +375,8 @@ public final class Signatures {
    *   <li>If lambda returns *R (many), result is *R
    * </ul>
    *
-   * <p>Phase 2 will add type variables for more precise type checking.
+   * <p>For the 3-arg form (with else-branch), the result must instead be {@code LUB(then, else)} —
+   * see #186 (3-arg iif implementation) and #260 (broader type-variable refactor).
    */
   @Nonnull
   public static SignatureDefinition conditionalIif(

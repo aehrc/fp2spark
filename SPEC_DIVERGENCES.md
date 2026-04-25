@@ -296,3 +296,32 @@ therefore reports `Patient.id is System.String = false`. fhirpath.js's behavior
 is a ref-impl quirk resulting from an incomplete FHIR primitive registry.
 
 Affected expressions: `Patient.id is System.String` (6.3_types.yaml, r4 and r5).
+
+## R8. fhirpath.js evaluates undefined-field traversal against raw JSON
+
+FHIRPath spec §3 (and §15.1) states that when an identifier "cannot be resolved,
+the evaluation will end and signal an error to the calling environment."
+fhirpath.js does not implement this — for paths that reference an identifier not
+present in the FHIR model (e.g. `Observation.CustomField`), it neither errors
+nor returns empty: it permissively looks the key up in the raw JSON object.
+When the resource happens to carry a non-FHIR field, fhirpath.js returns that
+value as if it were a defined element.
+
+```
+Observation.CustomField = 'test'    // [true]  (fhirpath.js, raw JSON has CustomField: "test")
+Observation.CustomField = 'test'    // []      (fp2sql / Pathling — empty per FHIR-schema-bound model)
+```
+
+fhirpath.js's `engine.MemberInvocation` (`src/fhirpath.js:408`) falls through to
+a raw-key lookup on the JSON object when the model has no such element.
+
+fp2sql is FHIR-schema-bound: undefined identifiers resolve to an empty
+collection in the analyzer (`Literal(null, NULL)` via
+`Analyzer.resolveTraversal`), matching Pathling's
+`traverse(...).orElse(EmptyCollection)` (`Paths.java:221`). The empty-collection
+result is consistent with FHIRPath's empty-propagation discipline; we do not
+raise the strict-spec error because it would break expressions over
+heterogeneous data.
+
+Affected expressions: `CustomField = 'test'`, `Observation.CustomField = 'test'`
+(3.2_paths.yaml).

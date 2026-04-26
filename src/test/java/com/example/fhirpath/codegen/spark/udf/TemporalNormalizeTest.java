@@ -7,6 +7,8 @@ import java.util.TimeZone;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Pure-Java tests for {@link TemporalNormalize#normalize(String)}.
@@ -31,17 +33,12 @@ class TemporalNormalizeTest {
     TimeZone.setDefault(originalTimeZone);
   }
 
-  @Test
-  void offsetLessDateTimeNormalizesToUtcRegardlessOfSystemTimezone() {
-    final String expected = "2020-01-01T10:00:00.000000000";
-    for (final String zoneId :
-        new String[] {"UTC", "America/New_York", "Asia/Tokyo", "Pacific/Kiritimati"}) {
-      TimeZone.setDefault(TimeZone.getTimeZone(zoneId));
-      assertEquals(
-          expected,
-          TemporalNormalize.normalize("2020-01-01T10:00:00"),
-          "offset-less DateTime should normalize the same in zone " + zoneId);
-    }
+  @ParameterizedTest
+  @ValueSource(strings = {"UTC", "America/New_York", "Asia/Tokyo", "Pacific/Kiritimati"})
+  void offsetLessDateTimeNormalizesToUtcRegardlessOfSystemTimezone(final String zoneId) {
+    TimeZone.setDefault(TimeZone.getTimeZone(zoneId));
+    assertEquals(
+        "2020-01-01T10:00:00.000000000", TemporalNormalize.normalize("2020-01-01T10:00:00"));
   }
 
   @Test

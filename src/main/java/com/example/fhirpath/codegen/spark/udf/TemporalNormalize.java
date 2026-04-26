@@ -22,10 +22,8 @@ import org.apache.spark.sql.types.DataTypes;
  *
  * <ol>
  *   <li>Timezone conversion: DateTime values with hour+ precision are converted to UTC. Values with
- *       explicit offsets are converted directly; values without offsets are treated as UTC. The
- *       FHIRPath spec §6.1 leaves the missing-offset case as an implementation decision; fp2sql
- *       follows Pathling here so that comparison and dedup are deterministic and independent of the
- *       JVM default timezone (see issue #117).
+ *       explicit offsets are converted directly; values without offsets are treated as UTC (see
+ *       {@link #normalizeWithoutOffset} for the rationale).
  *   <li>Seconds normalization: per FHIRPath spec, seconds and fractional seconds are a single
  *       precision level. All seconds-precision values are padded to 9 fractional digits so that
  *       length-based precision comparison works correctly (e.g., {@code :31} and {@code :31.1} are
@@ -157,8 +155,6 @@ public final class TemporalNormalize {
       return normalizeWithOffset(value, offsetMatcher.group(1));
     }
 
-    // Check for DateTime with time but no offset — treat as UTC so dedup/equality are
-    // deterministic regardless of JVM default timezone (see issue #117).
     if (DATETIME_WITH_TIME_NO_OFFSET.matcher(value).matches()) {
       return normalizeWithoutOffset(value);
     }

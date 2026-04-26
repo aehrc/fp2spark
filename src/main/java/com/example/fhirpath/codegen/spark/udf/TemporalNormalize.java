@@ -4,7 +4,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -23,8 +22,10 @@ import org.apache.spark.sql.types.DataTypes;
  *
  * <ol>
  *   <li>Timezone conversion: DateTime values with hour+ precision are converted to UTC. Values with
- *       explicit offsets are converted directly; values without offsets use the system default
- *       timezone.
+ *       explicit offsets are converted directly; values without offsets are treated as UTC. The
+ *       FHIRPath spec §6.1 leaves the missing-offset case as an implementation decision; fp2sql
+ *       follows Pathling here so that comparison and dedup are deterministic and independent of the
+ *       JVM default timezone (see issue #117).
  *   <li>Seconds normalization: per FHIRPath spec, seconds and fractional seconds are a single
  *       precision level. All seconds-precision values are padded to 9 fractional digits so that
  *       length-based precision comparison works correctly (e.g., {@code :31} and {@code :31.1} are
@@ -156,9 +157,10 @@ public final class TemporalNormalize {
       return normalizeWithOffset(value, offsetMatcher.group(1));
     }
 
-    // Check for DateTime with time but no offset — apply system default timezone
+    // Check for DateTime with time but no offset — treat as UTC so dedup/equality are
+    // deterministic regardless of JVM default timezone (see issue #117).
     if (DATETIME_WITH_TIME_NO_OFFSET.matcher(value).matches()) {
-      return normalizeWithSystemTimezone(value);
+      return normalizeWithoutOffset(value);
     }
 
     // Date-only DateTime partials (2014T, 2014-01T, 2014-01-25T) — strip the trailing T so the
@@ -186,17 +188,18 @@ public final class TemporalNormalize {
   }
 
   /**
-   * Normalize a DateTime without an explicit timezone offset by applying the system default
-   * timezone.
+   * Normalize a DateTime without an explicit timezone offset by treating it as UTC.
+   *
+   * <p>The FHIRPath spec §6.1 explicitly defers the missing-offset case to the implementation;
+   * Pathling makes the same choice. Using a fixed UTC default keeps dedup, equality, and comparison
+   * deterministic across JVM timezone settings.
    *
    * @param value DateTime string without offset (e.g., {@code 2014-01-25T14:30})
    * @return UTC-normalized string without offset
    */
-  private static String normalizeWithSystemTimezone(final String value) {
+  private static String normalizeWithoutOffset(final String value) {
     final LocalDateTime ldt = LocalDateTime.parse(value, FLEXIBLE_DATETIME);
-    final OffsetDateTime zoned = ldt.atZone(ZoneId.systemDefault()).toOffsetDateTime();
-    final OffsetDateTime utc = zoned.withOffsetSameInstant(ZoneOffset.UTC);
-    return formatUtcDateTime(utc.toLocalDateTime(), timePrecisionOf(value));
+    return formatUtcDateTime(ldt, timePrecisionOf(value));
   }
 
   /**

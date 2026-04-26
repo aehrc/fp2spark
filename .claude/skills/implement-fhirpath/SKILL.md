@@ -285,6 +285,60 @@ If simplification produces nothing, skip the commit and proceed.
 
 ### Step 12: Code Review
 
+Step 12 is **adaptive**: classify the PR as **LITE** or **FULL**, dispatch the matching review path, then run the shared triage in Step 12.3. Both paths return findings inline — no PR comment is posted.
+
+#### Step 12.0 — Classify
+
+The PR is **LITE** by default. It is **FULL** if any of the signals below holds.
+
+**Workflow-state signals** (from earlier steps in this skill run):
+
+1. **Step 4 design-approval gate fired** — a framework-extending change was made.
+2. **Step 10 proposed a new D/R entry** in `SPEC_DIVERGENCES.md`.
+3. **Multi-function issue with non-trivial design choices** in any commit. Judgment-based — no strict line-count or commit-count threshold; assess whether the multi-function work involved framework-level decisions or just parallel boilerplate.
+
+**Path-fallback signals.** Compute the range:
+
+```bash
+BASE_SHA=$(git merge-base origin/main HEAD)
+HEAD_SHA=$(git rev-parse HEAD)
+```
+
+Then check:
+
+4. Any change touched **outside this safe-set** (`git diff --name-only $BASE_SHA..$HEAD_SHA`):
+   - `src/main/java/.../codegen/spark/ops/**`
+   - `src/main/java/.../analyzer/OperationRegistry.java` — only when the change is purely a new entry registration. Any modification to the registration API itself, helper methods, or the registry's structural definition routes to FULL.
+   - `src/test/java/.../ir/**` (new test classes only)
+   - `src/test/resources/fhirpath-js/config.yaml` (compat cleanup)
+5. **Diff > 600 lines added** (`git diff --stat $BASE_SHA..$HEAD_SHA` total insertions).
+
+If none fire → proceed to Step 12.1 (LITE). Otherwise → Step 12.2 (FULL). Either way, triage via Step 12.3.
+
+#### Step 12.1 — Lite path
+
+`Task`-dispatch a `general-purpose` subagent on `model: sonnet` with this prompt (substitute the PR number from `gh pr view`):
+
+```
+You are reviewing PR #<NUMBER> in piotrszul/fp2spark.
+
+Invoke: Skill(skill="review", args="<NUMBER>")
+
+That injects a code-review template; follow it. The template will run
+gh pr view, gh pr diff, and produce a structured review.
+
+After the template's review, classify each finding by severity
+(Critical / Important / Minor) and return ONLY:
+- Critical / Important / Minor lists, each with file:line citations
+- An Assessment line: "Ready to merge: Yes/No"
+
+Keep the report under 400 words.
+```
+
+The subagent's return value is the report. Pass it to Step 12.3 for triage. No PR comment is posted.
+
+#### Step 12.2 — Full path
+
 Invoke the `superpowers:requesting-code-review` skill (i.e. call `Skill` with `skill: "superpowers:requesting-code-review"`). The skill dispatches a `superpowers:code-reviewer` subagent that reviews a specific git range and returns findings categorized by severity (**Critical** / **Important** / **Minor**) directly in this conversation — no PR comment is posted.
 
 Compute the range to review — everything this PR has added on top of `main`, including the simplification commit from Step 11:
@@ -301,10 +355,18 @@ When the skill prompts for its template fields, fill them as follows:
 - `BASE_SHA`, `HEAD_SHA`: from above.
 - `DESCRIPTION`: a tight one-liner — the reviewer reads this first to set context.
 
-The returned report has Strengths, Issues (Critical / Important / Minor), Recommendations, and an Assessment verdict. Triage the issues:
+The returned report has Strengths, Issues (Critical / Important / Minor), Recommendations, and an Assessment verdict. Pass it to Step 12.3 for triage.
+
+#### Step 12.3 — Triage
+
+Apply the same triage protocol to whichever path produced the report:
 
 - **Apply automatically** — Critical and Important findings that are clear-cut: bugs, correctness issues, missing test cases for behavior the implementation already claims to support, dead code, hygiene violations, obvious naming/typing fixes. Default to fixing rather than re-litigating.
 - **Surface to the user** — anything that would change the public API, alter spec semantics, expand scope beyond the issue, require a new D/R entry in `SPEC_DIVERGENCES.md`, or modify/extend the existing framework. Do not silently apply these. The same `SPEC_DIVERGENCES` and design-extension guardrails from Steps 4 and 10 apply here.
+  - **On the LITE path only:** when surfacing such a finding, *also* ask the user whether they want a **FULL review enforced** before deciding. A finding that elevates to user judgment is a signal the PR isn't actually trivial; FULL may catch related design-level issues LITE missed.
+    - If the user opts to escalate → run Step 12.2 (FULL), merge both reports, re-triage, and present the combined surface-to-user set. Only then proceed with the user's decision.
+    - If the user declines escalation → proceed with the standard triage protocol.
+  - On the FULL path, no escalation prompt — FULL already ran.
 - **Defer / decline** — Minor findings that conflict with established patterns elsewhere in the codebase, or any finding that does not survive a closer read of the cited code. Note them briefly but do not act. The reviewer is not infallible — push back with technical reasoning rather than mechanically applying every suggestion.
 
 After applying fixes:
@@ -361,7 +423,7 @@ git branch             # feature branch should no longer exist locally
 - **Design approval gate (Step 4).** Modifying or extending the framework — new IR nodes, new type system features, new code generation patterns, changes to the analyzer/registry shape — requires explicit user approval before coding. Slotting into the existing patterns does not.
 - **Compat exclusion hygiene (Step 10).** Never `wontfix`. Never carry Pathling ids. Every `feature|bug|test-infra` rule has a fp2sql `id`. Every `design` cites a D-entry; every `ref-impl-bug` cites an R-entry.
 - **`SPEC_DIVERGENCES.md` requires explicit approval.** Whether the trigger is a new compat exclusion (Step 10) or a review-driven divergence (Step 12), propose the D/R entry to the user and wait. Never edit `SPEC_DIVERGENCES.md` autonomously.
-- **Use `superpowers:requesting-code-review` for review (Step 12).** Findings come back in this conversation, severity-graded. Apply clear-cut Critical/Important fixes; surface anything that touches the framework, public API, or spec semantics; push back on Minor findings that conflict with established patterns.
+- **Adaptive code review (Step 12).** Step 12.0 classifies the PR as LITE (Sonnet subagent invoking `/review` on the PR) or FULL (`superpowers:requesting-code-review`); routing is by Step 4 / Step 10 workflow state plus a path/size fallback. Both paths feed the shared triage in Step 12.3, which on LITE additionally offers the user a FULL escalation when surfacing a finding that needs their judgment. Apply clear-cut Critical/Important fixes; push back on Minor findings that conflict with established patterns.
 - **Squash-merge only.** Match the project's merge strategy — one commit per PR on `main`.
 - **CI must be green to merge.** No bypasses. Investigate root cause on red.
 - **Ask when stuck, not when clear.** Pause for user feedback on ambiguous spec requirements, architectural changes, or `SPEC_DIVERGENCES` entries — not on routine implementation choices.

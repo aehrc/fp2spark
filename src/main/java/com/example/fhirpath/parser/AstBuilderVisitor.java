@@ -266,9 +266,26 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
   @Override
   public AstNode visitTypeExpression(final FhirPathParser.TypeExpressionContext ctx) {
     final AstNode left = visit(ctx.expression());
-    final String operator = ctx.getChild(1).getText(); // "is" or "as"
-    final String typeSpec = ctx.typeSpecifier().getText(); // e.g., "Quantity", "FHIR.string"
+    final String operator = ctx.getChild(1).getText();
+    final String typeSpec = extractQualifiedIdentifier(ctx.typeSpecifier().qualifiedIdentifier());
     return new AstFunctionCall(operator, left, List.of(new AstLiteral(typeSpec)));
+  }
+
+  /**
+   * Extracts a dotted qualified identifier (e.g. {@code FHIR.Patient}) from a {@code
+   * qualifiedIdentifier} context, stripping backticks from any tick-quoted parts per FHIRPath
+   * §Lexical Elements (e.g. {@code FHIR.`Patient`} → {@code FHIR.Patient}).
+   */
+  private static String extractQualifiedIdentifier(
+      final FhirPathParser.QualifiedIdentifierContext ctx) {
+    final StringBuilder sb = new StringBuilder();
+    for (final FhirPathParser.IdentifierContext part : ctx.identifier()) {
+      if (!sb.isEmpty()) {
+        sb.append('.');
+      }
+      sb.append(extractIdentifier(part));
+    }
+    return sb.toString();
   }
 
   // Temporal literal handling

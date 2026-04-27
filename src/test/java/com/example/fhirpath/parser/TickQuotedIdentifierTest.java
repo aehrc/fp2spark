@@ -18,6 +18,8 @@ import org.junit.jupiter.api.TestFactory;
  * <p>Covers issue #211:
  *
  * <ul>
+ *   <li>Gap 1 (bug): Tick-quoted FHIR type names in {@code is} / {@code as} / {@code ofType} must
+ *       behave identically to bare type names (e.g. {@code FHIR.`Patient`} ≡ {@code FHIR.Patient}).
  *   <li>Gap 2 (bug): Tick-quoted identifiers as path segments must behave identically to bare
  *       identifiers (e.g. {@code name.`family`} ≡ {@code name.family}).
  *   <li>Gap 3 (bug): Backtick-wrapped content with invalid identifier escapes must raise a parse
@@ -74,6 +76,35 @@ class TickQuotedIdentifierTest extends FhirPathTestBase {
             List.of("Smith"),
             "name.where(`use` = 'official').`family`",
             "Backtick-quoted identifier in where() and result path")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testTickQuotedTypeSpecifiers() {
+    return builder()
+        .withSubject(createPatient())
+        .group("Tick-quoted FHIR type names in is/as/ofType")
+        .testTrue("Patient is FHIR.`Patient`", "Binary 'is' with tick-quoted type name")
+        .testTrue("Patient.is(FHIR.`Patient`)", "is() function with tick-quoted type name")
+        .testTrue(
+            "(Patient as FHIR.`Patient`).id = 'patient-1'",
+            "Binary 'as' with tick-quoted type name")
+        .testTrue(
+            "Patient.as(FHIR.`Patient`).id = 'patient-1'",
+            "as() function with tick-quoted type name")
+        .testEquals(
+            "patient-1", "Patient.ofType(FHIR.`Patient`).id", "ofType() with tick-quoted type name")
+        .testTrue("Patient.is(`Patient`)", "Tick-quoted unqualified type name in is() function")
+        .group("Equivalence with bare type names")
+        .testTrue(
+            "Patient.is(`Patient`) = Patient.is(Patient)",
+            "Unqualified 'is' equivalence with/without backticks")
+        .testTrue(
+            "(Patient is FHIR.`Patient`) = (Patient is FHIR.Patient)",
+            "Binary 'is' equivalence with/without backticks")
+        .testTrue(
+            "Patient.ofType(FHIR.`Patient`).id = Patient.ofType(FHIR.Patient).id",
+            "ofType() equivalence with/without backticks")
         .build();
   }
 

@@ -97,18 +97,6 @@ excludeSet:
         id: "#205"
         function:
           - comparable
-      - title: Tick-quoted FHIR type names in is()/as()/ofType()
-        type: feature
-        id: "#211"
-        comment: |
-          fp2sql's analyzer rejects FHIR type names written with backtick-quoted
-          identifiers (e.g. FHIR.`Patient`) with InvalidExpressionException.
-          Tracked under the tick-quoted-identifier umbrella (#211).
-        any:
-          - "is(FHIR.`"
-          - "as FHIR.`"
-          - "as(FHIR.`"
-          - "ofType(FHIR.`"
       # -----------------------------------------------------------------------
       # Environment variables, operators and other global concerns.
       # -----------------------------------------------------------------------

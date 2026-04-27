@@ -313,6 +313,57 @@ class ArithmeticOperatorsTest extends FhirPathTestBase {
         .build();
   }
 
+  // Regression for #85: math/concat operators must reject typed non-numeric/non-string operands at
+  // analysis time even when the operand may be empty at runtime (e.g. via where(false)). Empty
+  // propagation must not silently swallow a type error when the operand's static type is known.
+  @TestFactory
+  Stream<DynamicTest> testTypeCheckedBeforeEmptyPropagation() {
+    return builder()
+        .withSubject("Patient", p -> p.bool("active", true))
+        .group("Math vs ?BOOLEAN — literal-derived (#85)")
+        .testError(
+            OverloadResolutionException.class,
+            "2 - true.where(false)",
+            "Subtraction rejects ?BOOLEAN even when filter is constant false")
+        .testError(
+            OverloadResolutionException.class,
+            "2 + true.where(active)",
+            "Addition rejects ?BOOLEAN regardless of filter outcome")
+        .testError(
+            OverloadResolutionException.class,
+            "2 * true.where({})",
+            "Multiplication rejects ?BOOLEAN with empty filter")
+        .testError(
+            OverloadResolutionException.class, "2 / true.where(1 = 2)", "Division rejects ?BOOLEAN")
+        .testError(
+            OverloadResolutionException.class, "5 mod true.where(false)", "Mod rejects ?BOOLEAN")
+        .testError(
+            OverloadResolutionException.class, "5 div true.where(false)", "Div rejects ?BOOLEAN")
+        .group("Math vs ?BOOLEAN — field-derived (#85)")
+        .testError(
+            OverloadResolutionException.class,
+            "2 - active",
+            "Subtraction rejects Patient.active (Boolean field)")
+        .testError(
+            OverloadResolutionException.class,
+            "2 + active.where(false)",
+            "Addition rejects ?BOOLEAN field even with filter that empties it")
+        .group("String concat vs ?BOOLEAN (#85)")
+        .testError(
+            OverloadResolutionException.class,
+            "'abc' + true.where(false)",
+            "Concat rejects ?BOOLEAN second operand")
+        .testError(
+            OverloadResolutionException.class,
+            "active.where(false) + 'abc'",
+            "Concat rejects ?BOOLEAN first operand")
+        .group("Untyped empty still propagates (#85 — no regression)")
+        .testEmpty("2 + {}", "Empty literal propagates (untyped NULL)")
+        .testEmpty("'abc' + {}", "Empty literal propagates through string concat")
+        .testEmpty("2 - {}.where(false)", "Empty.where(false) preserves NULL → propagates")
+        .build();
+  }
+
   // ========== Resource field arithmetic ==========
 
   @TestFactory

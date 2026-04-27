@@ -156,6 +156,57 @@ Consequences:
 
 ---
 
+# Implementation Policy Choices
+
+Cases where the FHIRPath specification *explicitly* defers to implementations
+(typically with phrasing like "implementation decision" or "policy decision"),
+**and** fp2sql's choice differs from the choice made by the fhirpath.js
+reference implementation. These are not divergences from the spec — both
+fp2sql and fhirpath.js are spec-compliant — but they are observable behavioural
+differences that compatibility tests will surface.
+
+Exclusion rules in `config.yaml` for fhirpath.js compat tests that follow from
+these choices use `type: design` and reference the policy ID (e.g.
+`comment: "P1"`).
+
+## P1. Offset-less DateTime treated as UTC
+
+FHIRPath spec §6.1 ("Date/Time Equality") explicitly defers the missing-offset
+case to the implementation:
+
+> For DateTime values that do not have a timezone offsets, whether or not to
+> provide a default timezone offset is a policy decision. […] To support
+> comparison of DateTime values, either both values have no timezone offset
+> specified, or both values are converted to a common timezone offset. The
+> timezone offset to use is an implementation decision.
+
+§6.2 ("Comparison") defers to the same rule.
+
+**fp2sql's choice:** offset-less DateTime values are treated as UTC. This is
+applied in `TemporalNormalize` for both equality and ordering, and inherited
+by union dedup.
+
+**fhirpath.js's choice:** offset-less DateTime values are interpreted in the
+local-server timezone (an artifact of going through the JavaScript `Date`
+constructor in `types.js`).
+
+**Why fp2sql chose UTC:**
+
+- Determinism: results are independent of the JVM / executor default timezone,
+  which matters for distributed Spark execution and reproducible queries.
+- Parity with Pathling, the codegen reference
+  (`FhirPathDateTime.java:111` defaults missing offsets to `Z`).
+- Consistency with already-pinned tests (e.g. `EqualityOperatorsDslTest`:
+  `@2020-01-01T10:00:00+00:00 = @2020-01-01T10:00:00` is `true`).
+
+**Observable consequence:** for any pair of expressions where one DateTime
+has an explicit offset and the other does not, fp2sql and fhirpath.js may
+disagree. The fhirpath.js compat suite happens not to exercise this case
+today (no mixed-offset pairs in `6.1_equality.yaml`, `6.2_comparision.yaml`,
+or `5.4_combining.yaml`), but future test additions could.
+
+---
+
 # Reference Implementation Bugs
 
 Confirmed cases where the fhirpath.js reference implementation diverges from the

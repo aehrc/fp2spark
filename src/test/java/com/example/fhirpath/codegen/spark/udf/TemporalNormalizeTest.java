@@ -60,6 +60,16 @@ class TemporalNormalizeTest {
   }
 
   @Test
+  void offsetLessDateTimeInDstGapDoesNotShift() {
+    // 2020-03-08 02:30 does not exist in America/New_York (clock jumps 02:00 -> 03:00).
+    // Old code went through atZone(NY) which silently shifted into the gap; the UTC default
+    // makes the value well-defined regardless of JVM zone.
+    TimeZone.setDefault(TimeZone.getTimeZone("America/New_York"));
+    assertEquals(
+        "2020-03-08T02:30:00.000000000", TemporalNormalize.normalize("2020-03-08T02:30:00"));
+  }
+
+  @Test
   void nullInputReturnsNull() {
     assertNull(TemporalNormalize.normalize(null));
   }

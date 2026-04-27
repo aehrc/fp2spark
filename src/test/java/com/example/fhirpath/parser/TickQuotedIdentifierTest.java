@@ -97,6 +97,9 @@ class TickQuotedIdentifierTest extends FhirPathTestBase {
         .testTrue("Patient.is(`Patient`)", "Tick-quoted unqualified type name in is() function")
         .group("Equivalence with bare type names")
         .testTrue(
+            "Patient.is(`Patient`) = Patient.is(Patient)",
+            "Unqualified 'is' equivalence with/without backticks")
+        .testTrue(
             "(Patient is FHIR.`Patient`) = (Patient is FHIR.Patient)",
             "Binary 'is' equivalence with/without backticks")
         .testTrue(

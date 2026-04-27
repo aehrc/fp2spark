@@ -309,7 +309,7 @@ Then check:
 4. Any change touched **outside this safe-set** (`git diff --name-only $BASE_SHA..$HEAD_SHA`):
    - `src/main/java/.../codegen/spark/ops/**`
    - `src/main/java/.../analyzer/OperationRegistry.java` — only when the change is purely a new entry registration. Any modification to the registration API itself, helper methods, or the registry's structural definition routes to FULL.
-   - `src/test/java/.../ir/**` (new test classes only)
+   - `src/test/java/com/example/fhirpath/**` — capability tests, including additions to existing classes. EXCLUDES `src/test/java/com/example/fhirpath/test/**` (test infrastructure shared by every test) and `src/test/java/com/example/fhirpath/compat/**` (Pathling compat mirrors that must not drift).
    - `src/test/resources/fhirpath-js/config.yaml` (compat cleanup)
 5. **Diff > 600 lines added** (`git diff --stat $BASE_SHA..$HEAD_SHA` total insertions).
 

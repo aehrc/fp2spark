@@ -266,7 +266,7 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
   @Override
   public AstNode visitTypeExpression(final FhirPathParser.TypeExpressionContext ctx) {
     final AstNode left = visit(ctx.expression());
-    final String operator = ctx.getChild(1).getText(); // "is" or "as"
+    final String operator = ctx.getChild(1).getText();
     final String typeSpec = extractQualifiedIdentifier(ctx.typeSpecifier().qualifiedIdentifier());
     return new AstFunctionCall(operator, left, List.of(new AstLiteral(typeSpec)));
   }
@@ -279,12 +279,11 @@ public class AstBuilderVisitor extends FhirPathBaseVisitor<AstNode> {
   private static String extractQualifiedIdentifier(
       final FhirPathParser.QualifiedIdentifierContext ctx) {
     final StringBuilder sb = new StringBuilder();
-    final List<FhirPathParser.IdentifierContext> parts = ctx.identifier();
-    for (int i = 0; i < parts.size(); i++) {
-      if (i > 0) {
+    for (final FhirPathParser.IdentifierContext part : ctx.identifier()) {
+      if (!sb.isEmpty()) {
         sb.append('.');
       }
-      sb.append(extractIdentifier(parts.get(i)));
+      sb.append(extractIdentifier(part));
     }
     return sb.toString();
   }

@@ -21,6 +21,7 @@ import org.junit.jupiter.api.TestFactory;
  *   <li>Date equality and comparison at same/different precision
  *   <li>DateTime equality and comparison at same/different precision
  *   <li>Time equality and comparison at same/different precision
+ *   <li>Cross-type Date vs DateTime comparison
  *   <li>Fractional seconds normalization
  *   <li>DateTime timezone offset handling (spec examples)
  *   <li>Empty collection propagation
@@ -374,7 +375,6 @@ class TemporalEqualityAndComparisonTest extends FhirPathTestBase {
         .group("Date mixed precision comparison — values differ at shared precision")
         .testTrue("@2018 > @2017-01", "Year vs year-month: 2018 > 2017 at year precision")
         .testTrue("@2020-03-01 >= @2020-02", "Full date vs year-month: 03 > 02 at month")
-        .testFalse("@2020-02-01T10 <= @2020-01", "DateTime hour vs year-month: months differ")
         .build();
   }
 
@@ -409,6 +409,9 @@ class TemporalEqualityAndComparisonTest extends FhirPathTestBase {
         .testTrue(
             "@2020-01-02 > @2020-01-01T10:00:00Z",
             "Date > DateTime: differ at day precision (Z offset)")
+        .testFalse(
+            "@2020-02-01T10 <= @2020-01",
+            "DateTime hour vs Date year-month: months differ at month precision")
         .testTrue("@2018-03-01 < @2018-03-02T00:00:00", "Date < DateTime no offset")
         .testTrue("@2018-03-01 < @2018-03-02T00:00:00Z", "Date < DateTime with Z offset")
         .testTrue(

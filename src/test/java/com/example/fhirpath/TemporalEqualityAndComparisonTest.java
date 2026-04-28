@@ -365,4 +365,54 @@ class TemporalEqualityAndComparisonTest extends FhirPathTestBase {
         .testTrue("@2018-02-03 > @2018-01", "Year-month: 02 > 01")
         .build();
   }
+
+  // ========== Issue #174: mixed-precision comparison regression coverage ==========
+
+  @TestFactory
+  Stream<DynamicTest> testIssue174DateMixedPrecisionComparison() {
+    return builder()
+        .group("Issue #174 — Date mixed precision comparison")
+        .testTrue("@2018 > @2017-01", "Year vs year-month: 2018 > 2017 at year precision")
+        .testTrue("@2020-03-01 >= @2020-02", "Full date vs year-month: 03 > 02 at month")
+        .testFalse("@2020-02-01T10 <= @2020-01", "DateTime hour vs year-month: months differ")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testIssue174DateTimeMixedPrecisionComparison() {
+    return builder()
+        .group("Issue #174 — DateTime mixed precision comparison")
+        .testTrue("@2018-12-20T12 > @2018-12-20T11:01", "Hour vs minute: 12 > 11 at hour precision")
+        .testTrue(
+            "@2020-01-01T12:00 >= @2020-01-01T11", "Minute vs hour: 12 > 11 at hour precision")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testIssue174TimeMixedPrecisionComparison() {
+    return builder()
+        .group("Issue #174 — Time mixed precision comparison")
+        .testTrue("@T12:02:34.324 > @T12:01", "Second vs minute: 02 > 01 at minute precision")
+        .testTrue("@T10 < @T11:30", "Hour vs minute: 10 < 11 at hour precision")
+        .testFalse("@T11:45 < @T10", "Minute vs hour: 11 not < 10 at hour precision")
+        .testTrue("@T12:31:45 >= @T12:30", "Second vs minute: 31 > 30 at minute precision")
+        .testFalse("@T13:15 > @T14:15:30", "Minute vs second: 13 not > 14 at hour precision")
+        .testTrue(
+            "@T23:59:59.999999999 > @T00:00", "Sub-second vs minute: 23 > 00 at hour precision")
+        .build();
+  }
+
+  @TestFactory
+  Stream<DynamicTest> testIssue174CrossTypeDateVsDateTimeComparison() {
+    return builder()
+        .group("Issue #174 — Date vs DateTime cross-type comparison")
+        .testTrue(
+            "@2020-01-02 > @2020-01-01T10:00:00Z",
+            "Date > DateTime: differ at day precision (Z offset)")
+        .testTrue("@2018-03-01 < @2018-03-02T00:00:00", "Date < DateTime no offset")
+        .testTrue("@2018-03-01 < @2018-03-02T00:00:00Z", "Date < DateTime with Z offset")
+        .testTrue(
+            "@2018-03-01 < @2018-03-02T00:00:00-01:00", "Date < DateTime with negative offset")
+        .build();
+  }
 }

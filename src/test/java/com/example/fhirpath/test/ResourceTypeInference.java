@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
  *   <li>Single values (String, Integer, etc.) → {@link Cardinality#SINGLE}
  *   <li>Non-empty List values → {@link Cardinality#MANY}
  *   <li>Empty lists → {@link Cardinality#SINGLE} with {@link SystemType#NULL} (see <a
- *       href="https://github.com/piotrszul/fp2spark/issues/156">issue #156</a>)
+ *       href="https://github.com/aehrc/fp2spark/issues/156">issue #156</a>)
  * </ul>
  *
  * <p><b>Example:</b>
@@ -165,7 +165,7 @@ class ResourceTypeInference {
    * coerces to any type (see {@link TypeSystem#canCast}), which matches the FHIRPath
    * empty-collection propagation semantics (§1.5). Inferring MANY here caused static-analysis
    * CardinalityMismatchExceptions on operators requiring singleton operands — see <a
-   * href="https://github.com/piotrszul/fp2spark/issues/156">issue #156</a>.
+   * href="https://github.com/aehrc/fp2spark/issues/156">issue #156</a>.
    *
    * @param list The list to analyze
    * @param depth Current recursion depth

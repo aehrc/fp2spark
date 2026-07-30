@@ -6,7 +6,7 @@ Parse and evaluate FHIRPath expressions directly to Apache Spark SQL Column expr
 
 **Current Phase**: Phase 1 - FHIRPath System Types Support
 
-This project is implementing the FHIRPath language subset required for [SQL on FHIR v2 ShareableViewDefinition](https://build.fhir.org/ig/FHIR/sql-on-fhir-v2/StructureDefinition-ShareableViewDefinition.html). See [docs/SHAREABLE_VIEW_REQUIREMENTS.md](docs/SHAREABLE_VIEW_REQUIREMENTS.md) for complete requirements and [issue #3](https://github.com/piotrszul/fp2spark/issues/3) for tracking.
+This project is implementing the FHIRPath language subset required for [SQL on FHIR v2 ShareableViewDefinition](https://build.fhir.org/ig/FHIR/sql-on-fhir-v2/StructureDefinition-ShareableViewDefinition.html). See [docs/SHAREABLE_VIEW_REQUIREMENTS.md](docs/SHAREABLE_VIEW_REQUIREMENTS.md) for complete requirements and [issue #3](https://github.com/aehrc/fp2spark/issues/3) for tracking.
 
 ## Tech Stack
 

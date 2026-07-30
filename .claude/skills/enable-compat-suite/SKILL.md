@@ -14,7 +14,7 @@ description: >
 This skill drives end-to-end enablement of blanket-skipped YAML compatibility test suites: from
 removing skip-all exclusions through triage, classification, and a reviewed PR with filed issues.
 
-The repo is `piotrszul/fp2spark` on GitHub.
+The repo is `aehrc/fp2spark` on GitHub.
 
 ## Key References
 
@@ -34,12 +34,12 @@ skill exists precisely because earlier runs of this skill produced rules that br
 1. **Never use `type: wontfix`.** It is obsolete. Use one of `feature`, `bug`, `design`,
    `ref-impl-bug`, `test-infra`.
 2. **Never carry forward Pathling issue ids.** `#2xxx` and `#437` live on `pathling/pathling`,
-   not `piotrszul/fp2spark`. If a Pathling rule is reused, either (a) file a fp2sql issue and
+   not `aehrc/fp2spark`. If a Pathling rule is reused, either (a) file a fp2sql issue and
    replace the id, or (b) reclassify to `design`/`ref-impl-bug` citing a D/R entry.
 3. **`type: design` requires a `D\d+` token** (e.g. `D3`) somewhere in the rule's `comment`.
    The reviewer should grep the diff and fail any `type: design` lacking a D-entry citation.
 4. **`type: ref-impl-bug` requires an `R\d+` token** in the rule's `comment`.
-5. **`type: feature|bug|test-infra` requires `id: "#NNN"`** pointing to `piotrszul/fp2spark`.
+5. **`type: feature|bug|test-infra` requires `id: "#NNN"`** pointing to `aehrc/fp2spark`.
    No blank ids. No Pathling ids.
 6. **Prefer narrow matchers.** `any: ["<exact expression>"]` or `desc: [...]` is preferable to
    open `expression:` regex. Use `expression:` only when the pattern genuinely varies, and
@@ -61,7 +61,7 @@ Execute these steps sequentially. Do NOT stop to ask for feedback unless explici
 Read the GitHub issue:
 
 ```bash
-gh issue view <NUMBER> --repo piotrszul/fp2spark
+gh issue view <NUMBER> --repo aehrc/fp2spark
 ```
 
 Identify which YAML files to enable and any expected blockers mentioned in the issue.
@@ -187,17 +187,17 @@ For each failure, determine the correct exclusion type by investigating the root
 
    | Type | When to use | Required reference format |
    |------|-------------|---------------------------|
-   | `feature` | fp2sql doesn't implement this yet | `id: "#NNN"` on `piotrszul/fp2spark` |
-   | `bug` | fp2sql produces incorrect results | `id: "#NNN"` on `piotrszul/fp2spark` |
+   | `feature` | fp2sql doesn't implement this yet | `id: "#NNN"` on `aehrc/fp2spark` |
+   | `bug` | fp2sql produces incorrect results | `id: "#NNN"` on `aehrc/fp2spark` |
    | `design` | Intentional fp2sql divergence | `D\d+` token in `comment` (traces to SPEC_DIVERGENCES.md) |
    | `ref-impl-bug` | fhirpath.js test expectation contradicts the spec | `R\d+` token in `comment` (traces to SPEC_DIVERGENCES.md) |
-   | `test-infra` | Test infrastructure limitation | `id: "#NNN"` on `piotrszul/fp2spark` |
+   | `test-infra` | Test infrastructure limitation | `id: "#NNN"` on `aehrc/fp2spark` |
 
    **Never use `wontfix`** — it is obsolete. If an existing `wontfix` exclusion falls within
    scope, reclassify it using the types above.
 
    **Never use Pathling ids** (`#2xxx`, `#437`). They point at `pathling/pathling`. File a
-   fp2sql issue on `piotrszul/fp2spark` or reclassify to `design`/`ref-impl-bug` with a D/R
+   fp2sql issue on `aehrc/fp2spark` or reclassify to `design`/`ref-impl-bug` with a D/R
    citation.
 
 #### Handling SPEC_DIVERGENCES.md changes
@@ -245,7 +245,7 @@ Before saving the edit, confirm each new rule passes all six:
 
 - [ ] `type` is one of `feature`, `bug`, `design`, `ref-impl-bug`, `test-infra`
       (never `wontfix`).
-- [ ] `feature|bug|test-infra` has `id: "#NNN"` on `piotrszul/fp2spark`
+- [ ] `feature|bug|test-infra` has `id: "#NNN"` on `aehrc/fp2spark`
       (never `#2xxx` or `#437`).
 - [ ] `design` has a `D\d+` token in the `comment`; `ref-impl-bug` has `R\d+`.
 - [ ] Matcher is as narrow as possible (`any` / `desc` preferred over `expression` regex).
@@ -290,7 +290,7 @@ For each `feature`, `bug`, and `test-infra` exclusion that doesn't already have 
 issue, file one:
 
 ```bash
-gh issue create --repo piotrszul/fp2spark \
+gh issue create --repo aehrc/fp2spark \
   --title "<descriptive title>" \
   --body "<description with affected expressions, spec reference, and link to #NUMBER>" \
   --label <type:bug|type:spec-gap|type:not-implemented> --label "compat:fhirpath-js"
@@ -351,7 +351,7 @@ Commit and push.
 ```bash
 git push -u origin issue/<NUMBER>-<short-description>
 
-gh pr create --repo piotrszul/fp2spark --title "<short title>" --body "$(cat <<'EOF'
+gh pr create --repo aehrc/fp2spark --title "<short title>" --body "$(cat <<'EOF'
 ## Summary
 - <which suites were enabled>
 - <how many tests now running vs excluded>
@@ -384,13 +384,13 @@ Tell the user the PR is ready and suggest they run `/review` to review it.
 Once the user confirms the review is complete, wait for CI checks to pass:
 
 ```bash
-gh pr checks <PR_NUMBER> --repo piotrszul/fp2spark --watch
+gh pr checks <PR_NUMBER> --repo aehrc/fp2spark --watch
 ```
 
 If checks pass, squash merge:
 
 ```bash
-gh pr merge <PR_NUMBER> --repo piotrszul/fp2spark --squash --delete-branch
+gh pr merge <PR_NUMBER> --repo aehrc/fp2spark --squash --delete-branch
 git checkout main && git pull
 ```
 
@@ -402,7 +402,7 @@ If checks fail, report the failure details to the user and investigate.
 - **Always consult the spec** via `fhirpath-spec` skill before classifying ambiguous failures.
 - **Never use `wontfix`.** Reclassify any in-scope `wontfix` exclusions.
 - **Never carry forward Pathling ids.** `#2xxx` and `#437` point at `pathling/pathling`. File
-  a fp2sql issue on `piotrszul/fp2spark` or reclassify to `design`/`ref-impl-bug`.
+  a fp2sql issue on `aehrc/fp2spark` or reclassify to `design`/`ref-impl-bug`.
 - **SPEC_DIVERGENCES.md changes require approval.** Always propose and wait.
 - **Classification summary requires approval.** Present the table and wait.
 - **Every `feature`, `bug`, and `test-infra` needs a fp2sql issue.** File with

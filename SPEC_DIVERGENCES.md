@@ -336,7 +336,7 @@ Patient.id is FHIR.string      // false (fhirpath.js)
 This is inconsistent with fhirpath.js's treatment of other FHIR primitives.
 `Patient.active` keeps its FHIR namespace (`FHIR.boolean`), so under the same
 strict namespace rule it intentionally applies to `is`/`as`/`ofType` (see
-[#188](https://github.com/piotrszul/fp2spark/issues/188)), `Patient.active is
+[#188](https://github.com/aehrc/fp2spark/issues/188)), `Patient.active is
 System.Boolean` returns `false` — the correct FHIR-namespace-preserving
 behavior. The `id` case collapses to System.String because fhirpath.js's model
 does not register `id` as a distinct FHIR primitive (unlike `boolean`,

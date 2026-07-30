@@ -15,7 +15,7 @@ description: >
 
 This skill drives end-to-end implementation of a FHIRPath feature: from reading the GitHub issue all the way through to a squash-merged PR on `main`. It produces working code, not plans.
 
-The repo is `piotrszul/fp2spark` on GitHub.
+The repo is `aehrc/fp2spark` on GitHub.
 
 ## Multi-Function Issues
 
@@ -32,7 +32,7 @@ Execute these steps sequentially. Do NOT stop to ask for feedback unless explici
 Read the GitHub issue to understand what needs to be built:
 
 ```bash
-gh issue view <NUMBER> --repo piotrszul/fp2spark
+gh issue view <NUMBER> --repo aehrc/fp2spark
 ```
 
 The issue typically contains:
@@ -182,7 +182,7 @@ git push -u origin issue/<NUMBER>-<short-description>
 Create the PR referencing the issue:
 
 ```bash
-gh pr create --repo piotrszul/fp2spark --title "<short title>" --body "$(cat <<'EOF'
+gh pr create --repo aehrc/fp2spark --title "<short title>" --body "$(cat <<'EOF'
 ## Summary
 - <what was implemented>
 - <key design decisions>
@@ -320,7 +320,7 @@ If none fire → proceed to Step 12.1 (LITE). Otherwise → Step 12.2 (FULL). Ei
 `Task`-dispatch a `general-purpose` subagent on `model: sonnet` with this prompt (substitute the PR number from `gh pr view`):
 
 ```
-You are reviewing PR #<NUMBER> in piotrszul/fp2spark.
+You are reviewing PR #<NUMBER> in aehrc/fp2spark.
 
 Invoke: Skill(skill="review", args="<NUMBER>")
 
@@ -393,13 +393,13 @@ If the reviewer's verdict is "Ready to merge: Yes" with no actionable Critical/I
 Watch CI to completion:
 
 ```bash
-gh pr checks <PR> --repo piotrszul/fp2spark --watch
+gh pr checks <PR> --repo aehrc/fp2spark --watch
 ```
 
 **On green**, squash-merge (matches the project's merge strategy — every PR lands as a single commit on `main`):
 
 ```bash
-gh pr merge <PR> --repo piotrszul/fp2spark --squash --delete-branch
+gh pr merge <PR> --repo aehrc/fp2spark --squash --delete-branch
 git checkout main && git pull
 ```
 

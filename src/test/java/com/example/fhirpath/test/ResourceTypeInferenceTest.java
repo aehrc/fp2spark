@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
  * Tests for {@link ResourceTypeInference}.
  *
  * <p>Focuses on cardinality inference — primitive → single, list → many, and the empty-list special
- * case (see issue <a href="https://github.com/piotrszul/fp2spark/issues/156">#156</a>).
+ * case (see issue <a href="https://github.com/aehrc/fp2spark/issues/156">#156</a>).
  */
 class ResourceTypeInferenceTest {
 
@@ -65,7 +65,7 @@ class ResourceTypeInferenceTest {
   }
 
   /**
-   * Regression test for <a href="https://github.com/piotrszul/fp2spark/issues/156">#156</a>.
+   * Regression test for <a href="https://github.com/aehrc/fp2spark/issues/156">#156</a>.
    *
    * <p>An empty list carries no cardinality information. Inferring MANY caused
    * CardinalityMismatchException at compile time for expressions that require ? cardinality

@@ -103,7 +103,7 @@ If none fire → proceed to Step 12.1 (LITE). Otherwise → Step 12.2 (FULL). Ei
 `Task`-dispatch a `general-purpose` subagent on `model: sonnet` with this prompt (substitute the PR number from `gh pr view`):
 
 ```
-You are reviewing PR #<NUMBER> in piotrszul/fp2spark.
+You are reviewing PR #<NUMBER> in aehrc/fp2spark.
 
 Invoke: Skill(skill="review", args="<NUMBER>")
 

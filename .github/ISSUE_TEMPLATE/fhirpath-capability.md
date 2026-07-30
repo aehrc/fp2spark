@@ -48,7 +48,7 @@ Part of #3 (Phase 1 - Stage X.Y)
 - [ ] [Project-specific integration requirement 1]
 - [ ] [Project-specific integration requirement 2]
 
-**Note**: All code must also meet criteria in [CONTRIBUTING.md](https://github.com/piotrszul/fp2spark/blob/main/CONTRIBUTING.md#definition-of-done)
+**Note**: All code must also meet criteria in [CONTRIBUTING.md](https://github.com/aehrc/fp2spark/blob/main/CONTRIBUTING.md#definition-of-done)
 
 ## Implementation Notes
 

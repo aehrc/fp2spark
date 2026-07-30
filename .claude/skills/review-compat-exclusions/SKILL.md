@@ -21,7 +21,7 @@ leave behind a file-specific block that satisfies the hygiene rules.
 Complement skill: `enable-compat-suite` handles enabling a currently blanket-skipped file. This
 skill handles re-reviewing already-enabled content.
 
-The repo is `piotrszul/fp2spark` on GitHub.
+The repo is `aehrc/fp2spark` on GitHub.
 
 ## Key References
 
@@ -145,7 +145,7 @@ Separate from match coverage: is the reason still true?
 
 - **`feature`** — grep `src/main/java/` for the function/operator to confirm it is still
   unimplemented. Cross-reference `Analyzer.java`, the codegen/resolver tables.
-- **`bug`** — `gh issue view <id> --repo piotrszul/fp2spark` must show the issue open.
+- **`bug`** — `gh issue view <id> --repo aehrc/fp2spark` must show the issue open.
 - **`design`** — the cited D-entry in `SPEC_DIVERGENCES.md` still describes the current
   behaviour.
 - **`ref-impl-bug`** — the cited R-entry still describes the current fhirpath.js bug.
@@ -194,10 +194,10 @@ push for more aggressive consolidation.
 
 ### Step 8: File fp2sql issues
 
-For every RE-ID / MISSING_REF row, file an issue on `piotrszul/fp2spark`:
+For every RE-ID / MISSING_REF row, file an issue on `aehrc/fp2spark`:
 
 ```bash
-gh issue create --repo piotrszul/fp2spark \
+gh issue create --repo aehrc/fp2spark \
   --title "<descriptive title>" \
   --body "<affected expressions, spec reference, link to the re-review PR once created>" \
   --label <type:bug|type:spec-gap|type:not-implemented> --label "compat:fhirpath-js"
@@ -292,7 +292,7 @@ Any violation: fix before pushing.
 ```bash
 git push -u origin review/<slice-name>
 
-gh pr create --repo piotrszul/fp2spark \
+gh pr create --repo aehrc/fp2spark \
   --title "test: re-review compat exclusions for <slice>" \
   --body "$(cat <<'EOF'
 ## Summary
@@ -320,13 +320,13 @@ EOF
 ### Step 15: Wait for CI and merge
 
 ```bash
-gh pr checks <PR> --repo piotrszul/fp2spark --watch
+gh pr checks <PR> --repo aehrc/fp2spark --watch
 ```
 
 On green, squash-merge:
 
 ```bash
-gh pr merge <PR> --repo piotrszul/fp2spark --squash --delete-branch
+gh pr merge <PR> --repo aehrc/fp2spark --squash --delete-branch
 git checkout main && git pull
 ```
 
@@ -341,7 +341,7 @@ On red, investigate root cause; do not bypass hooks or force-push.
 - **Never use `wontfix`.** Reclassify to one of `feature`, `bug`, `design`, `ref-impl-bug`,
   `test-infra`.
 - **Never carry forward Pathling ids.** `#2xxx` and `#437` live on `pathling/pathling`, not
-  `piotrszul/fp2spark`. File a fp2sql issue or reclassify to D/R.
+  `aehrc/fp2spark`. File a fp2sql issue or reclassify to D/R.
 - **Every rule needs a reference.** `id: "#NNN"` for feature/bug/test-infra; `D\d+` in comment
   for design; `R\d+` in comment for ref-impl-bug.
 - **SPEC_DIVERGENCES.md changes require user approval.** Always propose and wait.

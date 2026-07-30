@@ -56,7 +56,7 @@ The PR is **LITE** unless any signal below holds, in which case it is **FULL**.
 Subagent prompt (template):
 
 ```
-You are reviewing PR #<NUMBER> in piotrszul/fp2spark.
+You are reviewing PR #<NUMBER> in aehrc/fp2spark.
 
 Invoke: Skill(skill="review", args="<NUMBER>")
 

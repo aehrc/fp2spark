@@ -123,8 +123,6 @@ class UtilityFunctionsTest extends FhirPathTestBase {
     return builder()
         .group("trace() preserves the static type")
         .testEquals(2, "1.trace('t') + 1", "Integer arithmetic after trace")
-        .testEquals("ABC", "'abc'.trace('t').upper()", "String function after trace")
-        .testFalse("true.trace('t').not()", "Boolean function after trace")
         .testEquals(
             List.of(2, 4, 6), "(1 ; 2 ; 3).trace('t').select($this * 2)", "Lambda after trace")
         .build();

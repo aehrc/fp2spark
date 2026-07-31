@@ -359,6 +359,13 @@ public final class Signatures {
    * expression on the input") and the reference implementations, which apply the projection to the
    * whole input collection — hence COLLECTION_WISE binding: {@code $this} = the input collection.
    * Its body may return any type, so the lambda's return shape uses {@code ANY}.
+   *
+   * <p>The diagnostic side channel that gives {@code trace()} its purpose is deliberately not
+   * implemented: emitting diagnostics requires an evaluation context to carry a sink (Pathling uses
+   * a {@code TraceCollector} on its {@code EvaluationContext}; fhirpath.js uses a host-supplied
+   * {@code traceFn}), and fp2sql compiles an expression to SQL with nowhere for one to live.
+   * Defining that contract is tracked by #277; until then the projection is type-checked and then
+   * discarded by code generation.
    */
   @Nonnull
   public static SignatureDefinition diagnosticPassThrough(@Nonnull final Type elementType) {

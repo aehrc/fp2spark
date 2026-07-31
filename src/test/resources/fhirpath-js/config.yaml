@@ -15,13 +15,20 @@ excludeSet:
       # -----------------------------------------------------------------------
       - title: Tree navigation functions not yet implemented
         type: feature
-        id: "#197"
+        id: "#276"
         comment: |
-          children(), descendants(), repeat() not implemented.
-          See FHIRPath §5.8 Tree navigation and §5.2.5 repeat.
+          children(), descendants() not implemented.
+          See FHIRPath §5.8 Tree navigation.
         function:
           - children
           - descendants
+      - title: Recursive projection functions not yet implemented
+        type: feature
+        id: "#197"
+        comment: |
+          repeat() not implemented.
+          See FHIRPath §5.2.5 repeat.
+        function:
           - repeat
       - title: Utility/environment functions not yet implemented
         type: feature

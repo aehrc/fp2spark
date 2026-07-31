@@ -123,13 +123,13 @@ public final class CompatExclusions {
                       "polyStrings.value.ofType(System.Decimal)"
                           + " + polyStrings.value.ofType(FHIR.decimal)"),
 
-              // --- repeat() function not implemented ---
-              notImplemented("repeat() function not implemented")
+              // --- repeat() function not implemented (#197) ---
+              notImplemented("repeat() function not implemented (#197)")
                   .scope(RepeatFunctionDslTest.class)
                   .pattern("^(?!.*=> Exception)"),
 
-              // --- repeatAll() function not implemented ---
-              notImplemented("repeatAll() function not implemented")
+              // --- repeatAll() function not implemented (#197) ---
+              notImplemented("repeatAll() function not implemented (#197)")
                   .scope(RepeatAllFunctionDslTest.class)
                   .pattern("^(?!.*=> Exception)"),
 

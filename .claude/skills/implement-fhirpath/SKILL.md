@@ -29,8 +29,8 @@ If splitting, create a brief plan listing the commits, then execute Steps 3–8 
 /implement-fhirpath <NUMBER> [--worktree] [--unattended]
 ```
 
-- `--worktree` — run in an isolated git worktree at `../fp2sql-<NUMBER>` (created if needed).
-  Use when several issues are being implemented concurrently.
+- `--worktree` — run in an isolated git worktree at `.worktrees/<NUMBER>-<short-description>`
+  (created if needed). Use when several issues are being implemented concurrently.
 - `--unattended` — no user is available to answer questions. Changes the behaviour of every
   approval gate and stops before merge. **Required** when this skill is run inside a
   dispatched subagent, which cannot ask the user anything.
@@ -56,10 +56,14 @@ been placed in one by the harness, in which case do NOT create another:
 If `--worktree` was passed and we are *not* already in one, create it and move into it. Branch
 off freshly fetched `origin/main`; this also satisfies Step 2, which you then skip:
 
+All worktrees live under `.worktrees/` in the repo root (git-ignored). Never create them
+elsewhere — a stray worktree outside the repo is easy to lose track of.
+
 ```bash
 git -C <repo> fetch origin
-git -C <repo> worktree add ../fp2sql-<NUMBER> -b issue/<NUMBER>-<short-description> origin/main
-cd ../fp2sql-<NUMBER>
+git -C <repo> worktree add .worktrees/<NUMBER>-<short-description> \
+    -b issue/<NUMBER>-<short-description> origin/main
+cd <repo>/.worktrees/<NUMBER>-<short-description>
 ```
 
 If `git worktree add` fails because the branch already exists, stop and report it — the repo
@@ -500,7 +504,7 @@ worktree down from the primary instead:
 
 ```bash
 cd <primary-worktree>
-git worktree remove ../fp2sql-<NUMBER>
+git worktree remove .worktrees/<NUMBER>-<short-description>
 git switch main && git pull
 git branch -d issue/<NUMBER>-<short-description>   # local branch, if it survived
 ```

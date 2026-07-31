@@ -14,6 +14,7 @@ import com.example.fhirpath.codegen.spark.ops.MembershipOps;
 import com.example.fhirpath.codegen.spark.ops.SetOps;
 import com.example.fhirpath.codegen.spark.ops.StringOps;
 import com.example.fhirpath.codegen.spark.ops.TypeOps;
+import com.example.fhirpath.codegen.spark.ops.UtilityOps;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
@@ -68,6 +69,7 @@ public final class SparkOperationRegistry {
     StringOps.register(registry);
     MathOps.register(registry);
     ConversionOps.register(registry);
+    UtilityOps.register(registry);
     return registry;
   }
 }

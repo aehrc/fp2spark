@@ -354,6 +354,14 @@ public final class OperationRegistry {
             Signatures.variadic(
                 List.of(single(ANY), single(STRING)), ResultTypeSpec.single(BOOLEAN), 1)),
 
+        // UTILITY FUNCTIONS (FHIRPath Spec 5.9)
+
+        // trace(name [, projection]): α T → α T — returns the input collection unaltered.
+        // The projection is a COLLECTION_WISE lambda ($this = the input collection) so that it
+        // is evaluated against the input, per the spec. Diagnostic output is not emitted: fp2sql
+        // has no evaluation context to carry a diagnostic sink — see #277.
+        register("trace", Signatures.diagnosticPassThrough(ANY)),
+
         // MATH FUNCTIONS (FHIRPath Spec 5.7.3)
 
         // abs(): preserves input type (INTEGER → INTEGER, DECIMAL → DECIMAL, QUANTITY → QUANTITY)

@@ -1,4 +1,4 @@
-Ra# Claude Code Reference
+# Claude Code Reference
 
 ## Project Overview
 
@@ -14,6 +14,33 @@ The `.local/pathling/` directory (symlink) contains the Pathling project, a matu
 - `.local/pathling/fhirpath/src/main/java/au/csiro/pathling/fhirpath/` - Core FHIRPath logic
 - `.local/pathling/fhirpath/src/test/java/` - Test patterns and examples
 - `.local/pathling/utilities/src/main/java/au/csiro/pathling/fhirpath/literal/` - Literal parsing
+
+### Worktrees: `.local/` must be recreated
+
+`.local/` is git-excluded (via `.git/info/exclude`), so it is **absent in a freshly created
+git worktree** — and `.local/pathling` is a *relative* symlink that would not resolve there
+anyway. A session that assumes it exists will find nothing and silently proceed on guesswork
+instead of the reference implementation.
+
+Detect a worktree, and recreate the links from the primary worktree:
+
+```bash
+# Are we in a linked worktree?
+[ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ] && echo worktree
+
+# Recreate .local/ (machine-agnostic — resolves whatever the primary worktree points at)
+PRIMARY=$(git rev-parse --git-common-dir | xargs dirname)
+mkdir -p .local
+ln -s "$(readlink -f "$PRIMARY/.local/pathling")"    .local/pathling
+ln -s "$(readlink -f "$PRIMARY/.local/fhirpath.js")" .local/fhirpath.js
+```
+
+**Verify before relying on it:** `readlink -f .local/pathling` must resolve to a real
+directory. If it does not, stop and say so rather than proceeding without the reference.
+
+`.local/work/` is deliberately *not* linked — parallel worktrees should not share working
+notes. `CLAUDE.md` and the other guideline docs are tracked in git, so they are present in
+every worktree automatically.
 
 ## Working Files
 

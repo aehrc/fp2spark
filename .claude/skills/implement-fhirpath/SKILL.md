@@ -23,9 +23,74 @@ When an issue covers multiple functions or operators, assess whether they can al
 
 If splitting, create a brief plan listing the commits, then execute Steps 3–8 for each commit before proceeding to Step 9 (push/PR) and the post-PR steps (compat, simplify, review, merge). All commits go on the same feature branch and into a single PR.
 
+## Invocation
+
+```
+/implement-fhirpath <NUMBER> [--worktree] [--unattended]
+```
+
+- `--worktree` — run in an isolated git worktree at `../fp2sql-<NUMBER>` (created if needed).
+  Use when several issues are being implemented concurrently.
+- `--unattended` — no user is available to answer questions. Changes the behaviour of every
+  approval gate and stops before merge. **Required** when this skill is run inside a
+  dispatched subagent, which cannot ask the user anything.
+
 ## Workflow
 
 Execute these steps sequentially. Do NOT stop to ask for feedback unless explicitly indicated — keep moving forward.
+
+### Step 0: Resolve Isolation and Mode
+
+Resolve both settings first and **print the result** so a misfire is visible in the transcript
+rather than surfacing at Step 13.
+
+#### 0a: Worktree
+
+Detect whether this session is already in a linked worktree — a dispatched subagent may have
+been placed in one by the harness, in which case do NOT create another:
+
+```bash
+[ "$(git rev-parse --git-dir)" != "$(git rev-parse --git-common-dir)" ] && echo "in worktree"
+```
+
+If `--worktree` was passed and we are *not* already in one, create it and move into it. Branch
+off freshly fetched `origin/main`; this also satisfies Step 2, which you then skip:
+
+```bash
+git -C <repo> fetch origin
+git -C <repo> worktree add ../fp2sql-<NUMBER> -b issue/<NUMBER>-<short-description> origin/main
+cd ../fp2sql-<NUMBER>
+```
+
+If `git worktree add` fails because the branch already exists, stop and report it — the repo
+accumulates stale local branches and silently reusing one would build on the wrong base.
+
+Whenever this step ends up in a worktree (created here or pre-existing), recreate `.local/`
+per the "Worktrees" section of CLAUDE.md, then **verify it resolves**:
+
+```bash
+readlink -f .local/pathling   # must print a real directory
+```
+
+If it does not resolve, stop. Step 4a mandates consulting Pathling before writing Spark code;
+proceeding without it means inventing code generation from scratch, which is not acceptable.
+
+#### 0b: Mode
+
+| Step | Interactive (default) | `--unattended` |
+|---|---|---|
+| 4 design-approval gate | Present the change and wait for the user. | **Abort.** Report the proposed change, blast radius, and alternatives; do not write code. |
+| 10 compat exclusions | Perform normally. | **Skip entirely.** `config.yaml` is a shared-edit hot spot; concurrent branches conflict. Note the skip in the PR body so a consolidated pass can follow. |
+| 10c / 12.3 new D/R entry | Propose and wait. | **Abort.** Never edit `SPEC_DIVERGENCES.md`. |
+| 12.3 surface-to-user finding | Ask the user (incl. FULL escalation offer on LITE). | Leave it unapplied and list it in the return value. |
+| 13 merge | Full step: watch CI, squash-merge, return to `main`. | **Stop after Step 9.** Do not merge. Return the PR number and any aborted-gate report. |
+
+"Abort" means: stop work, leave the branch and any commits in place, and return a report
+naming the gate that fired and what decision is needed. Do not guess at a design, and do not
+work around the gate.
+
+Print the resolved mode before continuing, e.g.
+`Mode: worktree=../fp2sql-272, unattended=true — will stop after Step 9.`
 
 ### Step 1: Understand the Scope
 
@@ -43,14 +108,22 @@ Note any acceptance criteria or test expectations mentioned in the issue.
 
 ### Step 2: Create the Feature Branch
 
+**Skip this step if Step 0a already created the worktree and its branch.**
+
 Follow CONTRIBUTING.md conventions exactly:
 
 ```bash
-git checkout main && git pull
-git checkout -b issue/<NUMBER>-<short-description>
+git fetch origin
+git switch -c issue/<NUMBER>-<short-description> origin/main
 ```
 
 Branch naming format: `issue/<number>-<kebab-case-description>` (e.g., `issue/42-string-functions`).
+
+Branch off `origin/main` rather than checking out local `main` first: it guarantees a fresh
+base, and it works inside a linked worktree, where `git checkout main` fails outright because
+`main` is checked out in the primary worktree.
+
+If the branch name already exists locally, stop and report it rather than reusing it.
 
 ### Step 3: Research the FHIRPath Specification
 
@@ -111,6 +184,9 @@ Check how similar existing operations are implemented — follow the same patter
 - Alternative approaches you considered and why you rejected them.
 
 Wait for explicit approval. Slotting a new operation into the existing registry/codegen pattern does *not* require this gate — it is reserved for changes that alter the framework itself.
+
+Under `--unattended` (Step 0b) there is no user to approve: **abort** and return the same three
+points as a report. Do not pick a design and proceed.
 
 ### Step 5: Implement and Write Tests
 
@@ -200,6 +276,9 @@ EOF
 ```
 
 ### Step 10: Update fhirpath-js Compat Exclusions
+
+**Skip this entire step under `--unattended` (Step 0b)** — record in the PR body that compat
+cleanup is outstanding, and proceed to Step 11.
 
 The new feature usually unblocks tests in `src/test/resources/fhirpath-js/config.yaml` that were previously excluded as `feature` (unimplemented). Clean those up now so the compat suite reflects the post-implementation reality. Reuse the hygiene rules from the `review-compat-exclusions` skill — this step is a scoped subset of that workflow, restricted to rules touching the implemented feature.
 
@@ -367,6 +446,8 @@ Apply the same triage protocol to whichever path produced the report:
     - If the user opts to escalate → run Step 12.2 (FULL), merge both reports, re-triage, and present the combined surface-to-user set. Only then proceed with the user's decision.
     - If the user declines escalation → proceed with the standard triage protocol.
   - On the FULL path, no escalation prompt — FULL already ran.
+  - Under `--unattended` (Step 0b): leave these findings unapplied and list them in the return
+    value. No escalation prompt on either path.
 - **Defer / decline** — Minor findings that conflict with established patterns elsewhere in the codebase, or any finding that does not survive a closer read of the cited code. Note them briefly but do not act. The reviewer is not infallible — push back with technical reasoning rather than mechanically applying every suggestion.
 
 After applying fixes:
@@ -390,6 +471,11 @@ If the reviewer's verdict is "Ready to merge: Yes" with no actionable Critical/I
 
 ### Step 13: Wait for CI, Merge, Return to main
 
+**If `--unattended` (Step 0b): stop here.** Do not watch CI and do not merge. Return the PR
+number, the LITE/FULL classification, whether Step 10 was skipped, and any surface-to-user
+findings left unapplied. Merging is the dispatcher's job — concurrent squash-merges of branches
+that all touch `OperationRegistry` and `config.yaml` produce conflicts and CI churn.
+
 Watch CI to completion:
 
 ```bash
@@ -400,7 +486,23 @@ gh pr checks <PR> --repo aehrc/fp2spark --watch
 
 ```bash
 gh pr merge <PR> --repo aehrc/fp2spark --squash --delete-branch
-git checkout main && git pull
+```
+
+Then return to `main`. In the primary worktree:
+
+```bash
+git switch main && git pull
+```
+
+In a linked worktree (Step 0a), `git switch main` fails — `main` is checked out in the primary
+worktree, and `--delete-branch` cannot delete a branch that is still checked out here. Tear the
+worktree down from the primary instead:
+
+```bash
+cd <primary-worktree>
+git worktree remove ../fp2sql-<NUMBER>
+git switch main && git pull
+git branch -d issue/<NUMBER>-<short-description>   # local branch, if it survived
 ```
 
 **On red**, do NOT bypass: no `--no-verify`, no force-push, no skipped checks. Investigate the failing job (`gh run view <run-id> --log-failed`), reproduce locally if possible, fix the root cause, push the fix, and re-watch CI. If the failure is environmental and unrelated to the change, surface it to the user before retrying.
@@ -414,6 +516,11 @@ git branch             # feature branch should no longer exist locally
 
 ## Key Reminders
 
+- **Resolve mode first (Step 0) and print it.** `--worktree` isolates the run; `--unattended`
+  turns every approval gate into an abort and stops before merge. A subagent running this skill
+  is always `--unattended` — it has no user to ask.
+- **In a worktree, `.local/` must be recreated and verified** (Step 0a, and the "Worktrees"
+  section of CLAUDE.md). Without it the mandatory Pathling consultation fails open.
 - **Write code, not plans.** If a plan exists in the issue, go straight to implementation.
 - **Limit exploration.** Look at a few relevant files to understand patterns, then start coding. Do not spend excessive time reading every file in the codebase.
 - **Spec is ground truth.** Trust the FHIRPath spec over your mental model.

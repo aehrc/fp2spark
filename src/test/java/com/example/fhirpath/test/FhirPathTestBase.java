@@ -1,5 +1,6 @@
 package com.example.fhirpath.test;
 
+import com.example.fhirpath.terminology.TerminologyServiceFactory;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterAll;
@@ -53,5 +54,19 @@ public abstract class FhirPathTestBase {
   protected FhirPathTestBuilder builder() {
     FhirPathTestExecutor executor = new FhirPathTestExecutor(spark);
     return new FhirPathTestBuilder(executor);
+  }
+
+  /**
+   * Create a new test builder whose expressions resolve terminology functions against the given
+   * terminology service.
+   *
+   * @param terminologyServiceFactory the terminology service to use, typically a {@code
+   *     MockTerminologyService}
+   * @return A new FhirPathTestBuilder instance
+   */
+  @Nonnull
+  protected FhirPathTestBuilder builder(
+      @Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
+    return new FhirPathTestBuilder(new FhirPathTestExecutor(spark, terminologyServiceFactory));
   }
 }

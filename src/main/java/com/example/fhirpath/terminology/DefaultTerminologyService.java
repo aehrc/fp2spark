@@ -1,0 +1,116 @@
+package com.example.fhirpath.terminology;
+
+import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import org.hl7.fhir.r4.model.CodeType;
+import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.Parameters;
+import org.hl7.fhir.r4.model.StringType;
+import org.hl7.fhir.r4.model.UriType;
+import org.hl7.fhir.r4.model.ValueSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * A {@link TerminologyService} backed by a FHIR terminology server, using the {@code
+ * ValueSet/$validate-code} operation.
+ *
+ * <p>Requests are issued as HTTP GET so that they are cacheable by intermediate proxies.
+ *
+ * @see <a href="https://www.hl7.org/fhir/R4/valueset-operation-validate-code.html">
+ *     ValueSet/$validate-code</a>
+ */
+public class DefaultTerminologyService implements TerminologyService {
+
+  private static final Logger log = LoggerFactory.getLogger(DefaultTerminologyService.class);
+
+  /** Name of the FHIR operation invoked to test value set membership. */
+  private static final String VALIDATE_CODE_OPERATION = "$validate-code";
+
+  /**
+   * Name of the output parameter carrying the membership answer. Per the operation definition this
+   * parameter is mandatory in a successful response.
+   */
+  private static final String RESULT_PARAMETER = "result";
+
+  @Nonnull private final IGenericClient client;
+
+  /**
+   * Creates a terminology service over the given FHIR REST client.
+   *
+   * @param client a client pointed at the terminology server's base URL
+   */
+  public DefaultTerminologyService(@Nonnull final IGenericClient client) {
+    this.client = client;
+  }
+
+  @Nullable
+  @Override
+  public Boolean validateCode(@Nonnull final String valueSetUrl, @Nonnull final Coding coding) {
+    final Parameters request = buildRequest(valueSetUrl, coding);
+    final Parameters response;
+    try {
+      response =
+          client
+              .operation()
+              .onType(ValueSet.class)
+              .named(VALIDATE_CODE_OPERATION)
+              .withParameters(request)
+              .useHttpGet()
+              .returnResourceType(Parameters.class)
+              .execute();
+    } catch (final ResourceNotFoundException | InvalidRequestException e) {
+      // The server could not resolve the value set URI. The FHIR FHIRPath specification requires
+      // an empty result in this case, which this contract represents as null.
+      log.debug("Value set could not be resolved: {}", valueSetUrl, e);
+      return null;
+    } catch (final BaseServerResponseException e) {
+      throw new TerminologyServiceException(
+          "Terminology server returned an error validating code against " + valueSetUrl, e);
+    }
+    return extractResult(response, valueSetUrl);
+  }
+
+  /**
+   * Builds the {@code $validate-code} input parameters for a single coding.
+   *
+   * <p>Package-private so that the parameter names, which must match the operation definition, are
+   * directly testable without an HTTP server.
+   */
+  @Nonnull
+  static Parameters buildRequest(@Nonnull final String valueSetUrl, @Nonnull final Coding coding) {
+    final Parameters request = new Parameters();
+    request.addParameter().setName("url").setValue(new UriType(valueSetUrl));
+    request.addParameter().setName("system").setValue(new UriType(coding.getSystem()));
+    request.addParameter().setName("code").setValue(new CodeType(coding.getCode()));
+    if (coding.getVersion() != null) {
+      request.addParameter().setName("systemVersion").setValue(new StringType(coding.getVersion()));
+    }
+    return request;
+  }
+
+  /**
+   * Extracts the {@code result} output parameter. A response missing it is treated as unresolvable
+   * rather than as a negative answer, so that a non-conformant server cannot silently turn into
+   * "not a member".
+   *
+   * <p>Package-private so that response handling is testable without an HTTP server.
+   */
+  @Nullable
+  static Boolean extractResult(
+      @Nonnull final Parameters response, @Nonnull final String valueSetUrl) {
+    if (!response.hasParameter(RESULT_PARAMETER)) {
+      log.warn(
+          "Terminology server response for {} omitted the '{}' parameter; treating the value set as"
+              + " unresolvable",
+          valueSetUrl,
+          RESULT_PARAMETER);
+      return null;
+    }
+    return response.getParameterBool(RESULT_PARAMETER);
+  }
+}

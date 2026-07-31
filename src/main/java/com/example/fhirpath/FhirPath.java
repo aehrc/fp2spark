@@ -6,6 +6,8 @@ import com.example.fhirpath.codegen.spark.SparkCodeGenerator;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.ir.IRNode;
 import com.example.fhirpath.parser.ParserFacade;
+import com.example.fhirpath.terminology.NoTerminologyService;
+import com.example.fhirpath.terminology.TerminologyServiceFactory;
 import com.example.fhirpath.typing.ResourceType;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -46,7 +48,7 @@ public final class FhirPath {
    */
   @Nonnull
   public static Column toColumn(@Nonnull final String expr) {
-    return compile(expr, null, null);
+    return compile(expr, null, null, NoTerminologyService.INSTANCE);
   }
 
   /**
@@ -60,7 +62,7 @@ public final class FhirPath {
    */
   @Nonnull
   public static Column toColumn(@Nonnull final String expr, @Nonnull final String context) {
-    return compile(expr, context, null);
+    return compile(expr, context, null, NoTerminologyService.INSTANCE);
   }
 
   /**
@@ -74,7 +76,7 @@ public final class FhirPath {
   @Nonnull
   public static Column toColumn(
       @Nonnull final String expr, @Nonnull final ResourceType resourceSpec) {
-    return compile(expr, null, resourceSpec);
+    return compile(expr, null, resourceSpec, NoTerminologyService.INSTANCE);
   }
 
   /**
@@ -90,7 +92,30 @@ public final class FhirPath {
       @Nonnull final String expr,
       @Nonnull final String context,
       @Nonnull final ResourceType resourceSpec) {
-    return compile(expr, context, resourceSpec);
+    return compile(expr, context, resourceSpec, NoTerminologyService.INSTANCE);
+  }
+
+  /**
+   * Compile a FHIRPath expression with terminology server access, for expressions using terminology
+   * functions such as {@code memberOf()}.
+   *
+   * <p>This is the general form: {@code context} and {@code resourceSpec} are both optional.
+   * Without a terminology factory — as in the other {@code toColumn} overloads — every value set is
+   * reported as unresolvable and terminology functions yield empty results.
+   *
+   * @param expr The FHIRPath expression to compile
+   * @param context The FHIRPath expression to use as %context, or null for none
+   * @param resourceSpec The resource specification defining the structure, or null for none
+   * @param terminologyServiceFactory The factory used to reach a terminology server on executors
+   * @return A Spark SQL Column representing the compiled expression
+   */
+  @Nonnull
+  public static Column toColumn(
+      @Nonnull final String expr,
+      @Nullable final String context,
+      @Nullable final ResourceType resourceSpec,
+      @Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
+    return compile(expr, context, resourceSpec, terminologyServiceFactory);
   }
 
   /**
@@ -124,8 +149,25 @@ public final class FhirPath {
    */
   @Nonnull
   public static Column generate(@Nonnull final IRNode ir, @Nullable final Column rootColumn) {
+    return generate(ir, rootColumn, NoTerminologyService.INSTANCE);
+  }
+
+  /**
+   * Generates a Spark SQL Column from a pre-compiled IR node, with terminology server access.
+   *
+   * @param ir the pre-compiled IR node
+   * @param rootColumn the root column for field access, or null for dataset root
+   * @param terminologyServiceFactory the factory used to reach a terminology server on executors
+   * @return a Spark SQL Column representing the IR
+   */
+  @Nonnull
+  public static Column generate(
+      @Nonnull final IRNode ir,
+      @Nullable final Column rootColumn,
+      @Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
     final SparkCodeGenerator gen =
-        new SparkCodeGenerator(SparkOperationRegistry.standard()).withRootColumn(rootColumn);
+        new SparkCodeGenerator(SparkOperationRegistry.standard(terminologyServiceFactory))
+            .withRootColumn(rootColumn);
     return ir.accept(gen);
   }
 
@@ -138,7 +180,10 @@ public final class FhirPath {
    * @return A Spark SQL Column representing the compiled expression
    */
   private static Column compile(
-      @Nonnull final String expr, final String context, final ResourceType resourceSpec) {
+      @Nonnull final String expr,
+      final String context,
+      final ResourceType resourceSpec,
+      @Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
     log.debug("Compiling FHIRPath expression: {}", expr);
     if (context != null) {
       log.debug("  with context: {}", context);
@@ -162,7 +207,9 @@ public final class FhirPath {
     log.debug("IR: {}", ir);
 
     // Generate Spark SQL Column from IR
-    final Column column = ir.accept(new SparkCodeGenerator(SparkOperationRegistry.standard()));
+    final Column column =
+        ir.accept(
+            new SparkCodeGenerator(SparkOperationRegistry.standard(terminologyServiceFactory)));
     log.debug("SQL: {}", column);
 
     return column;

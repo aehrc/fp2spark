@@ -5,7 +5,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Optional;
-import org.hl7.fhir.r4.model.Coding;
 
 /**
  * Decorates a {@link TerminologyService} with a bounded in-memory cache.
@@ -41,17 +40,22 @@ public class CachingTerminologyService implements TerminologyService {
 
   @Nullable
   @Override
-  public Boolean validateCode(@Nonnull final String valueSetUrl, @Nonnull final Coding coding) {
-    final CacheKey key =
-        new CacheKey(valueSetUrl, coding.getSystem(), coding.getCode(), coding.getVersion());
+  public Boolean validateCode(
+      @Nonnull final String valueSetUrl,
+      @Nonnull final String system,
+      @Nonnull final String code,
+      @Nullable final String version) {
+    final CacheKey key = new CacheKey(valueSetUrl, system, code, version);
     return cache
-        .get(key, k -> Optional.ofNullable(delegate.validateCode(valueSetUrl, coding)))
+        .get(
+            key,
+            k -> Optional.ofNullable(delegate.validateCode(valueSetUrl, system, code, version)))
         .orElse(null);
   }
 
   /**
-   * Identifies a validate-code request. Only the fields that participate in the request are
-   * included — {@code display} and {@code userSelected} do not affect membership.
+   * Identifies a validate-code request. Only the parts that participate in the request are included
+   * — a coding's {@code display} and {@code userSelected} do not affect membership.
    */
   private record CacheKey(
       @Nonnull String valueSetUrl,

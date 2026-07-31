@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -16,7 +16,6 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import org.hl7.fhir.r4.model.BooleanType;
-import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Parameters;
 import org.junit.jupiter.api.Test;
 
@@ -33,15 +32,10 @@ class TerminologyServiceTest {
   private static final String SYSTEM = "http://loinc.org";
   private static final String CODE = "55915-3";
 
-  @Nonnull
-  private static Coding coding() {
-    return new Coding().setSystem(SYSTEM).setCode(CODE);
-  }
-
   @Test
   void validateCodeRequestUsesOperationParameterNames() {
     final Parameters request =
-        DefaultTerminologyService.buildRequest(VALUE_SET_URL, coding().setVersion("2.74"));
+        DefaultTerminologyService.buildRequest(VALUE_SET_URL, SYSTEM, CODE, "2.74");
 
     assertEquals(VALUE_SET_URL, request.getParameterValue("url").primitiveValue());
     assertEquals(SYSTEM, request.getParameterValue("system").primitiveValue());
@@ -52,7 +46,8 @@ class TerminologyServiceTest {
 
   @Test
   void validateCodeRequestOmitsAbsentVersion() {
-    final Parameters request = DefaultTerminologyService.buildRequest(VALUE_SET_URL, coding());
+    final Parameters request =
+        DefaultTerminologyService.buildRequest(VALUE_SET_URL, SYSTEM, CODE, null);
 
     assertFalse(request.hasParameter("systemVersion"));
   }
@@ -79,8 +74,8 @@ class TerminologyServiceTest {
     final RecordingTerminologyService delegate = new RecordingTerminologyService(true);
     final CachingTerminologyService cached = new CachingTerminologyService(delegate, 100);
 
-    assertEquals(Boolean.TRUE, cached.validateCode(VALUE_SET_URL, coding()));
-    assertEquals(Boolean.TRUE, cached.validateCode(VALUE_SET_URL, coding()));
+    assertEquals(Boolean.TRUE, cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, null));
+    assertEquals(Boolean.TRUE, cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, null));
 
     assertEquals(1, delegate.requests.size());
   }
@@ -91,28 +86,29 @@ class TerminologyServiceTest {
     final RecordingTerminologyService delegate = new RecordingTerminologyService(null);
     final CachingTerminologyService cached = new CachingTerminologyService(delegate, 100);
 
-    assertNull(cached.validateCode(VALUE_SET_URL, coding()));
-    assertNull(cached.validateCode(VALUE_SET_URL, coding()));
+    assertNull(cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, null));
+    assertNull(cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, null));
 
     assertEquals(1, delegate.requests.size());
   }
 
   @Test
-  void cacheDistinguishesCodesAndValueSets() {
+  void cacheDistinguishesCodesValueSetsAndVersions() {
     final RecordingTerminologyService delegate = new RecordingTerminologyService(true);
     final CachingTerminologyService cached = new CachingTerminologyService(delegate, 100);
 
-    cached.validateCode(VALUE_SET_URL, coding());
-    cached.validateCode(VALUE_SET_URL, coding().setCode("99999-9"));
-    cached.validateCode("http://example.org/ValueSet/other", coding());
-    cached.validateCode(VALUE_SET_URL, coding().setVersion("2.74"));
+    cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, null);
+    cached.validateCode(VALUE_SET_URL, SYSTEM, "99999-9", null);
+    cached.validateCode("http://example.org/ValueSet/other", SYSTEM, CODE, null);
+    cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, "2.74");
 
     assertEquals(4, delegate.requests.size());
   }
 
   @Test
   void noTerminologyServiceReportsEveryValueSetAsUnresolvable() {
-    assertNull(NoTerminologyService.INSTANCE.build().validateCode(VALUE_SET_URL, coding()));
+    assertNull(
+        NoTerminologyService.INSTANCE.build().validateCode(VALUE_SET_URL, SYSTEM, CODE, null));
   }
 
   @Test
@@ -129,34 +125,31 @@ class TerminologyServiceTest {
     final DefaultTerminologyServiceFactory deserialized = roundTrip(factory);
 
     assertEquals(factory, deserialized);
-    assertEquals(factory.getConfiguration(), deserialized.getConfiguration());
     // Services are memoised per JVM per configuration, so an equal factory yields the same instance
     // — this is what keeps one HTTP client and one cache per executor.
     assertSame(factory.build(), deserialized.build());
   }
 
   @Test
-  void configurationRejectsInvalidSettings() {
-    assertTrue(
-        throwsIllegalArgument(() -> TerminologyConfiguration.of("  ")),
-        "blank server URL rejected");
-    assertTrue(
-        throwsIllegalArgument(
-            () -> new TerminologyConfiguration("http://example.org/fhir", 0, 1000, 10)),
-        "non-positive connect timeout rejected");
-    assertTrue(
-        throwsIllegalArgument(
-            () -> new TerminologyConfiguration("http://example.org/fhir", 1000, 1000, -1)),
-        "negative cache size rejected");
+  void configurationRejectsBlankServerUrl() {
+    assertThrows(IllegalArgumentException.class, () -> TerminologyConfiguration.of("  "));
   }
 
-  private static boolean throwsIllegalArgument(@Nonnull final Runnable action) {
-    try {
-      action.run();
-      return false;
-    } catch (final IllegalArgumentException e) {
-      return true;
-    }
+  @Test
+  void configurationRejectsNonPositiveTimeouts() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new TerminologyConfiguration("http://example.org/fhir", 0, 1000, 10));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new TerminologyConfiguration("http://example.org/fhir", 1000, 0, 10));
+  }
+
+  @Test
+  void configurationRejectsNegativeCacheSize() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new TerminologyConfiguration("http://example.org/fhir", 1000, 1000, -1));
   }
 
   @SuppressWarnings("unchecked")
@@ -185,8 +178,12 @@ class TerminologyServiceTest {
 
     @Nullable
     @Override
-    public Boolean validateCode(@Nonnull final String valueSetUrl, @Nonnull final Coding coding) {
-      requests.add(valueSetUrl + " " + coding.getSystem() + "|" + coding.getCode());
+    public Boolean validateCode(
+        @Nonnull final String valueSetUrl,
+        @Nonnull final String system,
+        @Nonnull final String code,
+        @Nullable final String version) {
+      requests.add(String.join("|", valueSetUrl, system, code, String.valueOf(version)));
       return answer;
     }
   }

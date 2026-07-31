@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import org.hl7.fhir.r4.model.Coding;
 
 /**
  * An in-memory {@link TerminologyService} for tests, declaring value set membership up front
@@ -49,13 +48,17 @@ public final class MockTerminologyService implements TerminologyService, Termino
 
   @Nullable
   @Override
-  public Boolean validateCode(@Nonnull final String valueSetUrl, @Nonnull final Coding coding) {
+  public Boolean validateCode(
+      @Nonnull final String valueSetUrl,
+      @Nonnull final String system,
+      @Nonnull final String code,
+      @Nullable final String version) {
     final Set<String> members = membersByValueSet.get(valueSetUrl);
     if (members == null) {
       // Undeclared value set: unresolvable, which yields an empty result.
       return null;
     }
-    return members.contains(memberKey(coding.getSystem(), coding.getCode()));
+    return members.contains(memberKey(system, code));
   }
 
   @Nonnull
@@ -64,9 +67,9 @@ public final class MockTerminologyService implements TerminologyService, Termino
     return this;
   }
 
-  /** Builds the membership key for a coding. Version and display do not affect membership. */
+  /** Builds the membership key for a code. Version and display do not affect membership. */
   @Nonnull
-  private static String memberKey(@Nullable final String system, @Nullable final String code) {
+  private static String memberKey(@Nonnull final String system, @Nonnull final String code) {
     return system + "|" + code;
   }
 

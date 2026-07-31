@@ -7,7 +7,6 @@ import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.hl7.fhir.r4.model.CodeType;
-import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Parameters;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.UriType;
@@ -50,8 +49,12 @@ public class DefaultTerminologyService implements TerminologyService {
 
   @Nullable
   @Override
-  public Boolean validateCode(@Nonnull final String valueSetUrl, @Nonnull final Coding coding) {
-    final Parameters request = buildRequest(valueSetUrl, coding);
+  public Boolean validateCode(
+      @Nonnull final String valueSetUrl,
+      @Nonnull final String system,
+      @Nonnull final String code,
+      @Nullable final String version) {
+    final Parameters request = buildRequest(valueSetUrl, system, code, version);
     final Parameters response;
     try {
       response =
@@ -82,13 +85,17 @@ public class DefaultTerminologyService implements TerminologyService {
    * directly testable without an HTTP server.
    */
   @Nonnull
-  static Parameters buildRequest(@Nonnull final String valueSetUrl, @Nonnull final Coding coding) {
+  static Parameters buildRequest(
+      @Nonnull final String valueSetUrl,
+      @Nonnull final String system,
+      @Nonnull final String code,
+      @Nullable final String version) {
     final Parameters request = new Parameters();
     request.addParameter().setName("url").setValue(new UriType(valueSetUrl));
-    request.addParameter().setName("system").setValue(new UriType(coding.getSystem()));
-    request.addParameter().setName("code").setValue(new CodeType(coding.getCode()));
-    if (coding.getVersion() != null) {
-      request.addParameter().setName("systemVersion").setValue(new StringType(coding.getVersion()));
+    request.addParameter().setName("system").setValue(new UriType(system));
+    request.addParameter().setName("code").setValue(new CodeType(code));
+    if (version != null) {
+      request.addParameter().setName("systemVersion").setValue(new StringType(version));
     }
     return request;
   }

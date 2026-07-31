@@ -3,7 +3,6 @@ package com.example.fhirpath.terminology;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.Serial;
-import org.hl7.fhir.r4.model.Coding;
 
 /**
  * The terminology service used when no terminology server has been configured.
@@ -29,7 +28,11 @@ public final class NoTerminologyService implements TerminologyService, Terminolo
 
   @Nullable
   @Override
-  public Boolean validateCode(@Nonnull final String valueSetUrl, @Nonnull final Coding coding) {
+  public Boolean validateCode(
+      @Nonnull final String valueSetUrl,
+      @Nonnull final String system,
+      @Nonnull final String code,
+      @Nullable final String version) {
     return null;
   }
 

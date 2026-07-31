@@ -2,7 +2,6 @@ package com.example.fhirpath.codegen.spark.ops;
 
 import static org.apache.spark.sql.functions.exists;
 import static org.apache.spark.sql.functions.lit;
-import static org.apache.spark.sql.functions.transform;
 import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.SparkOpContext;
@@ -27,12 +26,6 @@ import org.apache.spark.sql.expressions.UserDefinedFunction;
  *     functions</a>
  */
 public final class TerminologyOps {
-
-  /** FHIR type name of a single coded value. */
-  private static final String CODING_TYPE_NAME = "Coding";
-
-  /** FHIR type name of a concept, which carries zero or more codings. */
-  private static final String CODEABLE_CONCEPT_TYPE_NAME = "CodeableConcept";
 
   /** Name of the {@code CodeableConcept} field holding its codings. */
   private static final String CODING_FIELD = "coding";
@@ -81,12 +74,13 @@ public final class TerminologyOps {
     }
     if (isCodeableConcept(inputType)) {
       final Column codings = input.getField(CODING_FIELD);
-      final Column memberships =
-          transform(codings, coding -> applyToCoding(memberOf, coding, valueSetUrl));
       return when(input.isNull(), lit(null))
           // A concept carrying no codings has no code that could be a member.
           .when(codings.isNull(), lit(false))
-          .otherwise(exists(memberships, membership -> membership));
+          // exists() stops at the first member, so a concept whose first coding matches costs one
+          // terminology lookup rather than one per coding. Its three-valued logic also means an
+          // unresolvable value set — every element null — propagates as empty rather than false.
+          .otherwise(exists(codings, coding -> applyToCoding(memberOf, coding, valueSetUrl)));
     }
 
     throw new IllegalArgumentException(
@@ -113,13 +107,11 @@ public final class TerminologyOps {
    */
   private static boolean isCoding(@Nonnull final Type type) {
     return type == SystemType.CODING
-        || (type instanceof final FhirComplexType complex
-            && CODING_TYPE_NAME.equals(complex.getName()));
+        || (type instanceof final FhirComplexType complex && complex.isCodingCompatible());
   }
 
   /** Returns true if the type is a FHIR {@code CodeableConcept}. */
   private static boolean isCodeableConcept(@Nonnull final Type type) {
-    return type instanceof final FhirComplexType complex
-        && CODEABLE_CONCEPT_TYPE_NAME.equals(complex.getName());
+    return type instanceof final FhirComplexType complex && complex.isCodeableConcept();
   }
 }

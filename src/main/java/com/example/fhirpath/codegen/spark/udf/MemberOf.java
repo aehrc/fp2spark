@@ -9,7 +9,6 @@ import org.apache.spark.sql.api.java.UDF4;
 import org.apache.spark.sql.expressions.UserDefinedFunction;
 import org.apache.spark.sql.functions;
 import org.apache.spark.sql.types.DataTypes;
-import org.hl7.fhir.r4.model.Coding;
 
 /**
  * Spark UDF backing the FHIRPath {@code memberOf()} function for a single coding.
@@ -32,8 +31,30 @@ public final class MemberOf implements UDF4<String, String, String, String, Bool
    */
   @Nonnull private final TerminologyServiceFactory terminologyServiceFactory;
 
+  /**
+   * The service resolved from the factory, cached for the lifetime of this UDF instance on each
+   * executor. Transient because the service itself is not serializable — only the factory travels.
+   */
+  @Nullable private transient TerminologyService terminologyService;
+
   private MemberOf(@Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
     this.terminologyServiceFactory = terminologyServiceFactory;
+  }
+
+  /**
+   * Returns the terminology service, building it on first use.
+   *
+   * <p>Benign race: concurrent first calls on the same executor may each build a service, but
+   * factories memoise per JVM, so they resolve to the same instance.
+   */
+  @Nonnull
+  private TerminologyService terminologyService() {
+    TerminologyService service = terminologyService;
+    if (service == null) {
+      service = terminologyServiceFactory.build();
+      terminologyService = service;
+    }
+    return service;
   }
 
   /**
@@ -66,8 +87,6 @@ public final class MemberOf implements UDF4<String, String, String, String, Bool
       // Pathling, which filters incomplete codings out before testing membership.
       return false;
     }
-    final TerminologyService terminologyService = terminologyServiceFactory.build();
-    return terminologyService.validateCode(
-        valueSetUrl, new Coding().setSystem(system).setCode(code).setVersion(version));
+    return terminologyService().validateCode(valueSetUrl, system, code, version);
   }
 }

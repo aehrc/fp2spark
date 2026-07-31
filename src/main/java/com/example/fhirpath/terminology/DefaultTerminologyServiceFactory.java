@@ -16,8 +16,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * response cache are built lazily on each executor and memoised per JVM, keyed by configuration.
  * Without that memoisation every row would construct a fresh {@code FhirContext}, which takes on
  * the order of seconds.
+ *
+ * @param configuration the terminology server configuration
  */
-public class DefaultTerminologyServiceFactory implements TerminologyServiceFactory {
+public record DefaultTerminologyServiceFactory(@Nonnull TerminologyConfiguration configuration)
+    implements TerminologyServiceFactory {
 
   @Serial private static final long serialVersionUID = 1L;
 
@@ -27,17 +30,6 @@ public class DefaultTerminologyServiceFactory implements TerminologyServiceFacto
    */
   private static final Map<TerminologyConfiguration, TerminologyService> INSTANCES =
       new ConcurrentHashMap<>();
-
-  @Nonnull private final TerminologyConfiguration configuration;
-
-  /**
-   * Creates a factory for the given configuration.
-   *
-   * @param configuration the terminology server configuration
-   */
-  public DefaultTerminologyServiceFactory(@Nonnull final TerminologyConfiguration configuration) {
-    this.configuration = configuration;
-  }
 
   /**
    * Creates a factory for a terminology server at the given URL, using default timeouts and cache
@@ -49,16 +41,6 @@ public class DefaultTerminologyServiceFactory implements TerminologyServiceFacto
   @Nonnull
   public static DefaultTerminologyServiceFactory forServer(@Nonnull final String serverUrl) {
     return new DefaultTerminologyServiceFactory(TerminologyConfiguration.of(serverUrl));
-  }
-
-  /**
-   * Returns the configuration this factory builds services from.
-   *
-   * @return the terminology server configuration
-   */
-  @Nonnull
-  public TerminologyConfiguration getConfiguration() {
-    return configuration;
   }
 
   @Nonnull
@@ -89,16 +71,5 @@ public class DefaultTerminologyServiceFactory implements TerminologyServiceFacto
     final IGenericClient client = clientFactory.newGenericClient(configuration.serverUrl());
     return new CachingTerminologyService(
         new DefaultTerminologyService(client), configuration.cacheMaxEntries());
-  }
-
-  @Override
-  public boolean equals(final Object other) {
-    return other instanceof final DefaultTerminologyServiceFactory that
-        && configuration.equals(that.configuration);
-  }
-
-  @Override
-  public int hashCode() {
-    return configuration.hashCode();
   }
 }

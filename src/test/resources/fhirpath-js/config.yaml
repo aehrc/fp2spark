@@ -30,14 +30,23 @@ excludeSet:
           See FHIRPath §5.2.5 repeat.
         function:
           - repeat
-      - title: Utility/environment functions not yet implemented
+      - title: trace() not yet implemented
+        type: feature
+        id: "#277"
+        comment: |
+          trace() not implemented. See FHIRPath §5.9.1.
+          Note: the fhirpath.js cases for trace() assert only the return
+          value and set disableConsoleLog, so they do not exercise the
+          diagnostic output. Passing them does not mean trace() works.
+        function:
+          - trace
+      - title: Environment clock functions not yet implemented
         type: feature
         id: "#198"
         comment: |
-          trace(), now(), today(), timeOfDay() not implemented.
-          See FHIRPath §5.9 Utility Functions.
+          now(), today(), timeOfDay() not implemented.
+          See FHIRPath §5.9.2 Current date and time functions.
         function:
-          - trace
           - now
           - today
           - timeOfDay

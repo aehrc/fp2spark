@@ -66,16 +66,33 @@ public class DefaultTerminologyService implements TerminologyService {
               .useHttpGet()
               .returnResourceType(Parameters.class)
               .execute();
-    } catch (final ResourceNotFoundException | InvalidRequestException e) {
-      // The server could not resolve the value set URI. The FHIR FHIRPath specification requires
-      // an empty result in this case, which this contract represents as null.
-      log.debug("Value set could not be resolved: {}", valueSetUrl, e);
-      return null;
     } catch (final BaseServerResponseException e) {
+      if (isUnresolvable(e)) {
+        // The server could not resolve the value set URI. The FHIR FHIRPath specification requires
+        // an empty result in this case, which this contract represents as null.
+        log.debug("Value set could not be resolved: {}", valueSetUrl, e);
+        return null;
+      }
       throw new TerminologyServiceException(
           "Terminology server returned an error validating code against " + valueSetUrl, e);
     }
     return extractResult(response, valueSetUrl);
+  }
+
+  /**
+   * Classifies a server error as a failure to resolve the value set, as opposed to a genuine
+   * failure.
+   *
+   * <p>This distinction carries the specification's "cannot be resolved → empty" rule: only these
+   * responses become an empty result. Anything else — a timeout, a 500, an authentication failure —
+   * must surface as a Spark task failure rather than masquerade as data that is not in the value
+   * set.
+   *
+   * <p>Package-private so the classification is testable without an HTTP server, since which
+   * exception HAPI maps a given status to is not something to discover after a dependency upgrade.
+   */
+  static boolean isUnresolvable(@Nonnull final BaseServerResponseException e) {
+    return e instanceof ResourceNotFoundException || e instanceof InvalidRequestException;
   }
 
   /**

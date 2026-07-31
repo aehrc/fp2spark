@@ -16,7 +16,7 @@ import org.apache.spark.sql.types.DataTypes;
  * <p>The coding is passed as its constituent {@code system}, {@code code} and {@code version}
  * strings rather than as a struct, so that the UDF makes no assumptions about the storage schema
  * and needs no Row decoding. Iterating the codings of a {@code CodeableConcept} is left to Spark's
- * {@code transform}/{@code exists} — see {@code TerminologyOps}.
+ * {@code exists} — see {@code TerminologyOps}.
  *
  * <p>The result is deliberately three-valued: {@code null} means the value set could not be
  * resolved, which the FHIR FHIRPath specification maps to an empty result.
@@ -32,10 +32,12 @@ public final class MemberOf implements UDF4<String, String, String, String, Bool
   @Nonnull private final TerminologyServiceFactory terminologyServiceFactory;
 
   /**
-   * The service resolved from the factory, cached for the lifetime of this UDF instance on each
-   * executor. Transient because the service itself is not serializable — only the factory travels.
+   * The service resolved from the factory, cached for the lifetime of this UDF instance. Transient
+   * because the service itself is not serializable — only the factory travels. Volatile so that the
+   * racy publication below is safe without depending on the internal field structure of whichever
+   * service implementation the factory returns.
    */
-  @Nullable private transient TerminologyService terminologyService;
+  @Nullable private transient volatile TerminologyService terminologyService;
 
   private MemberOf(@Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
     this.terminologyServiceFactory = terminologyServiceFactory;
@@ -44,8 +46,8 @@ public final class MemberOf implements UDF4<String, String, String, String, Bool
   /**
    * Returns the terminology service, building it on first use.
    *
-   * <p>Benign race: concurrent first calls on the same executor may each build a service, but
-   * factories memoise per JVM, so they resolve to the same instance.
+   * <p>Benign race: concurrent first calls may each build a service, but factories memoise per JVM,
+   * so they resolve to the same instance.
    */
   @Nonnull
   private TerminologyService terminologyService() {

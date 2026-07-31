@@ -1,6 +1,7 @@
 package com.example.fhirpath.ir.terminology;
 
 import com.example.fhirpath.analyzer.CardinalityMismatchException;
+import com.example.fhirpath.analyzer.UnsupportedFeatureException;
 import com.example.fhirpath.terminology.MockTerminologyService;
 import com.example.fhirpath.test.FhirPathTestBase;
 import java.util.stream.Stream;
@@ -48,6 +49,9 @@ public class TerminologyFunctionsTest extends FhirPathTestBase {
   /** A value set that the terminology service cannot resolve. */
   private static final String UNKNOWN_VALUE_SET = "http://example.org/ValueSet/does-not-exist";
 
+  /** A value set whose single member is declared only at code system version {@code 2.74}. */
+  private static final String VERSIONED_VALUE_SET = "http://example.org/ValueSet/versioned";
+
   /** A code that is a member of {@link #VITAL_SIGNS}. */
   private static final String MEMBER_CODE = "55915-3";
 
@@ -58,6 +62,7 @@ public class TerminologyFunctionsTest extends FhirPathTestBase {
   private static MockTerminologyService terminology() {
     return MockTerminologyService.builder()
         .withMember(VITAL_SIGNS, LOINC, MEMBER_CODE)
+        .withVersionedMember(VERSIONED_VALUE_SET, LOINC, MEMBER_CODE, "2.74")
         .withEmptyValueSet(EMPTY_VALUE_SET)
         .build();
   }
@@ -94,6 +99,18 @@ public class TerminologyFunctionsTest extends FhirPathTestBase {
   private static Observation observationWithTextOnlyCode() {
     final Observation observation = new Observation();
     observation.setCode(new CodeableConcept().setText("Nothing coded here"));
+    return observation;
+  }
+
+  /**
+   * An Observation whose code has a coding that identifies no concept. Encoded as a present but
+   * content-free coding, which reaches the UDF with null system and code — a different path from an
+   * absent coding list.
+   */
+  private static Observation observationWithIncompleteCoding() {
+    final Observation observation = new Observation();
+    observation.setCode(
+        new CodeableConcept().addCoding(new Coding().setDisplay("No system or code")));
     return observation;
   }
 
@@ -140,10 +157,20 @@ public class TerminologyFunctionsTest extends FhirPathTestBase {
         .testFalse(
             "code.coding.first().memberOf('" + VITAL_SIGNS + "')",
             "Only the selected coding is tested, unlike the concept-valued form")
+        .withSubject(observationWithIncompleteCoding())
+        .testFalse(
+            "code.memberOf('" + VITAL_SIGNS + "')",
+            "A coding without system or code identifies no concept, so it is not a member")
         .group("memberOf() empty propagation")
         .testEmpty("{}.memberOf('" + VITAL_SIGNS + "')", "Empty input yields empty")
         .withSubject(observationWithMemberFirst())
         .testEmpty("code.memberOf({})", "Empty value set argument yields empty")
+        .withSubject(observationWithTextOnlyCode())
+        .testEmpty(
+            "code.memberOf({})",
+            "Empty value set argument wins over the coding-less concept's false")
+        .withSubject(observationWithoutMember())
+        .testEmpty("code.memberOf({})", "Empty value set argument beats a non-member concept")
         .withSubject(patientWithoutMaritalStatus())
         .testEmpty("maritalStatus.memberOf('" + VITAL_SIGNS + "')", "Absent field yields empty")
         .group("memberOf() cardinality")
@@ -152,6 +179,37 @@ public class TerminologyFunctionsTest extends FhirPathTestBase {
             CardinalityMismatchException.class,
             "code.coding.memberOf('" + VITAL_SIGNS + "')",
             "Multi-valued input is rejected at compile time per D1")
+        .group("memberOf() unsupported input types")
+        .withSubject(observationWithMemberFirst())
+        .testError(
+            UnsupportedFeatureException.class,
+            "status.memberOf('" + VITAL_SIGNS + "')",
+            "code-valued input is not yet implemented — see #279")
+        .build();
+  }
+
+  /**
+   * Verifies that the code system version reaches the terminology service in the right argument
+   * slot.
+   *
+   * <p>Membership answers alone cannot show this, because version does not normally affect them —
+   * so this uses a value set whose membership is declared only at a specific version. Had {@code
+   * version} been dropped, or swapped with {@code system} or {@code code}, these expectations would
+   * flip.
+   */
+  @TestFactory
+  Stream<DynamicTest> testMemberOfPassesTheCodeSystemVersion() {
+    return builder(terminology())
+        .group("memberOf() version propagation")
+        .testTrue(
+            "(" + LOINC + "|" + MEMBER_CODE + "|'2.74').memberOf('" + VERSIONED_VALUE_SET + "')",
+            "The declared version reaches the service")
+        .testFalse(
+            "(" + LOINC + "|" + MEMBER_CODE + "|'1.00').memberOf('" + VERSIONED_VALUE_SET + "')",
+            "A different version is not the declared member")
+        .testFalse(
+            "(" + LOINC + "|" + MEMBER_CODE + ").memberOf('" + VERSIONED_VALUE_SET + "')",
+            "An absent version reaches the service as absent, not as the declared version")
         .build();
   }
 }

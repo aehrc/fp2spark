@@ -5,7 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
+import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.rest.server.exceptions.UnclassifiedServerFailureException;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.ByteArrayInputStream;
@@ -13,6 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import org.hl7.fhir.r4.model.BooleanType;
@@ -28,6 +35,7 @@ import org.junit.jupiter.api.Test;
  */
 class TerminologyServiceTest {
 
+  private static final String SERVER_URL = "http://example.org/fhir";
   private static final String VALUE_SET_URL = "http://example.org/ValueSet/vs";
   private static final String SYSTEM = "http://loinc.org";
   private static final String CODE = "55915-3";
@@ -72,7 +80,8 @@ class TerminologyServiceTest {
   @Test
   void cacheServesRepeatedRequestsFromASingleDelegateCall() {
     final RecordingTerminologyService delegate = new RecordingTerminologyService(true);
-    final CachingTerminologyService cached = new CachingTerminologyService(delegate, 100);
+    final CachingTerminologyService cached =
+        new CachingTerminologyService(delegate, 100, Duration.ofHours(1));
 
     assertEquals(Boolean.TRUE, cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, null));
     assertEquals(Boolean.TRUE, cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, null));
@@ -84,7 +93,8 @@ class TerminologyServiceTest {
   void cacheRetainsUnresolvableAnswers() {
     // Without caching nulls, a mistyped value set URL would produce one request per row.
     final RecordingTerminologyService delegate = new RecordingTerminologyService(null);
-    final CachingTerminologyService cached = new CachingTerminologyService(delegate, 100);
+    final CachingTerminologyService cached =
+        new CachingTerminologyService(delegate, 100, Duration.ofHours(1));
 
     assertNull(cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, null));
     assertNull(cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, null));
@@ -95,7 +105,8 @@ class TerminologyServiceTest {
   @Test
   void cacheDistinguishesCodesValueSetsAndVersions() {
     final RecordingTerminologyService delegate = new RecordingTerminologyService(true);
-    final CachingTerminologyService cached = new CachingTerminologyService(delegate, 100);
+    final CachingTerminologyService cached =
+        new CachingTerminologyService(delegate, 100, Duration.ofHours(1));
 
     cached.validateCode(VALUE_SET_URL, SYSTEM, CODE, null);
     cached.validateCode(VALUE_SET_URL, SYSTEM, "99999-9", null);
@@ -120,7 +131,7 @@ class TerminologyServiceTest {
   @Test
   void defaultFactorySerializesAndRebuildsAnEquivalentService() throws Exception {
     final DefaultTerminologyServiceFactory factory =
-        DefaultTerminologyServiceFactory.forServer("http://example.org/fhir");
+        DefaultTerminologyServiceFactory.forServer(SERVER_URL);
 
     final DefaultTerminologyServiceFactory deserialized = roundTrip(factory);
 
@@ -128,6 +139,28 @@ class TerminologyServiceTest {
     // Services are memoised per JVM per configuration, so an equal factory yields the same instance
     // — this is what keeps one HTTP client and one cache per executor.
     assertSame(factory.build(), deserialized.build());
+  }
+
+  @Test
+  void notFoundAndInvalidRequestMeanTheValueSetCouldNotBeResolved() {
+    // This classification carries the spec's "cannot be resolved -> empty" rule. A HAPI upgrade
+    // that remapped these statuses would otherwise silently turn empty results into job failures.
+    assertTrue(
+        DefaultTerminologyService.isUnresolvable(new ResourceNotFoundException("not found")));
+    assertTrue(DefaultTerminologyService.isUnresolvable(new InvalidRequestException("bad url")));
+  }
+
+  @Test
+  void otherServerErrorsAreGenuineFailures() {
+    // A server that is down or refusing us must not look like a code that is simply not a member.
+    assertFalse(
+        DefaultTerminologyService.isUnresolvable(new InternalErrorException("server exploded")));
+    assertFalse(
+        DefaultTerminologyService.isUnresolvable(
+            new AuthenticationException("credentials needed")));
+    assertFalse(
+        DefaultTerminologyService.isUnresolvable(
+            new UnclassifiedServerFailureException(503, "busy")));
   }
 
   @Test
@@ -139,17 +172,27 @@ class TerminologyServiceTest {
   void configurationRejectsNonPositiveTimeouts() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminologyConfiguration("http://example.org/fhir", 0, 1000, 10));
+        () -> new TerminologyConfiguration(SERVER_URL, 0, 1000, 10, Duration.ofHours(1)));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminologyConfiguration("http://example.org/fhir", 1000, 0, 10));
+        () -> new TerminologyConfiguration(SERVER_URL, 1000, 0, 10, Duration.ofHours(1)));
   }
 
   @Test
   void configurationRejectsNegativeCacheSize() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminologyConfiguration("http://example.org/fhir", 1000, 1000, -1));
+        () -> new TerminologyConfiguration(SERVER_URL, 1000, 1000, -1, Duration.ofHours(1)));
+  }
+
+  @Test
+  void configurationRejectsNonPositiveCacheTtl() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new TerminologyConfiguration(SERVER_URL, 1000, 1000, 10, Duration.ZERO));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new TerminologyConfiguration(SERVER_URL, 1000, 1000, 10, Duration.ofSeconds(-1)));
   }
 
   @SuppressWarnings("unchecked")

@@ -70,6 +70,8 @@ public record DefaultTerminologyServiceFactory(@Nonnull TerminologyConfiguration
 
     final IGenericClient client = clientFactory.newGenericClient(configuration.serverUrl());
     return new CachingTerminologyService(
-        new DefaultTerminologyService(client), configuration.cacheMaxEntries());
+        new DefaultTerminologyService(client),
+        configuration.cacheMaxEntries(),
+        configuration.cacheTtl());
   }
 }

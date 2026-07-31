@@ -4,6 +4,7 @@ import static org.apache.spark.sql.functions.exists;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
 
+import com.example.fhirpath.analyzer.UnsupportedFeatureException;
 import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.codegen.spark.udf.MemberOf;
@@ -74,17 +75,30 @@ public final class TerminologyOps {
     }
     if (isCodeableConcept(inputType)) {
       final Column codings = input.getField(CODING_FIELD);
-      return when(input.isNull(), lit(null))
+      // The empty-argument check must precede the coding-less branch below: an empty value set
+      // yields empty regardless of the input, and unlike the has-codings path that branch never
+      // reaches the UDF, where the argument would otherwise be checked. The argument is tested by
+      // column rather than by static type because the analyzer coerces an empty literal to the
+      // declared STRING parameter type, so it does not arrive typed NULL.
+      return when(input.isNull().or(valueSetUrl.isNull()), lit(null))
           // A concept carrying no codings has no code that could be a member.
           .when(codings.isNull(), lit(false))
           // exists() stops at the first member, so a concept whose first coding matches costs one
           // terminology lookup rather than one per coding. Its three-valued logic also means an
           // unresolvable value set — every element null — propagates as empty rather than false.
+          // That logic is governed by spark.sql.legacy.followThreeValuedLogicInArrayExists, which
+          // defaults to true; the unresolvable-value-set tests below fail if that ever changes.
           .otherwise(exists(codings, coding -> applyToCoding(memberOf, coding, valueSetUrl)));
     }
 
-    throw new IllegalArgumentException(
-        "memberOf() requires a Coding or CodeableConcept input, but got: " + inputType);
+    // The specification also defines memberOf() on a bare string/code, where the answer depends on
+    // the value set containing exactly one code system. That requires ValueSet expansion
+    // introspection and is deliberately not implemented yet — see #279.
+    throw new UnsupportedFeatureException(
+        "memberOf() on " + inputType + " input",
+        "only Coding and CodeableConcept input is supported; code- and string-valued input is"
+            + " tracked by #279",
+        null);
   }
 
   /** Applies the membership UDF to a single Coding struct column. */

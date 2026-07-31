@@ -4,13 +4,14 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.time.Duration;
 import java.util.Optional;
 
 /**
  * Decorates a {@link TerminologyService} with a bounded in-memory cache.
  *
- * <p>Spark invokes the {@code member_of} UDF once per row, and real datasets repeat the same (value
- * set, coding) pairs heavily, so caching removes the overwhelming majority of network calls.
+ * <p>Spark invokes the membership UDF once per row per coding, and real datasets repeat the same
+ * (value set, code) pairs heavily, so caching removes the overwhelming majority of network calls.
  *
  * <p>Unresolvable value sets are cached alongside genuine answers, so that a mistyped URL does not
  * produce one request per row.
@@ -27,15 +28,22 @@ public class CachingTerminologyService implements TerminologyService {
   @Nonnull private final Cache<CacheKey, Optional<Boolean>> cache;
 
   /**
-   * Wraps a terminology service with a cache of the given maximum size.
+   * Wraps a terminology service with a bounded, expiring cache.
+   *
+   * <p>Entries expire as well as evict because unresolvable answers are cached too: without expiry,
+   * a value set that is absent when a long-running Spark application starts would stay
+   * "unresolvable" for the lifetime of the JVM even after it is loaded onto the server.
    *
    * @param delegate the service to delegate uncached requests to
    * @param maxEntries the maximum number of cached answers
+   * @param ttl how long an answer stays cached
    */
   public CachingTerminologyService(
-      @Nonnull final TerminologyService delegate, final long maxEntries) {
+      @Nonnull final TerminologyService delegate,
+      final long maxEntries,
+      @Nonnull final Duration ttl) {
     this.delegate = delegate;
-    this.cache = Caffeine.newBuilder().maximumSize(maxEntries).build();
+    this.cache = Caffeine.newBuilder().maximumSize(maxEntries).expireAfterWrite(ttl).build();
   }
 
   @Nullable

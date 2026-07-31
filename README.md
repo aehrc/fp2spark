@@ -41,6 +41,39 @@ Column col = FhirPath.toColumn("5 + 10");
 Column result = FhirPath.toColumn("Patient.name.family");
 ```
 
+### Terminology server
+
+Terminology functions — currently `memberOf()` — need a FHIR terminology server. Supply one with
+the `TerminologyServiceFactory` overloads:
+
+```java
+import ca.uhn.fhir.context.FhirContext;
+import com.example.fhirpath.terminology.DefaultTerminologyServiceFactory;
+import com.example.fhirpath.typing.FhirResourceType;
+
+var terminology = DefaultTerminologyServiceFactory.forServer("https://tx.ontoserver.csiro.au/fhir");
+var observation = new FhirResourceType(
+    FhirContext.forR4().getResourceDefinition("Observation"));
+
+Column vitalSigns = FhirPath.toColumn(
+    "code.memberOf('http://hl7.org/fhir/ValueSet/observation-vitalsignresult')",
+    null,            // %context — optional
+    observation,
+    terminology);
+```
+
+Membership is resolved with `ValueSet/$validate-code`. Responses are cached per JVM — by default up
+to 100,000 answers for 6 hours — so repeated codes cost one request rather than one per row. Tune
+that, and the connection timeouts, by constructing a `TerminologyConfiguration` directly.
+
+**Without a configured server**, terminology functions still compile and evaluate, but every value
+set is reported as unresolvable, which the FHIR FHIRPath specification maps to an *empty* result.
+Because empty is falsy inside `where()`, an expression such as
+`Observation.component.where(code.memberOf(url))` then yields **no** rows rather than failing — so
+configure a server before relying on the results.
+
+Authentication is not yet supported: the server must be reachable without credentials.
+
 ## Architecture
 
 ```

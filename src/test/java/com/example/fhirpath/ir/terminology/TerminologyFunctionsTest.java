@@ -189,6 +189,29 @@ public class TerminologyFunctionsTest extends FhirPathTestBase {
   }
 
   /**
+   * Pins the behaviour of a build with no terminology server, which the plain {@code builder()}
+   * exercises via {@code NoTerminologyService}: every value set is unresolvable, so the result is
+   * empty, and {@code where()} therefore excludes everything. Code generation logs a warning at
+   * each call site — not asserted here, but the reason this behaviour is tolerable.
+   */
+  @TestFactory
+  Stream<DynamicTest> testMemberOfWithoutATerminologyServer() {
+    return builder()
+        .group("memberOf() with no terminology server configured")
+        .testEmpty(
+            "(" + LOINC + "|" + MEMBER_CODE + ").memberOf('" + VITAL_SIGNS + "')",
+            "Every value set is unresolvable, which yields empty")
+        .withSubject(observationWithMemberFirst())
+        .testEmpty(
+            "code.memberOf('" + VITAL_SIGNS + "')",
+            "Unresolvable propagates through the any-match over a concept's codings")
+        .testEmpty(
+            "code.coding.where($this.memberOf('" + VITAL_SIGNS + "'))",
+            "Empty is falsy in where(), so every element is silently excluded")
+        .build();
+  }
+
+  /**
    * Verifies that the code system version reaches the terminology service in the right argument
    * slot.
    *

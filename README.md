@@ -69,8 +69,9 @@ that, and the connection timeouts, by constructing a `TerminologyConfiguration` 
 **Without a configured server**, terminology functions still compile and evaluate, but every value
 set is reported as unresolvable, which the FHIR FHIRPath specification maps to an *empty* result.
 Because empty is falsy inside `where()`, an expression such as
-`Observation.component.where(code.memberOf(url))` then yields **no** rows rather than failing — so
-configure a server before relying on the results.
+`Observation.component.where(code.memberOf(url))` then yields **no** rows rather than failing. Each
+such call site logs a warning when it is compiled, since the empty output is otherwise
+indistinguishable from data that genuinely matched nothing.
 
 Authentication is not yet supported: the server must be reachable without credentials.
 

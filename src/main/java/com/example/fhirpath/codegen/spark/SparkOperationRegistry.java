@@ -57,8 +57,10 @@ public final class SparkOperationRegistry {
    * Creates the standard registry with all built-in operations, without terminology server access.
    *
    * <p>Terminology functions still compile and evaluate, but every value set is reported as
-   * unresolvable and therefore yields an empty result — see {@link NoTerminologyService}. Use
-   * {@link #standard(TerminologyServiceFactory)} to get real answers.
+   * unresolvable and therefore yields an empty result — see {@link NoTerminologyService}. Compiling
+   * a {@code memberOf()} call against this registry logs a warning, because an empty result is
+   * falsy inside {@code where()} and so silently excludes every element. Use {@link
+   * #standard(TerminologyServiceFactory)} to get real answers.
    */
   @Nonnull
   public static SparkOperationRegistry standard() {

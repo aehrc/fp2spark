@@ -8,6 +8,7 @@ import com.example.fhirpath.analyzer.UnsupportedFeatureException;
 import com.example.fhirpath.codegen.spark.SparkOpContext;
 import com.example.fhirpath.codegen.spark.SparkOperationRegistry;
 import com.example.fhirpath.codegen.spark.udf.MemberOf;
+import com.example.fhirpath.terminology.NoTerminologyService;
 import com.example.fhirpath.terminology.TerminologyServiceFactory;
 import com.example.fhirpath.typing.FhirComplexType;
 import com.example.fhirpath.typing.SystemType;
@@ -15,6 +16,8 @@ import com.example.fhirpath.typing.Type;
 import jakarta.annotation.Nonnull;
 import org.apache.spark.sql.Column;
 import org.apache.spark.sql.expressions.UserDefinedFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Terminology function registrations, defined in the FHIR-specific FHIRPath binding.
@@ -27,6 +30,8 @@ import org.apache.spark.sql.expressions.UserDefinedFunction;
  *     functions</a>
  */
 public final class TerminologyOps {
+
+  private static final Logger log = LoggerFactory.getLogger(TerminologyOps.class);
 
   /** Name of the {@code CodeableConcept} field holding its codings. */
   private static final String CODING_FIELD = "coding";
@@ -45,9 +50,30 @@ public final class TerminologyOps {
     // The UDF is built once per registry rather than per expression, so a single instance (and
     // therefore a single captured factory) is shared by every memberOf() call site.
     final UserDefinedFunction memberOf = MemberOf.udf(terminologyServiceFactory);
+    final boolean terminologyConfigured =
+        terminologyServiceFactory != NoTerminologyService.INSTANCE;
 
     // memberOf(valueSet) — tests a Coding or CodeableConcept for value set membership
-    registry.register("memberOf", ctx -> generateMemberOf(ctx, memberOf));
+    registry.register("memberOf", ctx -> generateMemberOf(ctx, memberOf, terminologyConfigured));
+  }
+
+  /**
+   * Warns that a {@code memberOf()} call site was compiled with no terminology server, and will
+   * therefore report every value set as unresolvable.
+   *
+   * <p>Emitted at code generation time — once per compiled call site, not per row. An empty result
+   * is what the specification requires for an unresolvable value set, so this cannot be an error;
+   * but empty is also falsy inside {@code where()}, so the visible symptom is a query that silently
+   * returns nothing. The javadoc on {@link NoTerminologyService} does not help someone reading that
+   * output, and this message does.
+   */
+  private static void warnTerminologyNotConfigured() {
+    log.warn(
+        "memberOf() was compiled without a terminology server, so every value set is reported as"
+            + " unresolvable and the result is empty for every input. Inside where() this silently"
+            + " excludes all elements. Supply a TerminologyServiceFactory — for example"
+            + " FhirPath.toColumn(expression, context, resourceType,"
+            + " DefaultTerminologyServiceFactory.forServer(url)).");
   }
 
   /**
@@ -60,10 +86,16 @@ public final class TerminologyOps {
    */
   @Nonnull
   private static Column generateMemberOf(
-      @Nonnull final SparkOpContext ctx, @Nonnull final UserDefinedFunction memberOf) {
+      @Nonnull final SparkOpContext ctx,
+      @Nonnull final UserDefinedFunction memberOf,
+      final boolean terminologyConfigured) {
     final Column input = ctx.arg(0);
     final Column valueSetUrl = ctx.arg(1);
     final Type inputType = ctx.argType(0);
+
+    if (!terminologyConfigured) {
+      warnTerminologyNotConfigured();
+    }
 
     if (inputType == SystemType.NULL) {
       // An empty input collection yields an empty result, with no membership test to perform.

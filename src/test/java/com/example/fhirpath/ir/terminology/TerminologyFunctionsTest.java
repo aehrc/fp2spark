@@ -156,7 +156,8 @@ public class TerminologyFunctionsTest extends FhirPathTestBase {
         .testFalse("code.memberOf('" + VITAL_SIGNS + "')", "No coding is a member")
         .withSubject(observationWithTextOnlyCode())
         .testFalse(
-            "code.memberOf('" + VITAL_SIGNS + "')", "A concept with no codings has no member")
+            "code.memberOf('" + VITAL_SIGNS + "')",
+            "A concept with no codings has no member — false, not empty, per SPEC_DIVERGENCES P2")
         .withSubject(observationWithEmptyCode())
         .testEmpty(
             "code.memberOf('" + VITAL_SIGNS + "')",

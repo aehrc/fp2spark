@@ -113,7 +113,10 @@ public final class TerminologyOps {
       // column rather than by static type because the analyzer coerces an empty literal to the
       // declared STRING parameter type, so it does not arrive typed NULL.
       return when(input.isNull().or(valueSetUrl.isNull()), lit(null))
-          // A concept carrying no codings has no code that could be a member.
+          // A concept carrying no codings has no code that could be a member, so "any code in the
+          // concept is a member" is vacuously false. Pathling yields empty here instead — see
+          // SPEC_DIVERGENCES P2. HAPI's encoder writes an absent coding list as null rather than an
+          // empty array, so this branch is what a text-only concept actually hits.
           .when(codings.isNull(), lit(false))
           // exists() stops at the first member, so a concept whose first coding matches costs one
           // terminology lookup rather than one per coding. Its three-valued logic also means an

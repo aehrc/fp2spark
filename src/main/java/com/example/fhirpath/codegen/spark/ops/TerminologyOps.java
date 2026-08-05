@@ -1,5 +1,6 @@
 package com.example.fhirpath.codegen.spark.ops;
 
+import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.exists;
 import static org.apache.spark.sql.functions.lit;
 import static org.apache.spark.sql.functions.when;
@@ -81,9 +82,8 @@ public final class TerminologyOps {
    * Generates {@code memberOf(valueSet)}.
    *
    * <p>A {@code Coding} input is tested directly. A {@code CodeableConcept} input is true if any of
-   * its codings is a member, evaluated with Spark's {@code exists} over the {@code coding} array.
-   * {@code exists} uses three-valued logic, so an unresolvable value set — for which every element
-   * yields null — correctly propagates as an empty result rather than as false.
+   * its codings is a member — see {@link #anyCodingIsMember} for how an unresolvable value set
+   * correctly propagates as an empty result rather than as false.
    */
   @Nonnull
   private static Column generateMemberOf(
@@ -119,12 +119,7 @@ public final class TerminologyOps {
           // SPEC_DIVERGENCES P2. HAPI's encoder writes an absent coding list as null rather than an
           // empty array, so this branch is what a text-only concept actually hits.
           .when(codings.isNull(), lit(false))
-          // exists() stops at the first member, so a concept whose first coding matches costs one
-          // terminology lookup rather than one per coding. Its three-valued logic also means an
-          // unresolvable value set — every element null — propagates as empty rather than false.
-          // That logic is governed by spark.sql.legacy.followThreeValuedLogicInArrayExists, which
-          // defaults to true; the unresolvable-value-set tests below fail if that ever changes.
-          .otherwise(exists(codings, coding -> applyToCoding(memberOf, coding, valueSetUrl)));
+          .otherwise(anyCodingIsMember(memberOf, codings, valueSetUrl));
     }
 
     // The specification also defines memberOf() on a bare string/code, where the answer depends on
@@ -139,6 +134,35 @@ public final class TerminologyOps {
         "only Coding and CodeableConcept input is supported; code- and string-valued input is"
             + " tracked by #279",
         null);
+  }
+
+  /**
+   * Tests whether any coding in {@code codings} is a member of the value set, propagating an
+   * unresolvable value set (every coding's result is null) as null rather than false.
+   *
+   * <p>This does not use a single {@code exists(codings, coding -> applyToCoding(...))} call,
+   * because {@code exists()}'s null-propagation is ambiguous — and governed by {@code
+   * spark.sql.legacy.followThreeValuedLogicInArrayExists} — only when its predicate itself can
+   * evaluate to null. Splitting into two boolean-only predicates ({@code coalesce(...)} and {@code
+   * isNull()} can each only yield true or false, never null) sidesteps that ambiguity entirely, so
+   * the result no longer depends on a Spark session config this library doesn't control.
+   *
+   * <p>{@code anyTrue} keeps {@code exists()}'s short-circuit on the first matching coding, so a
+   * concept whose first coding matches still costs one terminology lookup. {@code anyNull} only
+   * runs a second pass when no coding matched, and by then {@code CachingTerminologyService} has
+   * already cached every coding's result from the first pass.
+   */
+  @Nonnull
+  private static Column anyCodingIsMember(
+      @Nonnull final UserDefinedFunction memberOf,
+      @Nonnull final Column codings,
+      @Nonnull final Column valueSetUrl) {
+    final Column anyTrue =
+        exists(
+            codings, coding -> coalesce(applyToCoding(memberOf, coding, valueSetUrl), lit(false)));
+    final Column anyNull =
+        exists(codings, coding -> applyToCoding(memberOf, coding, valueSetUrl).isNull());
+    return when(anyTrue, lit(true)).when(anyNull, lit(null)).otherwise(lit(false));
   }
 
   /** Applies the membership UDF to a single Coding struct column. */

@@ -103,6 +103,17 @@ public class TerminologyFunctionsTest extends FhirPathTestBase {
   }
 
   /**
+   * An Observation whose code is present in the model but carries no content at all. HAPI's encoder
+   * writes this as an absent struct, unlike {@link #observationWithTextOnlyCode()} which is present
+   * but coding-less — the two therefore take different branches.
+   */
+  private static Observation observationWithEmptyCode() {
+    final Observation observation = new Observation();
+    observation.setCode(new CodeableConcept());
+    return observation;
+  }
+
+  /**
    * An Observation whose code has a coding that identifies no concept. Encoded as a present but
    * content-free coding, which reaches the UDF with null system and code — a different path from an
    * absent coding list.
@@ -146,6 +157,11 @@ public class TerminologyFunctionsTest extends FhirPathTestBase {
         .withSubject(observationWithTextOnlyCode())
         .testFalse(
             "code.memberOf('" + VITAL_SIGNS + "')", "A concept with no codings has no member")
+        .withSubject(observationWithEmptyCode())
+        .testEmpty(
+            "code.memberOf('" + VITAL_SIGNS + "')",
+            "A concept with no content at all encodes as absent, so it yields empty rather than the"
+                + " false of a text-only concept")
         .withSubject(observationWithMemberFirst())
         .testEmpty(
             "code.memberOf('" + UNKNOWN_VALUE_SET + "')",

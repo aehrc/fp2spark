@@ -96,12 +96,11 @@ excludeSet:
         type: feature
         id: "#203"
         comment: |
-          subsumes(), subsumedBy(), memberOf(), conformsTo() — require FHIR
-          terminology server integration.
+          subsumes(), subsumedBy(), conformsTo() — require FHIR terminology
+          server integration. memberOf() was implemented in #272.
         function:
           - subsumes
           - subsumedBy
-          - memberOf
           - conformsTo
       - title: FHIR htmlChecks() not yet implemented
         type: feature

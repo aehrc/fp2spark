@@ -107,7 +107,7 @@ public final class ConversionOps {
       }
       final Column input = ctx.arg(0);
       final Column result = validationFn.validate(sourceType, input);
-      return nullPropagate(input, result);
+      return NullSupport.propagateNull(result, input);
     };
   }
 
@@ -161,7 +161,7 @@ public final class ConversionOps {
       final Column result =
           when(unitArg.isNotNull(), when(canConvert, converted.isNotNull()).otherwise(lit(false)))
               .otherwise(canConvert);
-      return nullPropagate(input, result);
+      return NullSupport.propagateNull(result, input);
     };
   }
 
@@ -403,17 +403,6 @@ public final class ConversionOps {
       case STRING -> value.rlike(QUANTITY_REGEX);
       default -> lit(false);
     };
-  }
-
-  // ========== Helper Methods ==========
-
-  /**
-   * Wraps a result column with null propagation: returns null when the input is null, ensuring
-   * empty FHIRPath collections produce empty results per spec §5.7.
-   */
-  @Nonnull
-  private static Column nullPropagate(@Nonnull final Column input, @Nonnull final Column result) {
-    return when(input.isNotNull(), result);
   }
 
   /**

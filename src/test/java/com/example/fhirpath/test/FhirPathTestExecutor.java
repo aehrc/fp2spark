@@ -1,6 +1,9 @@
 package com.example.fhirpath.test;
 
+import com.example.fhirpath.CompilationOptions;
 import com.example.fhirpath.FhirPath;
+import com.example.fhirpath.terminology.NoTerminologyService;
+import com.example.fhirpath.terminology.TerminologyServiceFactory;
 import com.example.fhirpath.typing.ResourceType;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -23,8 +26,18 @@ public class FhirPathTestExecutor {
 
   private final SparkSession spark;
 
+  /** Terminology service used to resolve terminology functions such as {@code memberOf()}. */
+  @Nonnull private final TerminologyServiceFactory terminologyServiceFactory;
+
   public FhirPathTestExecutor(@Nonnull final SparkSession spark) {
+    this(spark, NoTerminologyService.INSTANCE);
+  }
+
+  public FhirPathTestExecutor(
+      @Nonnull final SparkSession spark,
+      @Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
     this.spark = spark;
+    this.terminologyServiceFactory = terminologyServiceFactory;
   }
 
   void executeTest(@Nonnull final TestCase testCase) {
@@ -35,18 +48,17 @@ public class FhirPathTestExecutor {
       final ResourceType resourceType =
           testCase.subject() != null ? testCase.subject().getResourceType() : null;
 
-      // Use FhirPath API to compile expression
-      final Column column;
-      if (resourceType != null && testCase.context() != null) {
-        column =
-            FhirPath.toColumn(testCase.expression(), testCase.context().expression(), resourceType);
-      } else if (resourceType != null) {
-        column = FhirPath.toColumn(testCase.expression(), resourceType);
-      } else if (testCase.context() != null) {
-        column = FhirPath.toColumn(testCase.expression(), testCase.context().expression());
-      } else {
-        column = FhirPath.toColumn(testCase.expression());
-      }
+      // Use FhirPath API to compile expression. The general overload is used for every combination
+      // so that the configured terminology service applies uniformly.
+      final String contextExpression =
+          testCase.context() != null ? testCase.context().expression() : null;
+      final Column column =
+          FhirPath.toColumn(
+              testCase.expression(),
+              contextExpression,
+              resourceType,
+              CompilationOptions.defaults()
+                  .withTerminologyServiceFactory(terminologyServiceFactory));
 
       // Execute with Spark
       final Dataset<Row> inputDataset =

@@ -13,7 +13,10 @@ import com.example.fhirpath.codegen.spark.ops.MathOps;
 import com.example.fhirpath.codegen.spark.ops.MembershipOps;
 import com.example.fhirpath.codegen.spark.ops.SetOps;
 import com.example.fhirpath.codegen.spark.ops.StringOps;
+import com.example.fhirpath.codegen.spark.ops.TerminologyOps;
 import com.example.fhirpath.codegen.spark.ops.TypeOps;
+import com.example.fhirpath.terminology.NoTerminologyService;
+import com.example.fhirpath.terminology.TerminologyServiceFactory;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
@@ -50,9 +53,30 @@ public final class SparkOperationRegistry {
     return operations.get(name);
   }
 
-  /** Creates the standard registry with all built-in operations. */
+  /**
+   * Creates the standard registry with all built-in operations, without terminology server access.
+   *
+   * <p>Terminology functions still compile and evaluate, but every value set is reported as
+   * unresolvable and therefore yields an empty result — see {@link NoTerminologyService}. Compiling
+   * a {@code memberOf()} call against this registry logs a warning, because an empty result is
+   * falsy inside {@code where()} and so silently excludes every element. Use {@link
+   * #standard(TerminologyServiceFactory)} to get real answers.
+   */
   @Nonnull
   public static SparkOperationRegistry standard() {
+    return standard(NoTerminologyService.INSTANCE);
+  }
+
+  /**
+   * Creates the standard registry with all built-in operations, resolving terminology functions
+   * against the given terminology service.
+   *
+   * @param terminologyServiceFactory the factory used to reach a terminology server on executors
+   * @return a registry with all built-in operations registered
+   */
+  @Nonnull
+  public static SparkOperationRegistry standard(
+      @Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
     final SparkOperationRegistry registry = new SparkOperationRegistry();
     BooleanOps.register(registry);
     ArithmeticOps.register(registry);
@@ -68,6 +92,7 @@ public final class SparkOperationRegistry {
     StringOps.register(registry);
     MathOps.register(registry);
     ConversionOps.register(registry);
+    TerminologyOps.register(registry, terminologyServiceFactory);
     return registry;
   }
 }

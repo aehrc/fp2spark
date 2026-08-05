@@ -9,6 +9,8 @@ import ca.uhn.fhir.context.RuntimePrimitiveDatatypeDefinition;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.Optional;
+import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Quantity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +55,29 @@ public non-sealed class FhirComplexType implements ComplexType {
    */
   public boolean isQuantityCompatible() {
     return Quantity.class.isAssignableFrom(definition.getImplementingClass());
+  }
+
+  /**
+   * Returns {@code true} if this FHIR complex type is structurally compatible with {@link
+   * SystemType#CODING}, i.e. it is Coding or one of its HAPI subclasses.
+   *
+   * <p>Tested by HAPI class assignability rather than by type name so that subclasses are
+   * recognised, mirroring {@link #isQuantityCompatible()}.
+   */
+  public boolean isCodingCompatible() {
+    return Coding.class.isAssignableFrom(definition.getImplementingClass());
+  }
+
+  /**
+   * Returns {@code true} if this FHIR complex type is a {@code CodeableConcept} or one of its HAPI
+   * subclasses.
+   *
+   * <p>Unlike {@link #isCodingCompatible()} there is no corresponding {@link SystemType}, so
+   * callers that accept both shapes — such as the terminology functions — must branch on this
+   * separately.
+   */
+  public boolean isCodeableConcept() {
+    return CodeableConcept.class.isAssignableFrom(definition.getImplementingClass());
   }
 
   @Override

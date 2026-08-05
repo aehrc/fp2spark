@@ -35,15 +35,15 @@ public record TerminologyConfiguration(
   /** Default socket read timeout, in milliseconds. */
   public static final int DEFAULT_SOCKET_TIMEOUT_MILLIS = 30_000;
 
-  /** Default maximum number of cached validate-code results. */
-  public static final long DEFAULT_CACHE_MAX_ENTRIES = 100_000L;
+  /** Default maximum number of cached validate-code results. Matches Pathling's default. */
+  public static final long DEFAULT_CACHE_MAX_ENTRIES = 200_000L;
 
   /**
-   * Default lifetime of a cached validate-code result. Generous, because value set contents change
-   * rarely, but finite so that a long-running application eventually re-checks a value set that was
-   * unresolvable earlier.
+   * Default lifetime of a cached validate-code result. Matches Pathling's default fallback expiry —
+   * Pathling additionally respects a server-provided expiry when present and revalidates via ETag,
+   * neither of which fp2sql currently implements; see #288.
    */
-  public static final Duration DEFAULT_CACHE_TTL = Duration.ofHours(6);
+  public static final Duration DEFAULT_CACHE_TTL = Duration.ofMinutes(10);
 
   /** Whether transient request failures are retried by default. */
   public static final boolean DEFAULT_RETRY_ENABLED = true;

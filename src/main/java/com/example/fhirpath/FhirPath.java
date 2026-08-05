@@ -96,17 +96,15 @@ public final class FhirPath {
   }
 
   /**
-   * Compile a FHIRPath expression with terminology server access, for expressions using terminology
-   * functions such as {@code memberOf()}.
+   * Compile a FHIRPath expression with additional compilation options, such as terminology server
+   * access for expressions using terminology functions like {@code memberOf()}.
    *
    * <p>This is the general form: {@code context} and {@code resourceSpec} are both optional.
-   * Without a terminology factory — as in the other {@code toColumn} overloads — every value set is
-   * reported as unresolvable and terminology functions yield empty results.
    *
    * @param expr The FHIRPath expression to compile
    * @param context The FHIRPath expression to use as %context, or null for none
    * @param resourceSpec The resource specification defining the structure, or null for none
-   * @param terminologyServiceFactory The factory used to reach a terminology server on executors
+   * @param options Additional compilation options
    * @return A Spark SQL Column representing the compiled expression
    */
   @Nonnull
@@ -114,8 +112,8 @@ public final class FhirPath {
       @Nonnull final String expr,
       @Nullable final String context,
       @Nullable final ResourceType resourceSpec,
-      @Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
-    return compile(expr, context, resourceSpec, terminologyServiceFactory);
+      @Nonnull final CompilationOptions options) {
+    return compile(expr, context, resourceSpec, options.terminologyServiceFactory());
   }
 
   /**
@@ -149,24 +147,24 @@ public final class FhirPath {
    */
   @Nonnull
   public static Column generate(@Nonnull final IRNode ir, @Nullable final Column rootColumn) {
-    return generate(ir, rootColumn, NoTerminologyService.INSTANCE);
+    return generate(ir, rootColumn, CompilationOptions.defaults());
   }
 
   /**
-   * Generates a Spark SQL Column from a pre-compiled IR node, with terminology server access.
+   * Generates a Spark SQL Column from a pre-compiled IR node, with additional compilation options.
    *
    * @param ir the pre-compiled IR node
    * @param rootColumn the root column for field access, or null for dataset root
-   * @param terminologyServiceFactory the factory used to reach a terminology server on executors
+   * @param options Additional compilation options
    * @return a Spark SQL Column representing the IR
    */
   @Nonnull
   public static Column generate(
       @Nonnull final IRNode ir,
       @Nullable final Column rootColumn,
-      @Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
+      @Nonnull final CompilationOptions options) {
     final SparkCodeGenerator gen =
-        new SparkCodeGenerator(SparkOperationRegistry.standard(terminologyServiceFactory))
+        new SparkCodeGenerator(SparkOperationRegistry.standard(options.terminologyServiceFactory()))
             .withRootColumn(rootColumn);
     return ir.accept(gen);
   }

@@ -71,9 +71,10 @@ public final class TerminologyOps {
     log.warn(
         "memberOf() was compiled without a terminology server, so every value set is reported as"
             + " unresolvable and the result is empty for every input. Inside where() this silently"
-            + " excludes all elements. Supply a TerminologyServiceFactory — for example"
-            + " FhirPath.toColumn(expression, context, resourceType,"
-            + " DefaultTerminologyServiceFactory.forServer(url)).");
+            + " excludes all elements. Supply a TerminologyServiceFactory via CompilationOptions —"
+            + " for example FhirPath.toColumn(expression, context, resourceType,"
+            + " CompilationOptions.defaults().withTerminologyServiceFactory("
+            + "DefaultTerminologyServiceFactory.forServer(url))).");
   }
 
   /**

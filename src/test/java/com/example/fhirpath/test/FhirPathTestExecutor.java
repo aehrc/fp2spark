@@ -1,5 +1,6 @@
 package com.example.fhirpath.test;
 
+import com.example.fhirpath.CompilationOptions;
 import com.example.fhirpath.FhirPath;
 import com.example.fhirpath.terminology.NoTerminologyService;
 import com.example.fhirpath.terminology.TerminologyServiceFactory;
@@ -53,7 +54,11 @@ public class FhirPathTestExecutor {
           testCase.context() != null ? testCase.context().expression() : null;
       final Column column =
           FhirPath.toColumn(
-              testCase.expression(), contextExpression, resourceType, terminologyServiceFactory);
+              testCase.expression(),
+              contextExpression,
+              resourceType,
+              CompilationOptions.defaults()
+                  .withTerminologyServiceFactory(terminologyServiceFactory));
 
       // Execute with Spark
       final Dataset<Row> inputDataset =

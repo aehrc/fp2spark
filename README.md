@@ -43,23 +43,26 @@ Column result = FhirPath.toColumn("Patient.name.family");
 
 ### Terminology server
 
-Terminology functions — currently `memberOf()` — need a FHIR terminology server. Supply one with
-the `TerminologyServiceFactory` overloads:
+Terminology functions — currently `memberOf()` — need a FHIR terminology server. Supply one via
+`CompilationOptions`, the general options type for `toColumn`/`generate` (config beyond the
+expression itself grows here, as a field, rather than as another parameter):
 
 ```java
 import ca.uhn.fhir.context.FhirContext;
+import com.example.fhirpath.CompilationOptions;
 import com.example.fhirpath.terminology.DefaultTerminologyServiceFactory;
 import com.example.fhirpath.typing.FhirResourceType;
 
 var terminology = DefaultTerminologyServiceFactory.forServer("https://tx.ontoserver.csiro.au/fhir");
 var observation = new FhirResourceType(
     FhirContext.forR4().getResourceDefinition("Observation"));
+var options = CompilationOptions.defaults().withTerminologyServiceFactory(terminology);
 
 Column vitalSigns = FhirPath.toColumn(
     "code.memberOf('http://hl7.org/fhir/ValueSet/observation-vitalsignresult')",
     null,            // %context — optional
     observation,
-    terminology);
+    options);
 ```
 
 Membership is resolved with `ValueSet/$validate-code`. Responses are cached per JVM — by default up

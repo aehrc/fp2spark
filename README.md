@@ -66,8 +66,10 @@ Column vitalSigns = FhirPath.toColumn(
 ```
 
 Membership is resolved with `ValueSet/$validate-code`. Responses are cached per JVM — by default up
-to 100,000 answers for 6 hours — so repeated codes cost one request rather than one per row. Tune
-that, and the connection timeouts, by constructing a `TerminologyConfiguration` directly.
+to 200,000 answers for 10 minutes, matching Pathling's own fallback expiry — so repeated codes cost
+one request rather than one per row. Unlike Pathling, fp2sql doesn't yet respect a server-provided
+expiry or revalidate via ETag ([#288](https://github.com/aehrc/fp2spark/issues/288)). Tune the cache
+size and TTL, and the connection timeouts, by constructing a `TerminologyConfiguration` directly.
 
 **Without a configured server**, terminology functions still compile and evaluate, but every value
 set is reported as unresolvable, which the FHIR FHIRPath specification maps to an *empty* result.
@@ -123,6 +125,8 @@ Spark SQL Column
 - Comparison operators: `=`, `!=`, `<`, `<=`, `>`, `>=`
 - Functions: `where()`, `exists()`, `empty()`, `ofType()`, `first()`
 - Collection indexer: `collection[index]`
+- Terminology functions: `memberOf()` (needs a terminology server — see
+  [Terminology server](#terminology-server))
 
 **Coming in Phase 2**:
 - FHIR-specific types and resources

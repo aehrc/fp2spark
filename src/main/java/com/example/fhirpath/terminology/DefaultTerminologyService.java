@@ -2,8 +2,6 @@ package com.example.fhirpath.terminology;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
-import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
-import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.hl7.fhir.r4.model.CodeType;
@@ -83,16 +81,20 @@ public class DefaultTerminologyService implements TerminologyService {
    * Classifies a server error as a failure to resolve the value set, as opposed to a genuine
    * failure.
    *
-   * <p>This distinction carries the specification's "cannot be resolved → empty" rule: only these
-   * responses become an empty result. Anything else — a timeout, a 500, an authentication failure —
-   * must surface as a Spark task failure rather than masquerade as data that is not in the value
-   * set.
+   * <p>This distinction carries the specification's "cannot be resolved → empty" rule: a 4xx
+   * response means the server rejected the request as we made it — most often because the value set
+   * URI does not resolve, but the specification does not require finer-grained diagnosis than that.
+   * Matches Pathling's {@code BaseTerminologyService.handleError}, including its treatment of
+   * 401/403 as unresolvable rather than as a distinguished failure — see #283 for the risk that
+   * carries (a rate-limited or misconfigured server can silently look like "no code is a member"
+   * instead of failing the job). Anything else — a timeout, a 5xx — surfaces as a Spark task
+   * failure.
    *
    * <p>Package-private so the classification is testable without an HTTP server, since which
    * exception HAPI maps a given status to is not something to discover after a dependency upgrade.
    */
   static boolean isUnresolvable(@Nonnull final BaseServerResponseException e) {
-    return e instanceof ResourceNotFoundException || e instanceof InvalidRequestException;
+    return e.getStatusCode() / 100 == 4;
   }
 
   /**

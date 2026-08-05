@@ -73,7 +73,23 @@ Because empty is falsy inside `where()`, an expression such as
 such call site logs a warning when it is compiled, since the empty output is otherwise
 indistinguishable from data that genuinely matched nothing.
 
-Authentication is not yet supported: the server must be reachable without credentials.
+**Error handling.** Any 4xx response — most often because the value set URI doesn't resolve, but
+also, deliberately, an authentication failure (401/403) — is treated the same as an unconfigured
+server: an empty result. This matches Pathling's terminology client exactly, including the
+401/403 case; [#283](https://github.com/aehrc/fp2spark/issues/283) tracks the risk that carries (a
+rate-limited or otherwise-misbehaving server returning some other 4xx could silently look like "no
+code is a member" instead of failing the job). Anything else — a 5xx, or a connection problem that
+survives retries — throws and fails the Spark task.
+
+Some request failures are retried before that happens, by the underlying Apache HttpClient's
+default retry handler — 2 retries by default, tune `retryEnabled`/`retryCount` on
+`TerminologyConfiguration`. That default handler's exclusion list is narrower than "connection
+problem" might suggest: a socket timeout, connection refused, DNS failure, and TLS failure are
+**not** retried by it — only other `IOException`s (e.g. a connection reset mid-response) are. This
+again matches Pathling's terminology client exactly, down to the retry handler class.
+
+Authentication is not yet supported: the server must be reachable without credentials
+([#282](https://github.com/aehrc/fp2spark/issues/282)).
 
 ## Architecture
 

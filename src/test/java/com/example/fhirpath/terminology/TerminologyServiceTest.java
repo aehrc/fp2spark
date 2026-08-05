@@ -8,10 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
+import ca.uhn.fhir.rest.server.exceptions.ForbiddenOperationException;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnclassifiedServerFailureException;
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.io.ByteArrayInputStream;
@@ -19,9 +21,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.ConnectException;
+import java.net.NoRouteToHostException;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.http.NoHttpResponseException;
+import org.apache.http.protocol.BasicHttpContext;
 import org.hl7.fhir.r4.model.BooleanType;
 import org.hl7.fhir.r4.model.Parameters;
 import org.junit.jupiter.api.Test;
@@ -142,25 +150,62 @@ class TerminologyServiceTest {
   }
 
   @Test
-  void notFoundAndInvalidRequestMeanTheValueSetCouldNotBeResolved() {
-    // This classification carries the spec's "cannot be resolved -> empty" rule. A HAPI upgrade
-    // that remapped these statuses would otherwise silently turn empty results into job failures.
+  void any4xxMeansTheValueSetCouldNotBeResolved() {
+    // This classification carries the spec's "cannot be resolved -> empty" rule. Any 4xx is treated
+    // as a rejection of the request as made — most often an unresolvable value set URI, but the
+    // specification does not require finer diagnosis. Matches Pathling's BaseTerminologyService
+    // exactly, including 401/403 — see #283 for the risk that carries.
     assertTrue(
         DefaultTerminologyService.isUnresolvable(new ResourceNotFoundException("not found")));
     assertTrue(DefaultTerminologyService.isUnresolvable(new InvalidRequestException("bad url")));
+    assertTrue(
+        DefaultTerminologyService.isUnresolvable(new UnprocessableEntityException("bad code")));
+    assertTrue(
+        DefaultTerminologyService.isUnresolvable(
+            new AuthenticationException("credentials needed")));
+    assertTrue(
+        DefaultTerminologyService.isUnresolvable(new ForbiddenOperationException("not allowed")));
   }
 
   @Test
   void otherServerErrorsAreGenuineFailures() {
-    // A server that is down or refusing us must not look like a code that is simply not a member.
+    // A server that is down or erroring must not look like a code that is simply not a member.
     assertFalse(
         DefaultTerminologyService.isUnresolvable(new InternalErrorException("server exploded")));
     assertFalse(
         DefaultTerminologyService.isUnresolvable(
-            new AuthenticationException("credentials needed")));
-    assertFalse(
-        DefaultTerminologyService.isUnresolvable(
             new UnclassifiedServerFailureException(503, "busy")));
+  }
+
+  @Test
+  void retryHandlerRetriesGenericIoFailuresButNotConnectionLevelOnes() {
+    // Pins DefaultHttpRequestRetryHandler's default nonRetriableClasses, since the retry handler's
+    // whole purpose depends on which exceptions actually get retried — see the buildHttpClient
+    // javadoc on DefaultTerminologyServiceFactory for why this list is exactly this and not, say,
+    // "everything that looks like a connection problem".
+    final DefaultTerminologyServiceFactory.LoggingRequestRetryHandler handler =
+        new DefaultTerminologyServiceFactory.LoggingRequestRetryHandler(2);
+    final BasicHttpContext context = new BasicHttpContext();
+
+    assertFalse(handler.retryRequest(new SocketTimeoutException(), 1, context), "timeout");
+    assertFalse(handler.retryRequest(new ConnectException(), 1, context), "connection refused");
+    assertFalse(handler.retryRequest(new UnknownHostException(), 1, context), "DNS failure");
+    assertFalse(handler.retryRequest(new NoRouteToHostException(), 1, context));
+    assertTrue(
+        handler.retryRequest(new NoHttpResponseException("connection reset"), 1, context),
+        "a generic IOException not in the exclusion list is retried");
+  }
+
+  @Test
+  void retryHandlerStopsAfterTheConfiguredCount() {
+    final DefaultTerminologyServiceFactory.LoggingRequestRetryHandler handler =
+        new DefaultTerminologyServiceFactory.LoggingRequestRetryHandler(2);
+    final BasicHttpContext context = new BasicHttpContext();
+    final NoHttpResponseException retryable = new NoHttpResponseException("connection reset");
+
+    assertTrue(handler.retryRequest(retryable, 1, context));
+    assertTrue(handler.retryRequest(retryable, 2, context));
+    assertFalse(handler.retryRequest(retryable, 3, context), "exceeds the configured retry count");
   }
 
   @Test
@@ -172,27 +217,39 @@ class TerminologyServiceTest {
   void configurationRejectsNonPositiveTimeouts() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminologyConfiguration(SERVER_URL, 0, 1000, 10, Duration.ofHours(1)));
+        () -> new TerminologyConfiguration(SERVER_URL, 0, 1000, 10, Duration.ofHours(1), true, 2));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminologyConfiguration(SERVER_URL, 1000, 0, 10, Duration.ofHours(1)));
+        () -> new TerminologyConfiguration(SERVER_URL, 1000, 0, 10, Duration.ofHours(1), true, 2));
   }
 
   @Test
   void configurationRejectsNegativeCacheSize() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminologyConfiguration(SERVER_URL, 1000, 1000, -1, Duration.ofHours(1)));
+        () ->
+            new TerminologyConfiguration(SERVER_URL, 1000, 1000, -1, Duration.ofHours(1), true, 2));
   }
 
   @Test
   void configurationRejectsNonPositiveCacheTtl() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminologyConfiguration(SERVER_URL, 1000, 1000, 10, Duration.ZERO));
+        () -> new TerminologyConfiguration(SERVER_URL, 1000, 1000, 10, Duration.ZERO, true, 2));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new TerminologyConfiguration(SERVER_URL, 1000, 1000, 10, Duration.ofSeconds(-1)));
+        () ->
+            new TerminologyConfiguration(
+                SERVER_URL, 1000, 1000, 10, Duration.ofSeconds(-1), true, 2));
+  }
+
+  @Test
+  void configurationRejectsNegativeRetryCount() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new TerminologyConfiguration(
+                SERVER_URL, 1000, 1000, 10, Duration.ofHours(1), true, -1));
   }
 
   @SuppressWarnings("unchecked")

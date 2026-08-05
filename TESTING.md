@@ -240,7 +240,7 @@ determines how the exclusion is tracked and what label to use when filing issues
 | `bug` | fp2sql produces incorrect results | `type:bug` + `compat:fhirpath-js` | File an issue via `id`; fix is expected |
 | `design` | Intentional fp2sql choice that diverges from a reference implementation — either an outright spec divergence (D-entry) or a spec-permitted policy choice (P-entry) | — | **MUST** trace to a D-entry or P-entry in SPEC_DIVERGENCES.md |
 | `ref-impl-bug` | fhirpath.js reference implementation disagrees with the spec; fp2sql is correct | — | **MUST** trace to an R-entry in SPEC_DIVERGENCES.md |
-| `test-infra` | Test infrastructure limitation (e.g. YAML variable injection) | `type:test-infra` (if tracked as an issue) | Comment explaining the limitation |
+| `test-infra` | Test infrastructure limitation (e.g. YAML variable injection) | `type:test-infra` | File an issue via `id`; comment explains the limitation |
 | ~~`wontfix`~~ | **Obsolete.** Do not use for new exclusions. Existing uses to be reclassified (#173). | — | — |
 
 Pick `type:spec-gap` when the linked feature already works for the common

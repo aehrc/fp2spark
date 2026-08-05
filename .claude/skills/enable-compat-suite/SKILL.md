@@ -329,7 +329,7 @@ import yaml, pathlib, re
 cfg = yaml.safe_load(pathlib.Path('src/test/resources/fhirpath-js/config.yaml').read_text())
 for block in cfg['excludeSet']:
     for r in block.get('exclude', []):
-        if r.get('type') == 'design' and not re.search(r'[DP]\d+', r.get('comment') or ''):
+        if r.get('type') == 'design' and not re.search(r'\b[DP]\d+\b', r.get('comment') or ''):
             print('design w/o D-/P-entry:', r.get('title'))
         if r.get('type') == 'ref-impl-bug' and not re.search(r'R\d+', r.get('comment') or ''):
             print('ref-impl-bug w/o R-entry:', r.get('title'))

@@ -347,6 +347,7 @@ excludeSet:
       # Must come before the broad Functions.str.* rule so the more specific match wins.
       - title: Functions.str.empty passes for toChars/join post-#156
         type: test-infra
+        id: "#290"
         comment: |
           Not a divergence — fp2sql matches fhirpath.js here. toChars() and join()
           accept MANY-cardinality input and empty-propagate, so
@@ -355,7 +356,8 @@ excludeSet:
           rule exists only because the broader Functions.str.* rule below (D1) matches
           by regex on expression text and would otherwise wrongly swallow these two
           functions too, demanding an error for input they legitimately accept. Must
-          precede that rule so the more specific match wins.
+          precede that rule so the more specific match wins. #290 tracks narrowing D1's
+          matcher so this carve-out can be deleted entirely.
         outcome: pass
         expression:
           - "^Functions\\.str\\.empty\\.(toChars\\(\\)|join\\(',' *\\))$"

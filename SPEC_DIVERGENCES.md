@@ -171,7 +171,9 @@ The spec leaves a behaviour open in one of two ways:
 - **Silence on an input shape** — the spec defines the general rule and
   enumerates its exceptions, but some input falls outside both, so the answer
   follows from how exhaustively that enumeration is read (P2). The other
-  implementation's choice is not necessarily spec-compliant in these cases.
+  implementation reads that same silence differently than fp2sql does. Where
+  the spec *does* answer and the other implementation contradicts it, that is
+  an R-entry (reference implementation bug), not a P-entry.
 
 The reference implementation compared against is **fhirpath.js** for core
 FHIRPath, and **Pathling** for the FHIR-specific bindings that fhirpath.js does

@@ -104,7 +104,7 @@ public final class TerminologyOps {
     }
     if (isCoding(inputType)) {
       // A null Coding is an empty collection, which yields an empty result.
-      return when(input.isNotNull(), applyToCoding(memberOf, input, valueSetUrl));
+      return NullSupport.propagateNull(applyToCoding(memberOf, input, valueSetUrl), input);
     }
     if (isCodeableConcept(inputType)) {
       final Column codings = input.getField(CODING_FIELD);

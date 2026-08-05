@@ -5,7 +5,6 @@ import static com.example.fhirpath.codegen.spark.SparkDefs.collectionUnary;
 import static com.example.fhirpath.codegen.spark.SparkDefs.unary;
 import static org.apache.spark.sql.functions.coalesce;
 import static org.apache.spark.sql.functions.lit;
-import static org.apache.spark.sql.functions.when;
 
 import com.example.fhirpath.codegen.spark.CollectionValue;
 import com.example.fhirpath.codegen.spark.SparkOperationDef;
@@ -41,9 +40,7 @@ public final class BooleanOps {
     registry.register("implies", binary((l, r) -> functions.not(l).or(r)));
 
     // xor: null if either operand is null, otherwise not-equal
-    registry.register(
-        "xor",
-        binary((l, r) -> when(l.isNull().or(r.isNull()), lit(null)).otherwise(l.notEqual(r))));
+    registry.register("xor", binary((l, r) -> NullSupport.propagateNull(l.notEqual(r), l, r)));
 
     // not: Spark's NOT handles three-valued logic correctly
     registry.register("not", unary(functions::not));

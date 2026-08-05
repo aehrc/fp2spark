@@ -130,6 +130,10 @@ public final class TerminologyOps {
     // The specification also defines memberOf() on a bare string/code, where the answer depends on
     // the value set containing exactly one code system. That requires ValueSet expansion
     // introspection and is deliberately not implemented yet — see #279.
+    //
+    // This throw is itself a known gap: memberOf()'s signature is registered as ANY (see
+    // OperationRegistry), so an unsupported input type like this reaches code generation instead
+    // of being rejected during analysis, against ARCHITECTURE.md Principle 5 — see #284.
     throw new UnsupportedFeatureException(
         "memberOf() on " + inputType + " input",
         "only Coding and CodeableConcept input is supported; code- and string-valued input is"

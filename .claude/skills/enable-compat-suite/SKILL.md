@@ -35,9 +35,11 @@ skill exists precisely because earlier runs of this skill produced rules that br
    `ref-impl-bug`, `test-infra`.
 2. **Never carry forward Pathling issue ids.** `#2xxx` and `#437` live on `pathling/pathling`,
    not `aehrc/fp2spark`. If a Pathling rule is reused, either (a) file a fp2sql issue and
-   replace the id, or (b) reclassify to `design`/`ref-impl-bug` citing a D/R entry.
-3. **`type: design` requires a `D\d+` token** (e.g. `D3`) somewhere in the rule's `comment`.
-   The reviewer should grep the diff and fail any `type: design` lacking a D-entry citation.
+   replace the id, or (b) reclassify to `design`/`ref-impl-bug` citing a D/P/R entry.
+3. **`type: design` requires a `D\d+` or `P\d+` token** (e.g. `D3`, `P2`) somewhere in the
+   rule's `comment`. A D-entry is a spec divergence; a P-entry is a spec-permitted policy
+   choice that differs from a reference implementation. The reviewer should grep the diff and
+   fail any `type: design` lacking a D- or P-entry citation.
 4. **`type: ref-impl-bug` requires an `R\d+` token** in the rule's `comment`.
 5. **`type: feature|bug|test-infra` requires `id: "#NNN"`** pointing to `aehrc/fp2spark`.
    No blank ids. No Pathling ids.
@@ -189,7 +191,7 @@ For each failure, determine the correct exclusion type by investigating the root
    |------|-------------|---------------------------|
    | `feature` | fp2sql doesn't implement this yet | `id: "#NNN"` on `aehrc/fp2spark` |
    | `bug` | fp2sql produces incorrect results | `id: "#NNN"` on `aehrc/fp2spark` |
-   | `design` | Intentional fp2sql divergence | `D\d+` token in `comment` (traces to SPEC_DIVERGENCES.md) |
+   | `design` | Intentional fp2sql divergence, or a spec-permitted policy choice | `D\d+` or `P\d+` token in `comment` (traces to SPEC_DIVERGENCES.md) |
    | `ref-impl-bug` | fhirpath.js test expectation contradicts the spec | `R\d+` token in `comment` (traces to SPEC_DIVERGENCES.md) |
    | `test-infra` | Test infrastructure limitation | `id: "#NNN"` on `aehrc/fp2spark` |
 
@@ -197,7 +199,7 @@ For each failure, determine the correct exclusion type by investigating the root
    scope, reclassify it using the types above.
 
    **Never use Pathling ids** (`#2xxx`, `#437`). They point at `pathling/pathling`. File a
-   fp2sql issue on `aehrc/fp2spark` or reclassify to `design`/`ref-impl-bug` with a D/R
+   fp2sql issue on `aehrc/fp2spark` or reclassify to `design`/`ref-impl-bug` with a D/P/R
    citation.
 
 #### Handling SPEC_DIVERGENCES.md changes
@@ -247,7 +249,7 @@ Before saving the edit, confirm each new rule passes all six:
       (never `wontfix`).
 - [ ] `feature|bug|test-infra` has `id: "#NNN"` on `aehrc/fp2spark`
       (never `#2xxx` or `#437`).
-- [ ] `design` has a `D\d+` token in the `comment`; `ref-impl-bug` has `R\d+`.
+- [ ] `design` has a `D\d+` or `P\d+` token in the `comment`; `ref-impl-bug` has `R\d+`.
 - [ ] Matcher is as narrow as possible (`any` / `desc` preferred over `expression` regex).
 - [ ] If adding to the global `*.yaml` block: the rule genuinely cross-cuts ≥2 files. If not,
       place it in the relevant `fp2sql — <file>` block instead.
@@ -301,7 +303,7 @@ Then update the exclusions in `config.yaml` with the new issue `id` values.
 **Verify all exclusions have references.** Every exclusion in the file-specific sections
 being enabled must trace to either:
 - A GitHub issue via `id` (for `feature`, `bug`, `test-infra`)
-- A D-entry in SPEC_DIVERGENCES.md (for `design`)
+- A D-entry or P-entry in SPEC_DIVERGENCES.md (for `design`)
 - An R-entry in SPEC_DIVERGENCES.md (for `ref-impl-bug`)
 
 If any exclusion is missing a reference, fix it before proceeding.
@@ -309,7 +311,7 @@ If any exclusion is missing a reference, fix it before proceeding.
 **Sweep neighbouring in-scope rules.** Don't stop at newly added rules — apply the same
 traceability check to *all* rules in the `fp2sql — <file>` block for the file being
 enabled and to any upstream Pathling block matching the same glob. If a neighbour has a
-`wontfix`, a Pathling id, or a missing D/R citation, fix it in this PR. That is what
+`wontfix`, a Pathling id, or a missing D/P/R citation, fix it in this PR. That is what
 keeps the hygiene of the file monotonically improving instead of accumulating debt.
 
 Quick diff-level checks before pushing:
@@ -321,14 +323,14 @@ rg -n 'type: wontfix' src/test/resources/fhirpath-js/config.yaml
 # No Pathling ids remain in the slice
 rg -n 'id: "#(2[0-9]{3}|437)"' src/test/resources/fhirpath-js/config.yaml
 
-# Every design rule cites a D-entry
+# Every design rule cites a D- or P-entry
 python3 - <<'PY'
 import yaml, pathlib, re
 cfg = yaml.safe_load(pathlib.Path('src/test/resources/fhirpath-js/config.yaml').read_text())
 for block in cfg['excludeSet']:
     for r in block.get('exclude', []):
-        if r.get('type') == 'design' and not re.search(r'D\d+', r.get('comment') or ''):
-            print('design w/o D-entry:', r.get('title'))
+        if r.get('type') == 'design' and not re.search(r'[DP]\d+', r.get('comment') or ''):
+            print('design w/o D-/P-entry:', r.get('title'))
         if r.get('type') == 'ref-impl-bug' and not re.search(r'R\d+', r.get('comment') or ''):
             print('ref-impl-bug w/o R-entry:', r.get('title'))
 PY
@@ -363,7 +365,7 @@ Closes #<NUMBER>
 - [ ] Full test suite passes (no regressions)
 - [ ] All exclusions properly classified
 - [ ] Issues filed for all feature/bug/test-infra exclusions
-- [ ] All exclusions have references (issue id, D-entry, or R-entry)
+- [ ] All exclusions have references (issue id, D-entry, P-entry, or R-entry)
 - [ ] Code reviewed
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
@@ -407,8 +409,8 @@ If checks fail, report the failure details to the user and investigate.
 - **Classification summary requires approval.** Present the table and wait.
 - **Every `feature`, `bug`, and `test-infra` needs a fp2sql issue.** File with
   `compat:fhirpath-js` label.
-- **Every exclusion needs a reference.** Issue `id` for feature/bug/test-infra, `D\d+` token
-  in comment for design, `R\d+` token in comment for ref-impl-bug.
+- **Every exclusion needs a reference.** Issue `id` for feature/bug/test-infra, `D\d+` or
+  `P\d+` token in comment for design, `R\d+` token in comment for ref-impl-bug.
 - **Global rules may already cover failures.** Check before adding redundant exclusions.
 - **Global rules can be stale.** If the issue says enablement is "absorbed by the X global
   rule," verify X is still actually unimplemented by grepping the source. Apply the check

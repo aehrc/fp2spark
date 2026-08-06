@@ -350,22 +350,14 @@ public final class Signatures {
    *
    * <p>Example: {@code α T.trace(?STRING [, ?Lambda(*ANY)]) → α T}
    *
-   * <p>Used by {@code trace()} (FHIRPath §5.9.1), which returns its input collection unaltered. The
-   * result type and cardinality are preserved exactly via {@link ResultTypeSpec#inputType()}, so
-   * {@code ?INTEGER.trace('x')} stays {@code ?INTEGER}.
+   * <p>Used by {@code trace()} (FHIRPath §5.9.1). The result type and cardinality are preserved
+   * exactly via {@link ResultTypeSpec#inputType()}. The optional projection is a {@code
+   * COLLECTION_WISE} lambda ({@code $this} = the input collection), matching the spec's "evaluating
+   * the projection expression on the input"; its body may return any type.
    *
-   * <p>The optional projection is a lambda so that it is evaluated against the input collection
-   * rather than the enclosing context, matching both the specification ("evaluating the projection
-   * expression on the input") and the reference implementations, which apply the projection to the
-   * whole input collection — hence COLLECTION_WISE binding: {@code $this} = the input collection.
-   * Its body may return any type, so the lambda's return shape uses {@code ANY}.
-   *
-   * <p>The diagnostic side channel that gives {@code trace()} its purpose is deliberately not
-   * implemented: emitting diagnostics requires an evaluation context to carry a sink (Pathling uses
-   * a {@code TraceCollector} on its {@code EvaluationContext}; fhirpath.js uses a host-supplied
-   * {@code traceFn}), and fp2sql compiles an expression to SQL with nowhere for one to live.
-   * Defining that contract is tracked by #277; until then the projection is type-checked and then
-   * discarded by code generation.
+   * <p>The diagnostic side channel that gives {@code trace()} its purpose is not implemented:
+   * fp2sql compiles to SQL and has no evaluation context to carry a diagnostic sink. The projection
+   * is still type-checked for static validity, then discarded by code generation. See #277.
    */
   @Nonnull
   public static SignatureDefinition diagnosticPassThrough(@Nonnull final Type elementType) {

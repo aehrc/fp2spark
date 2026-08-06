@@ -10,26 +10,14 @@ import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
 /**
- * Tests for FHIRPath utility functions: trace().
- *
- * <p>Based on FHIRPath specification section 5.9 (Utility functions).
+ * Tests for FHIRPath utility functions: trace() (specification section 5.9).
  *
  * <p>{@code trace()} is a pass-through: it returns its input collection unaltered. fp2sql
- * implements the pass-through only — the diagnostic output is a deliberate no-op, since there is no
- * evaluation context to carry a diagnostic sink (see #277). The tests therefore assert that the
- * input survives untouched, that the optional projection never influences the result, and that the
- * result's type and cardinality are preserved exactly.
- *
- * <p>Covers:
- *
- * <ul>
- *   <li>Core semantics: literal collections, singular values, chained traces
- *   <li>Projection: ignored for the result, evaluated against the input collection ($this)
- *   <li>Emptiness: empty literal, computed empty, absent resource field
- *   <li>Cardinality: singular (0..1) and non-singular (0..*) resource fields
- *   <li>Type/cardinality transparency: downstream operations behave as if trace() were absent
- *   <li>Arity errors: too few / too many arguments
- * </ul>
+ * implements the pass-through only — see {@link
+ * com.example.fhirpath.operation.signature.Signatures#diagnosticPassThrough} for why the diagnostic
+ * output is a no-op. The tests therefore assert that the input survives untouched, that the
+ * optional projection never influences the result, and that the result's type and cardinality are
+ * preserved exactly.
  */
 class UtilityFunctionsTest extends FhirPathTestBase {
 

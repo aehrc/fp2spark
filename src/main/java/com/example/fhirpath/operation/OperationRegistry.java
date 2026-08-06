@@ -368,9 +368,7 @@ public final class OperationRegistry {
         // UTILITY FUNCTIONS (FHIRPath Spec 5.9)
 
         // trace(name [, projection]): α T → α T — returns the input collection unaltered.
-        // The projection is a COLLECTION_WISE lambda ($this = the input collection) so that it
-        // is evaluated against the input, per the spec. Diagnostic output is not emitted: fp2sql
-        // has no evaluation context to carry a diagnostic sink — see #277.
+        // See Signatures#diagnosticPassThrough for why the diagnostic side channel is a no-op.
         register("trace", Signatures.diagnosticPassThrough(ANY)),
 
         // MATH FUNCTIONS (FHIRPath Spec 5.7.3)

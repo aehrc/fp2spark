@@ -10,6 +10,13 @@ Thank you for your interest in contributing to this project!
 - Maven 3.6+
 - Git
 
+This project uses [Lombok](https://projectlombok.org/) (e.g. `@Slf4j`). `mvn test`/CI use `javac`
+via Maven's `annotationProcessorPaths`, which needs no extra setup. Eclipse-compiler-backed tooling
+— Eclipse itself, or VS Code's Java extension (backed by the Eclipse JDT Language Server) — does
+not process that the same way, and needs Lombok's own IDE support installed separately (see
+[Lombok's installation instructions](https://projectlombok.org/setup/)) or you'll see spurious
+"cannot find symbol" errors on Lombok-generated members that don't reflect a real build problem.
+
 ### Setup
 
 1. Fork and clone the repository

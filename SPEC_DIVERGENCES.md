@@ -158,16 +158,31 @@ Consequences:
 
 # Implementation Policy Choices
 
-Cases where the FHIRPath specification *explicitly* defers to implementations
-(typically with phrasing like "implementation decision" or "policy decision"),
-**and** fp2sql's choice differs from the choice made by the fhirpath.js
-reference implementation. These are not divergences from the spec — both
-fp2sql and fhirpath.js are spec-compliant — but they are observable behavioural
-differences that compatibility tests will surface.
+Cases where the FHIRPath specification leaves a behaviour open to the
+implementation, **and** fp2sql's choice differs from the choice made by a
+reference implementation. fp2sql is spec-compliant in every entry here; these
+are not divergences from the spec, but they are observable behavioural
+differences.
 
-Exclusion rules in `config.yaml` for fhirpath.js compat tests that follow from
-these choices use `type: design` and reference the policy ID (e.g.
-`comment: "P1"`).
+The spec leaves a behaviour open in one of two ways:
+
+- **Explicit deferral** — the spec says so, typically with phrasing like
+  "implementation decision" or "policy decision" (P1).
+- **Silence on an input shape** — the spec defines the general rule and
+  enumerates its exceptions, but some input falls outside both, so the answer
+  follows from how exhaustively that enumeration is read (P2). The other
+  implementation reads that same silence differently than fp2sql does. Where
+  the spec *does* answer and the other implementation contradicts it, that is
+  an R-entry (reference implementation bug), not a P-entry.
+
+The reference implementation compared against is **fhirpath.js** for core
+FHIRPath, and **Pathling** for the FHIR-specific bindings that fhirpath.js does
+not implement (the terminology functions). Each entry names which.
+
+Where a compatibility test surfaces the difference, the `config.yaml` exclusion
+uses `type: design` and references the policy ID (e.g. `comment: "P1"`). Some
+entries back no exclusion, because the compat suite does not exercise the
+behaviour at all; those say so.
 
 ## P1. Offset-less DateTime treated as UTC
 
@@ -204,6 +219,66 @@ has an explicit offset and the other does not, fp2sql and fhirpath.js may
 disagree. The fhirpath.js compat suite happens not to exercise this case
 today (no mixed-offset pairs in `6.1_equality.yaml`, `6.2_comparision.yaml`,
 or `5.4_combining.yaml`), but future test additions could.
+
+## P2. `memberOf()` on a CodeableConcept with no codings returns false
+
+**Scope note:** unlike P1, the reference implementation compared against here is
+**Pathling**, not fhirpath.js — fhirpath.js implements no FHIR terminology
+functions, so it offers no behaviour to compare. This entry also backs no
+`config.yaml` exclusion: the fhirpath-js compat suite contains no `memberOf`
+cases at all. It is documentation of an interpretation, not the justification
+for a rule.
+
+FHIR FHIRPath ("Additional functions") defines the concept-valued case and then
+enumerates the cases that yield empty:
+
+> When invoked on a single concept-valued element, returns true if any code in
+> the concept is a member of the given valueset.
+>
+> If the valueset cannot be resolved as a uri to a value set, or the input is
+> empty or has more than one value, the return value is empty.
+
+A `CodeableConcept` that is *present* but carries no `coding` — a free-text
+concept such as `{"text": "patient reports chest pain"}` — is not in that
+enumeration. It is not an empty input: the element exists.
+
+**fp2sql's choice:** `false`. "Any code in the concept is a member" is vacuously
+false when the concept contains no codes, and the spec's empty-result
+enumeration is read as exhaustive. The concept identifies no code that could be
+a member of any value set, which is a determinate answer rather than an
+unanswerable question.
+
+**Pathling's behaviour:** `empty`. `MemberOfUdf.doCall` returns null when its
+decoded coding stream is null, and `TerminologyUdfHelpers.decodeOneOrMany`
+returns null for a null column — which is how the Pathling encoder represents an
+absent `coding` list. Note that Pathling's test suite does not cover this case
+(its `emptyCoding` fixture is a null *Coding*, not a coding-less concept), so
+this is inferred from the code path rather than from a pinned expectation.
+Whether it is intended has been raised upstream as
+[pathling#2700](https://github.com/aehrc/pathling/issues/2700).
+
+**Boundary — the divergence is narrower than it first appears.** Only a concept
+that is present *and* coding-less differs. Everything a caller would loosely
+call "an empty CodeableConcept" already yields empty in both engines, because
+HAPI's encoder writes a content-free `CodeableConcept` as an absent struct:
+
+| Input | fp2sql |
+| --- | --- |
+| `code` absent entirely | empty |
+| `code` present, no content at all | empty |
+| `code` present with `text` only, no `coding` | **false** ← this entry |
+| `code` with codings, none a member | false |
+| `code` with codings, at least one member | true |
+| value set unresolvable | empty |
+
+Pinned by `TerminologyFunctionsTest`, which covers every row above.
+
+**Observable consequence:** inside `where()`, `false` and empty are both falsy,
+so filtering expressions such as
+`Observation.component.where(code.memberOf(url))` agree with Pathling
+regardless. The two differ only where the boolean is observed directly — for
+example as a projected column, or under `not()`, where fp2sql yields `true` and
+Pathling empty.
 
 ---
 

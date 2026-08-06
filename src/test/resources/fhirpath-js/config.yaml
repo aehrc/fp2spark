@@ -96,12 +96,11 @@ excludeSet:
         type: feature
         id: "#203"
         comment: |
-          subsumes(), subsumedBy(), memberOf(), conformsTo() — require FHIR
-          terminology server integration.
+          subsumes(), subsumedBy(), conformsTo() — require FHIR terminology
+          server integration. memberOf() was implemented in #272.
         function:
           - subsumes
           - subsumedBy
-          - memberOf
           - conformsTo
       - title: FHIR htmlChecks() not yet implemented
         type: feature
@@ -346,12 +345,18 @@ excludeSet:
           - "** trim on a singleton with null value"
       # Must come before the broad Functions.str.* rule so the more specific match wins.
       - title: Functions.str.empty passes for toChars/join post-#156
-        type: design
+        type: test-infra
+        id: "#290"
         comment: |
-          toChars() and join() accept MANY-cardinality input and empty-propagate, so
+          Not a divergence — fp2sql matches fhirpath.js here. toChars() and join()
+          accept MANY-cardinality input and empty-propagate, so
           Functions.str.empty.toChars() and Functions.str.empty.join(',') evaluate to
-          an empty collection after #156 (empty-list nested field is now ?NULL). The
-          broader Functions.str.* rule below would otherwise demand an error for them.
+          an empty collection after #156 (empty-list nested field is now ?NULL). This
+          rule exists only because the broader Functions.str.* rule below (D1) matches
+          by regex on expression text and would otherwise wrongly swallow these two
+          functions too, demanding an error for input they legitimately accept. Must
+          precede that rule so the more specific match wins. #290 tracks narrowing D1's
+          matcher so this carve-out can be deleted entirely.
         outcome: pass
         expression:
           - "^Functions\\.str\\.empty\\.(toChars\\(\\)|join\\(',' *\\))$"

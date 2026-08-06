@@ -261,6 +261,17 @@ public final class OperationRegistry {
         register("getValue", Signatures.unaryFunc(ANY, ANY)),
         register("hasValue", Signatures.unaryFunc(ANY, BOOLEAN)),
 
+        // TERMINOLOGY FUNCTIONS (FHIR FHIRPath)
+
+        // memberOf(valueSet): (?Coding | ?CodeableConcept, ?STRING) → ?BOOLEAN
+        // The input is declared ANY because CodeableConcept is a FhirComplexType with no static
+        // Type constant; TerminologyOps rejects other input types during code generation instead
+        // of here at analysis time — a known gap against ARCHITECTURE.md Principle 5 (Static
+        // Validity), not solved by #260's type-variable work since that explicitly excludes
+        // predicate-based constraints. See #284. Singular input is enforced here, matching the
+        // spec's "more than one value" rule under D1.
+        register("memberOf", Signatures.binaryFunc(ANY, STRING, BOOLEAN)),
+
         // TYPE TESTING (FHIRPath Spec 6.1)
         // Note: is/as/ofType are intercepted early by Analyzer.resolveTypeOperation() before
         // normal signature resolution. This registration exists so that the "unknown function"

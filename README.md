@@ -41,6 +41,61 @@ Column col = FhirPath.toColumn("5 + 10");
 Column result = FhirPath.toColumn("Patient.name.family");
 ```
 
+### Terminology server
+
+Terminology functions — currently `memberOf()` — need a FHIR terminology server. Supply one via
+`CompilationOptions`, the general options type for `toColumn`/`generate` (config beyond the
+expression itself grows here, as a field, rather than as another parameter):
+
+```java
+import ca.uhn.fhir.context.FhirContext;
+import com.example.fhirpath.CompilationOptions;
+import com.example.fhirpath.terminology.DefaultTerminologyServiceFactory;
+import com.example.fhirpath.typing.FhirResourceType;
+
+var terminology = DefaultTerminologyServiceFactory.forServer("https://tx.ontoserver.csiro.au/fhir");
+var observation = new FhirResourceType(
+    FhirContext.forR4().getResourceDefinition("Observation"));
+var options = CompilationOptions.defaults().withTerminologyServiceFactory(terminology);
+
+Column vitalSigns = FhirPath.toColumn(
+    "code.memberOf('http://hl7.org/fhir/ValueSet/observation-vitalsignresult')",
+    null,            // %context — optional
+    observation,
+    options);
+```
+
+Membership is resolved with `ValueSet/$validate-code`. Responses are cached per JVM — by default up
+to 200,000 answers for 10 minutes, matching Pathling's own fallback expiry — so repeated codes cost
+one request rather than one per row. Unlike Pathling, fp2sql doesn't yet respect a server-provided
+expiry or revalidate via ETag ([#288](https://github.com/aehrc/fp2spark/issues/288)). Tune the cache
+size and TTL, and the connection timeouts, by constructing a `TerminologyConfiguration` directly.
+
+**Without a configured server**, terminology functions still compile and evaluate, but every value
+set is reported as unresolvable, which the FHIR FHIRPath specification maps to an *empty* result.
+Because empty is falsy inside `where()`, an expression such as
+`Observation.component.where(code.memberOf(url))` then yields **no** rows rather than failing. Each
+such call site logs a warning when it is compiled, since the empty output is otherwise
+indistinguishable from data that genuinely matched nothing.
+
+**Error handling.** Any 4xx response — most often because the value set URI doesn't resolve, but
+also, deliberately, an authentication failure (401/403) — is treated the same as an unconfigured
+server: an empty result. This matches Pathling's terminology client exactly, including the
+401/403 case; [#283](https://github.com/aehrc/fp2spark/issues/283) tracks the risk that carries (a
+rate-limited or otherwise-misbehaving server returning some other 4xx could silently look like "no
+code is a member" instead of failing the job). Anything else — a 5xx, or a connection problem that
+survives retries — throws and fails the Spark task.
+
+Some request failures are retried before that happens, by the underlying Apache HttpClient's
+default retry handler — 2 retries by default, tune `retryEnabled`/`retryCount` on
+`TerminologyConfiguration`. That default handler's exclusion list is narrower than "connection
+problem" might suggest: a socket timeout, connection refused, DNS failure, and TLS failure are
+**not** retried by it — only other `IOException`s (e.g. a connection reset mid-response) are. This
+again matches Pathling's terminology client exactly, down to the retry handler class.
+
+Authentication is not yet supported: the server must be reachable without credentials
+([#282](https://github.com/aehrc/fp2spark/issues/282)).
+
 ## Architecture
 
 ```
@@ -70,6 +125,8 @@ Spark SQL Column
 - Comparison operators: `=`, `!=`, `<`, `<=`, `>`, `>=`
 - Functions: `where()`, `exists()`, `empty()`, `ofType()`, `first()`
 - Collection indexer: `collection[index]`
+- Terminology functions: `memberOf()` (needs a terminology server — see
+  [Terminology server](#terminology-server))
 
 **Coming in Phase 2**:
 - FHIR-specific types and resources

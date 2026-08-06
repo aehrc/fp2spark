@@ -158,16 +158,31 @@ Consequences:
 
 # Implementation Policy Choices
 
-Cases where the FHIRPath specification *explicitly* defers to implementations
-(typically with phrasing like "implementation decision" or "policy decision"),
-**and** fp2sql's choice differs from the choice made by the fhirpath.js
-reference implementation. These are not divergences from the spec — both
-fp2sql and fhirpath.js are spec-compliant — but they are observable behavioural
-differences that compatibility tests will surface.
+Cases where the FHIRPath specification leaves a behaviour open to the
+implementation, **and** fp2sql's choice differs from the choice made by a
+reference implementation. fp2sql is spec-compliant in every entry here; these
+are not divergences from the spec, but they are observable behavioural
+differences.
 
-Exclusion rules in `config.yaml` for fhirpath.js compat tests that follow from
-these choices use `type: design` and reference the policy ID (e.g.
-`comment: "P1"`).
+The spec leaves a behaviour open in one of two ways:
+
+- **Explicit deferral** — the spec says so, typically with phrasing like
+  "implementation decision" or "policy decision" (P1).
+- **Silence on an input shape** — the spec defines the general rule and
+  enumerates its exceptions, but some input falls outside both, so the answer
+  follows from how exhaustively that enumeration is read (P2). The other
+  implementation reads that same silence differently than fp2sql does. Where
+  the spec *does* answer and the other implementation contradicts it, that is
+  an R-entry (reference implementation bug), not a P-entry.
+
+The reference implementation compared against is **fhirpath.js** for core
+FHIRPath, and **Pathling** for the FHIR-specific bindings that fhirpath.js does
+not implement (the terminology functions). Each entry names which.
+
+Where a compatibility test surfaces the difference, the `config.yaml` exclusion
+uses `type: design` and references the policy ID (e.g. `comment: "P1"`). Some
+entries back no exclusion, because the compat suite does not exercise the
+behaviour at all; those say so.
 
 ## P1. Offset-less DateTime treated as UTC
 

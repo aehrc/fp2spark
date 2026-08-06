@@ -85,7 +85,7 @@ proceeding without it means inventing code generation from scratch, which is not
 |---|---|---|
 | 4 design-approval gate | Present the change and wait for the user. | **Abort.** Report the proposed change, blast radius, and alternatives; do not write code. |
 | 10 compat exclusions | Perform normally. | **Skip entirely.** `config.yaml` is a shared-edit hot spot; concurrent branches conflict. Note the skip in the PR body so a consolidated pass can follow. |
-| 10c / 12.3 new D/R entry | Propose and wait. | **Abort.** Never edit `SPEC_DIVERGENCES.md`. |
+| 10c / 12.3 new D/P/R entry | Propose and wait. | **Abort.** Never edit `SPEC_DIVERGENCES.md`. |
 | 12.3 surface-to-user finding | Ask the user (incl. FULL escalation offer on LITE). | Leave it unapplied and list it in the return value. |
 | 13 merge | Full step: watch CI, squash-merge, return to `main`. | **Stop after Step 9.** Do not merge. Return the PR number and any aborted-gate report. |
 
@@ -317,12 +317,12 @@ For each in-scope rule, pick exactly one decision:
 A rule remaining in scope must satisfy:
 
 - `feature` / `bug` / `test-infra` → `id: "#NNN"` pointing at a fp2sql issue.
-- `design` → `comment` cites a `D\d+` token from `SPEC_DIVERGENCES.md`.
+- `design` → `comment` cites a `D\d+` or `P\d+` token from `SPEC_DIVERGENCES.md`.
 - `ref-impl-bug` → `comment` cites an `R\d+` token from `SPEC_DIVERGENCES.md`.
 - Matcher actually matches at least one failing case in the YAML test file.
 - No two in-scope rules match the same set of cases.
 
-If a residual failure needs to land on `design` or `ref-impl-bug` and there is no existing D/R entry that fits, **stop and propose a new D/R entry to the user**: proposed id, spec evidence (quote the section), for `ref-impl-bug` the fhirpath.js code that demonstrates the bug, and the affected expressions. **Wait for explicit user approval before editing `SPEC_DIVERGENCES.md`** — the same guardrail applies as in the `review-compat-exclusions` skill.
+If a residual failure needs to land on `design` or `ref-impl-bug` and there is no existing D/P/R entry that fits, **stop and propose a new D/P/R entry to the user**: proposed id, spec evidence (quote the section), for `ref-impl-bug` the fhirpath.js code that demonstrates the bug, and the affected expressions. Choose `P` when the spec leaves the behaviour open and fp2sql merely differs from a reference implementation (fhirpath.js for core FHIRPath, Pathling for the FHIR-specific bindings it does not implement), and `D` when fp2sql diverges from the spec itself. **Wait for explicit user approval before editing `SPEC_DIVERGENCES.md`** — the same guardrail applies as in the `review-compat-exclusions` skill.
 
 If a residual failure suggests a real fp2sql bug rather than a divergence, file (or reference) a fp2sql issue and use `type: bug` with that id.
 
@@ -339,7 +339,7 @@ git add src/test/resources/fhirpath-js/config.yaml SPEC_DIVERGENCES.md  # SPEC o
 git commit -m "$(cat <<'EOF'
 test: refresh compat exclusions for #<NUMBER>
 
-<one-paragraph summary: X removed, Y narrowed, Z reclassified, plus any new D/R entries>
+<one-paragraph summary: X removed, Y narrowed, Z reclassified, plus any new D/P/R entries>
 
 Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 EOF
@@ -377,7 +377,7 @@ The PR is **LITE** by default. It is **FULL** if any of the signals below holds.
 **Workflow-state signals** (from earlier steps in this skill run):
 
 1. **Step 4 design-approval gate fired** — a framework-extending change was made.
-2. **Step 10 proposed a new D/R entry** in `SPEC_DIVERGENCES.md`.
+2. **Step 10 proposed a new D/P/R entry** in `SPEC_DIVERGENCES.md`.
 3. **Multi-function issue with non-trivial design choices** in any commit. Judgment-based — no strict line-count or commit-count threshold; assess whether the multi-function work involved framework-level decisions or just parallel boilerplate.
 
 **Path-fallback signals.** Compute the range:
@@ -445,7 +445,7 @@ The returned report has Strengths, Issues (Critical / Important / Minor), Recomm
 Apply the same triage protocol to whichever path produced the report:
 
 - **Apply automatically** — Critical and Important findings that are clear-cut: bugs, correctness issues, missing test cases for behavior the implementation already claims to support, dead code, hygiene violations, obvious naming/typing fixes. Default to fixing rather than re-litigating.
-- **Surface to the user** — anything that would change the public API, alter spec semantics, expand scope beyond the issue, require a new D/R entry in `SPEC_DIVERGENCES.md`, or modify/extend the existing framework. Do not silently apply these. The same `SPEC_DIVERGENCES` and design-extension guardrails from Steps 4 and 10 apply here.
+- **Surface to the user** — anything that would change the public API, alter spec semantics, expand scope beyond the issue, require a new D/P/R entry in `SPEC_DIVERGENCES.md`, or modify/extend the existing framework. Do not silently apply these. The same `SPEC_DIVERGENCES` and design-extension guardrails from Steps 4 and 10 apply here.
   - **On the LITE path only:** when surfacing such a finding, *also* ask the user whether they want a **FULL review enforced** before deciding. A finding that elevates to user judgment is a signal the PR isn't actually trivial; FULL may catch related design-level issues LITE missed.
     - If the user opts to escalate → run Step 12.2 (FULL), merge both reports, re-triage, and present the combined surface-to-user set. Only then proceed with the user's decision.
     - If the user declines escalation → proceed with the standard triage protocol.
@@ -532,8 +532,8 @@ git branch             # feature branch should no longer exist locally
 - **Existing tests are correct.** Do not modify existing tests unless the spec clearly contradicts them.
 - **FHIRPath collections are one-dimensional.** No nested arrays, ever.
 - **Design approval gate (Step 4).** Modifying or extending the framework — new IR nodes, new type system features, new code generation patterns, changes to the analyzer/registry shape — requires explicit user approval before coding. Slotting into the existing patterns does not.
-- **Compat exclusion hygiene (Step 10).** Never `wontfix`. Never carry Pathling ids. Every `feature|bug|test-infra` rule has a fp2sql `id`. Every `design` cites a D-entry; every `ref-impl-bug` cites an R-entry.
-- **`SPEC_DIVERGENCES.md` requires explicit approval.** Whether the trigger is a new compat exclusion (Step 10) or a review-driven divergence (Step 12), propose the D/R entry to the user and wait. Never edit `SPEC_DIVERGENCES.md` autonomously.
+- **Compat exclusion hygiene (Step 10).** Never `wontfix`. Never carry Pathling ids. Every `feature|bug|test-infra` rule has a fp2sql `id`. Every `design` cites a D- or P-entry; every `ref-impl-bug` cites an R-entry.
+- **`SPEC_DIVERGENCES.md` requires explicit approval.** Whether the trigger is a new compat exclusion (Step 10) or a review-driven divergence (Step 12), propose the D/P/R entry to the user and wait. Never edit `SPEC_DIVERGENCES.md` autonomously.
 - **Adaptive code review (Step 12).** Step 12.0 classifies the PR as LITE (Sonnet subagent invoking `/review` on the PR) or FULL (`superpowers:requesting-code-review`); routing is by Step 4 / Step 10 workflow state plus a path/size fallback. Both paths feed the shared triage in Step 12.3, which on LITE additionally offers the user a FULL escalation when surfacing a finding that needs their judgment. Apply clear-cut Critical/Important fixes; push back on Minor findings that conflict with established patterns.
 - **Squash-merge only.** Match the project's merge strategy — one commit per PR on `main`.
 - **CI must be green to merge.** No bypasses. Investigate root cause on red.

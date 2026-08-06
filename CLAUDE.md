@@ -78,10 +78,10 @@ Agent location: `.claude/agents/fhirpath-test-writer.md`
 
 ## Specification Divergences
 
-[SPEC_DIVERGENCES.md](SPEC_DIVERGENCES.md) documents intentional functional differences between fp2sql and the FHIRPath specification (D-entries), and confirmed bugs in the fhirpath.js reference implementation (R-entries). It is the authority for deciding whether a compatibility-suite exclusion is a valid design choice vs a bug or missing feature.
+[SPEC_DIVERGENCES.md](SPEC_DIVERGENCES.md) documents intentional functional differences between fp2sql and the FHIRPath specification (D-entries), spec-permitted policy choices where fp2sql differs from a reference implementation (P-entries), and confirmed bugs in the fhirpath.js reference implementation (R-entries). It is the authority for deciding whether a compatibility-suite exclusion is a valid design choice vs a bug or missing feature.
 
 **Rules:**
-- Any exclusion in `config.yaml` classified as `type: design` **MUST** trace back to either a D-entry (spec divergence) or a P-entry (spec-permitted policy choice that differs from fhirpath.js) in SPEC_DIVERGENCES.md.
+- Any exclusion in `config.yaml` classified as `type: design` **MUST** trace back to either a D-entry (spec divergence) or a P-entry (spec-permitted policy choice that differs from a reference implementation — fhirpath.js for core FHIRPath, Pathling for the FHIR-specific bindings it does not implement) in SPEC_DIVERGENCES.md.
 - Any exclusion classified as `type: ref-impl-bug` **MUST** trace back to an R-entry in SPEC_DIVERGENCES.md.
 - **Do NOT** add or modify entries in SPEC_DIVERGENCES.md without explicit user approval. Propose the change and wait for confirmation before writing it.
 - **Do NOT** use `type: wontfix` for new exclusions — it is obsolete. Use `design`, `ref-impl-bug`, `feature`, or `bug` instead.

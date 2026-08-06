@@ -102,7 +102,8 @@ Pre-compute hygiene flags on each row:
 - **`STALE_TYPE`** — `type: wontfix`
 - **`STALE_ID`** — `id` matches `#2\d{3}` or is literally `#437` (Pathling)
 - **`MISSING_REF`** — type ∈ {`feature`, `bug`, `test-infra`} and `id` is empty
-- **`MISSING_D_R`** — type ∈ {`design`, `ref-impl-bug`} and `comment` lacks a `D\d+`/`R\d+` token
+- **`MISSING_DPR`** — type ∈ {`design`, `ref-impl-bug`} and `comment` lacks a `D\d+`/`P\d+`
+  (design) or `R\d+` (ref-impl-bug) token
 - **`DUPLICATE`** — rule title (or matcher values) already present in another in-scope rule
 
 ### Step 4: Verify match coverage
@@ -146,8 +147,8 @@ Separate from match coverage: is the reason still true?
 - **`feature`** — grep `src/main/java/` for the function/operator to confirm it is still
   unimplemented. Cross-reference `Analyzer.java`, the codegen/resolver tables.
 - **`bug`** — `gh issue view <id> --repo aehrc/fp2spark` must show the issue open.
-- **`design`** — the cited D-entry in `SPEC_DIVERGENCES.md` still describes the current
-  behaviour.
+- **`design`** — the cited D-entry or P-entry in `SPEC_DIVERGENCES.md` still describes the
+  current behaviour.
 - **`ref-impl-bug`** — the cited R-entry still describes the current fhirpath.js bug.
 - **`test-infra`** — the infrastructure limitation still exists.
 
@@ -162,7 +163,7 @@ Pick exactly one decision per row:
 |---|---|---|
 | **REMOVE** | `matches=0`, or premise falsified | Delete the rule |
 | **NARROW** | Matcher over-matches (hits cases that now pass) | Rewrite matcher to the specific failing expressions |
-| **RECLASSIFY** | `STALE_TYPE`, or `#437` → D3, or Pathling reason maps to a D/R entry | Change `type`; if landing on `design`/`ref-impl-bug` without an existing D/R entry, trigger the SPEC_DIVERGENCES approval gate |
+| **RECLASSIFY** | `STALE_TYPE`, or `#437` → D3, or Pathling reason maps to a D/P/R entry | Change `type`; if landing on `design`/`ref-impl-bug` without an existing D/P/R entry, trigger the SPEC_DIVERGENCES approval gate |
 | **RE-ID** | `STALE_ID` (`#2xxx`), or `MISSING_REF` | File a fp2sql issue (see Step 8) and update `id` |
 | **MERGE** | `DUPLICATE` of another in-scope rule | Delete the duplicate; keep the canonical rule (usually in the `fp2sql — <file>` block) |
 | **KEEP** | Still correct, already referenced | No change |
@@ -171,7 +172,7 @@ Specific patterns expected during the current re-review:
 
 - **Any `#437`** → `type: design`, `comment: "D3. …"`, no `id` needed.
 - **Any `type: wontfix`** → reclassify; never carry forward.
-- **Pathling `#2xxx`** → either reclassify to D/R (if it is a design divergence) or file a
+- **Pathling `#2xxx`** → either reclassify to D/P/R (if it is a design divergence) or file a
   fp2sql issue and RE-ID.
 - **Upstream Pathling block for the slice file** → after per-row decisions, fold surviving
   rules into the `fp2sql — <file>` block and delete the upstream block so each file has a
@@ -182,7 +183,7 @@ Specific patterns expected during the current re-review:
 Render one table to the user and wait for approval:
 
 ```
-| # | Rule title | Current type/id | matches | Decision | New type/id | Issue to file | D/R |
+| # | Rule title | Current type/id | matches | Decision | New type/id | Issue to file | D/P/R |
 |---|------------|-----------------|---------|----------|-------------|---------------|-----|
 | 1 | …          | wontfix         | 3/12    | RECLASSIFY | feature #NEW | "feat: …"     | —   |
 | 2 | …          | feature #437    | 4/12    | RECLASSIFY | design       | —             | D3  |
@@ -211,10 +212,12 @@ Record the new issue numbers in the approval table.
 
 ### Step 9: Handle SPEC_DIVERGENCES.md changes
 
-If any RECLASSIFY lands on `design` or `ref-impl-bug` *and* there is no existing D/R entry that
-fits, **stop and propose the new entry to the user**:
+If any RECLASSIFY lands on `design` or `ref-impl-bug` *and* there is no existing D/P/R entry
+that fits, **stop and propose the new entry to the user**:
 
-- Proposed id (`D<next>` or `R<next>`)
+- Proposed id (`D<next>`, `P<next>`, or `R<next>` — `P` when the spec leaves the behaviour
+  open and fp2sql merely differs from a reference implementation, `D` when fp2sql diverges
+  from the spec itself)
 - Spec evidence (quote the relevant section)
 - For `ref-impl-bug`: the fhirpath.js code that demonstrates the bug (use the
   `fhirpath-spec` skill to access `.local/fhirpath.js/src/`)
@@ -240,7 +243,7 @@ for the authoritative list):
 - No `type: wontfix` remains in scope.
 - No Pathling ids (`#2\d{3}` or `#437`) remain in scope.
 - Every `feature|bug|test-infra` rule in scope has `id: "#NNN"`.
-- Every `design` rule cites a `D\d+` token in `comment`.
+- Every `design` rule cites a `D\d+` or `P\d+` token in `comment`.
 - Every `ref-impl-bug` rule cites an `R\d+` token in `comment`.
 - No two in-scope rules match exactly the same set of cases.
 
@@ -281,8 +284,19 @@ git diff main -- src/test/resources/fhirpath-js/config.yaml | grep -E '^\+.*id:.
 # Any remaining wontfix?
 git diff main -- src/test/resources/fhirpath-js/config.yaml | grep -E '^\+.*type: wontfix' && echo "FAIL"
 
-# Every new design rule cites a D-entry?
-awk '/type: design/{getline; if ($0 !~ /D[0-9]+/) print NR": "$0}' src/test/resources/fhirpath-js/config.yaml
+# Every design rule cites a D- or P-entry, every ref-impl-bug an R-entry?
+# Parses the YAML rather than scanning adjacent lines — `type:` and `comment:` are not
+# reliably adjacent, so a line-offset grep/awk reports false positives on almost every rule.
+python3 - <<'PY'
+import yaml, pathlib, re
+cfg = yaml.safe_load(pathlib.Path('src/test/resources/fhirpath-js/config.yaml').read_text())
+for block in cfg['excludeSet']:
+    for r in block.get('exclude', []):
+        if r.get('type') == 'design' and not re.search(r'\b[DP]\d+\b', r.get('comment') or ''):
+            print('design w/o D-/P-entry:', r.get('title'))
+        if r.get('type') == 'ref-impl-bug' and not re.search(r'R\d+', r.get('comment') or ''):
+            print('ref-impl-bug w/o R-entry:', r.get('title'))
+PY
 ```
 
 Any violation: fix before pushing.
@@ -299,13 +313,13 @@ gh pr create --repo aehrc/fp2spark \
 - Slice: <slice>
 - Decisions: <N REMOVE / N NARROW / N RECLASSIFY / N RE-ID / N MERGE / N KEEP>
 - Issues filed: #<a>, #<b>, …
-- SPEC_DIVERGENCES changes: <none | proposed D<N>/R<N>>
+- SPEC_DIVERGENCES changes: <none | proposed D<N>/P<N>/R<N>>
 
 ## Hygiene checklist
 - [x] No `wontfix` remains in slice
 - [x] No Pathling ids (#2xxx, #437) remain in slice
 - [x] Every `feature|bug|test-infra` has a fp2sql issue `id`
-- [x] Every `design` cites a D-entry; every `ref-impl-bug` cites an R-entry
+- [x] Every `design` cites a D- or P-entry; every `ref-impl-bug` cites an R-entry
 - [x] Upstream Pathling block for <file> folded into `fp2sql — <file>` block
 - [x] No duplicate rules in scope
 
@@ -341,9 +355,9 @@ On red, investigate root cause; do not bypass hooks or force-push.
 - **Never use `wontfix`.** Reclassify to one of `feature`, `bug`, `design`, `ref-impl-bug`,
   `test-infra`.
 - **Never carry forward Pathling ids.** `#2xxx` and `#437` live on `pathling/pathling`, not
-  `aehrc/fp2spark`. File a fp2sql issue or reclassify to D/R.
-- **Every rule needs a reference.** `id: "#NNN"` for feature/bug/test-infra; `D\d+` in comment
-  for design; `R\d+` in comment for ref-impl-bug.
+  `aehrc/fp2spark`. File a fp2sql issue or reclassify to D/P/R.
+- **Every rule needs a reference.** `id: "#NNN"` for feature/bug/test-infra; `D\d+` or `P\d+`
+  in comment for design; `R\d+` in comment for ref-impl-bug.
 - **SPEC_DIVERGENCES.md changes require user approval.** Always propose and wait.
 - **Approval table before editing.** No YAML changes until the table is approved.
 - **Fold Pathling upstream blocks.** After a slice's review, each file should have exactly

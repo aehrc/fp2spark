@@ -31,7 +31,7 @@ mvn test
 ### Usage
 
 ```java
-import com.example.fhirpath.FhirPath;
+import au.csiro.fhirpath.FhirPath;
 import org.apache.spark.sql.Column;
 
 // Simple expression
@@ -49,9 +49,9 @@ expression itself grows here, as a field, rather than as another parameter):
 
 ```java
 import ca.uhn.fhir.context.FhirContext;
-import com.example.fhirpath.CompilationOptions;
-import com.example.fhirpath.terminology.DefaultTerminologyServiceFactory;
-import com.example.fhirpath.typing.FhirResourceType;
+import au.csiro.fhirpath.CompilationOptions;
+import au.csiro.fhirpath.terminology.DefaultTerminologyServiceFactory;
+import au.csiro.fhirpath.typing.FhirResourceType;
 
 var terminology = DefaultTerminologyServiceFactory.forServer("https://tx.ontoserver.csiro.au/fhir");
 var observation = new FhirResourceType(
@@ -111,10 +111,10 @@ Spark SQL Column
 ### Key Components
 
 - **Parser** (`src/main/antlr/FhirPath.g4`): ANTLR grammar for FHIRPath
-- **AST** (`com.example.fhirpath.ast`): Abstract syntax tree nodes
-- **Analyzer** (`com.example.fhirpath.analyzer`): Type system and semantic analysis
-- **IR** (`com.example.fhirpath.ir`): Typed intermediate representation
-- **Code Generator** (`com.example.fhirpath.codegen.spark`): Spark SQL Column generation
+- **AST** (`au.csiro.fhirpath.ast`): Abstract syntax tree nodes
+- **Analyzer** (`au.csiro.fhirpath.analyzer`): Type system and semantic analysis
+- **IR** (`au.csiro.fhirpath.ir`): Typed intermediate representation
+- **Code Generator** (`au.csiro.fhirpath.spark`): Spark SQL Column generation
 
 ## Supported Features
 

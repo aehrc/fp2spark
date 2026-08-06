@@ -142,7 +142,7 @@ returns `[]` for inputs where exactly one of (source unit, target unit) is a
 calendar keyword and at least one is greater than one second.
 
 fp2sql is more permissive. `QuantityConvertToUnit.convertUcumToCalendar` /
-`convertCalendarToUcum` (`src/main/java/com/example/fhirpath/codegen/spark/udf/QuantityConvertToUnit.java`)
+`convertCalendarToUcum` (`src/main/java/au/csiro/fhirpath/spark/udf/QuantityConvertToUnit.java`)
 convert across systems using UCUM's internal factors plus the spec's equivalence
 relationships (`1 'wk' ~ 1 week`), producing a converted Quantity where
 fhirpath.js returns empty.

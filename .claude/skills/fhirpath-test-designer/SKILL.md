@@ -146,9 +146,9 @@ builder().group("Group name")
 Test classes cover a **class of related functions** (e.g., `StringFunctionsTest`, `CollectionFunctionsTest`), not a single function. Within that class, each function gets **one `@TestFactory` method** that covers all dimensions for that function using groups to organize them. Do not split a function's tests across multiple methods — groups within a single method handle the structure.
 
 ```java
-package com.example.fhirpath;
+package au.csiro.fhirpath;
 
-import com.example.fhirpath.test.FhirPathTestBase;
+import au.csiro.fhirpath.test.FhirPathTestBase;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DynamicTest;

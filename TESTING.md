@@ -96,7 +96,7 @@ Groups appear at the end of test descriptions as metadata: `[Integer arithmetic]
 Use the `context()` wrapper for tests with context:
 
 ```java
-import static com.example.fhirpath.test.FhirPathTestBuilder.context;
+import static au.csiro.fhirpath.test.FhirPathTestBuilder.context;
 
 .group("Context operations")
 .testEquals(1, "%context.count()", context("'x'"))
@@ -189,7 +189,7 @@ mvn test -Dtest=LiteralExpressionsTest -Dfhirpath.test.filter="5 + 10"
 
 ## YAML Reference Compatibility Suite
 
-The `src/test/java/com/example/fhirpath/compat/yaml/` package runs the official
+The `src/test/java/au/csiro/fhirpath/compat/yaml/` package runs the official
 [fhirpath.js 3.16.4](https://github.com/hl7/fhirpath.js) reference tests against fp2sql's
 Spark-backed evaluator. YAML cases, sample FHIR resources, and the exclusion `config.yaml` are
 copied verbatim from Pathling at `.local/pathling/fhirpath/src/test/resources/fhirpath-js/` and
@@ -294,7 +294,7 @@ The port deliberately skips a few Pathling capabilities:
 
 **Enable DEBUG logging** to see which test is executing:
 ```bash
-mvn test -Dorg.slf4j.simpleLogger.log.com.example.fhirpath.test=DEBUG
+mvn test -Dorg.slf4j.simpleLogger.log.au.csiro.fhirpath.test=DEBUG
 ```
 
 ### Common Failure Patterns

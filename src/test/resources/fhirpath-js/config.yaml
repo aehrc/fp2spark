@@ -30,16 +30,6 @@ excludeSet:
           See FHIRPath §5.2.5 repeat.
         function:
           - repeat
-      - title: trace() not yet implemented
-        type: feature
-        id: "#277"
-        comment: |
-          trace() not implemented. See FHIRPath §5.9.1.
-          Note: the fhirpath.js cases for trace() assert only the return
-          value and set disableConsoleLog, so they do not exercise the
-          diagnostic output. Passing them does not mean trace() works.
-        function:
-          - trace
       - title: Environment clock functions not yet implemented
         type: feature
         id: "#198"
@@ -752,6 +742,15 @@ excludeSet:
         comment: "D3: fp2sql does not support attributes on primitive types."
         any:
           - "Patient.name.given.repeat(id)"
+  - title: fp2sql — 5.9_utility_functions.yaml exclusions
+    glob: "fhirpath-js/cases/5.9_utility_functions.yaml"
+    exclude:
+      - title: "trace() on .id of primitive elements"
+        type: design
+        outcome: failure
+        comment: "D3: fp2sql does not support attributes on primitive types."
+        any:
+          - "Patient.name.given.trace('coll')[0].id"
   - title: fp2sql — 6.1_equality.yaml exclusions
     glob: "fhirpath-js/cases/6.1_equality.yaml"
     exclude:

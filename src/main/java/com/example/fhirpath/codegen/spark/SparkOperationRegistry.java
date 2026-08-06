@@ -15,6 +15,7 @@ import com.example.fhirpath.codegen.spark.ops.SetOps;
 import com.example.fhirpath.codegen.spark.ops.StringOps;
 import com.example.fhirpath.codegen.spark.ops.TerminologyOps;
 import com.example.fhirpath.codegen.spark.ops.TypeOps;
+import com.example.fhirpath.codegen.spark.ops.UtilityOps;
 import com.example.fhirpath.terminology.NoTerminologyService;
 import com.example.fhirpath.terminology.TerminologyServiceFactory;
 import jakarta.annotation.Nonnull;
@@ -92,6 +93,7 @@ public final class SparkOperationRegistry {
     StringOps.register(registry);
     MathOps.register(registry);
     ConversionOps.register(registry);
+    UtilityOps.register(registry);
     TerminologyOps.register(registry, terminologyServiceFactory);
     return registry;
   }

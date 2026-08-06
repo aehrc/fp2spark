@@ -365,6 +365,12 @@ public final class OperationRegistry {
             Signatures.variadic(
                 List.of(single(ANY), single(STRING)), ResultTypeSpec.single(BOOLEAN), 1)),
 
+        // UTILITY FUNCTIONS (FHIRPath Spec 5.9)
+
+        // trace(name [, projection]): α T → α T — returns the input collection unaltered.
+        // See Signatures#diagnosticPassThrough for why the diagnostic side channel is a no-op.
+        register("trace", Signatures.diagnosticPassThrough(ANY)),
+
         // MATH FUNCTIONS (FHIRPath Spec 5.7.3)
 
         // abs(): preserves input type (INTEGER → INTEGER, DECIMAL → DECIMAL, QUANTITY → QUANTITY)

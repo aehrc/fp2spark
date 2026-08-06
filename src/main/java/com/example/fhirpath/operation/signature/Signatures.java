@@ -345,6 +345,31 @@ public final class Signatures {
   }
 
   /**
+   * Diagnostic pass-through with an optional projection lambda: (α T, ?STRING [, ?Lambda(*ANY)]) →
+   * α T.
+   *
+   * <p>Example: {@code α T.trace(?STRING [, ?Lambda(*ANY)]) → α T}
+   *
+   * <p>Used by {@code trace()} (FHIRPath §5.9.1). The result type and cardinality are preserved
+   * exactly via {@link ResultTypeSpec#inputType()}. The optional projection is a {@code
+   * COLLECTION_WISE} lambda ({@code $this} = the input collection), matching the spec's "evaluating
+   * the projection expression on the input"; its body may return any type.
+   *
+   * <p>The diagnostic side channel that gives {@code trace()} its purpose is not implemented:
+   * fp2sql compiles to SQL and has no evaluation context to carry a diagnostic sink. The projection
+   * is still type-checked for static validity, then discarded by code generation. See #277.
+   */
+  @Nonnull
+  public static SignatureDefinition diagnosticPassThrough(@Nonnull final Type elementType) {
+    return new SignatureDefinition(
+        List.of(
+            many(elementType), single(Types.STRING), single(new LambdaType(Shape.many(Types.ANY)))),
+        ResultTypeSpec.inputType(),
+        2, // minArity — the projection is optional
+        LambdaBindingStrategy.COLLECTION_WISE);
+  }
+
+  /**
    * Union operation: (*T, *T) → *T with dynamic result type.
    *
    * <p>Used by both union ({@code |}) and combine ({@code ;}) operators. The result type is

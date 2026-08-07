@@ -29,8 +29,8 @@ The repo is `aehrc/fp2spark` on GitHub.
 - **Exclusion format and types**: [TESTING.md](../../../TESTING.md) § "Exclusion format"
 - **Specification divergences**: [SPEC_DIVERGENCES.md](../../../SPEC_DIVERGENCES.md)
 - **Config file**: `src/test/resources/fhirpath-js/config.yaml`
-- **Matcher semantics (authoritative)**: `src/test/java/com/example/fhirpath/compat/yaml/format/ExcludeRule.java`
-- **Test class**: `src/test/java/com/example/fhirpath/compat/yaml/YamlReferenceCompatTest.java`
+- **Matcher semantics (authoritative)**: `src/test/java/au/csiro/fhirpath/compat/yaml/format/ExcludeRule.java`
+- **Test class**: `src/test/java/au/csiro/fhirpath/compat/yaml/YamlReferenceCompatTest.java`
 
 ## Scope
 

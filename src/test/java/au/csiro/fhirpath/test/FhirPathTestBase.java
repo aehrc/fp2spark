@@ -1,0 +1,72 @@
+package au.csiro.fhirpath.test;
+
+import au.csiro.fhirpath.terminology.TerminologyServiceFactory;
+import jakarta.annotation.Nonnull;
+import org.apache.spark.sql.SparkSession;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInstance;
+
+/**
+ * Base class for FHIRPath DSL tests providing SparkSession setup and test builder factory.
+ *
+ * <p>Test classes extending this base can use the fluent DSL to create readable, well-organized
+ * tests:
+ *
+ * <pre>{@code
+ * @TestFactory
+ * Stream<DynamicTest> testArithmetic() {
+ *     return builder()
+ *         .group("Integer addition")
+ *         .testEquals(15, "5 + 10", "Basic addition")
+ *         .testEquals(10, "5 + 5", "Equal operands")
+ *         .group("Decimal arithmetic")
+ *         .testEquals(15.3, "5.1 + 10.2", "Decimal addition")
+ *         .build();
+ * }
+ * }</pre>
+ */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+public abstract class FhirPathTestBase {
+
+  protected SparkSession spark;
+
+  @BeforeAll
+  void setupSpark() {
+    spark = SparkSessionFactory.createTestSession();
+  }
+
+  @AfterAll
+  void teardownSpark() {
+    if (spark != null) {
+      spark.stop();
+    }
+  }
+
+  /**
+   * Create a new test builder for constructing FHIRPath test cases.
+   *
+   * <p>The builder is configured with an executor that uses this test's SparkSession.
+   *
+   * @return A new FhirPathTestBuilder instance
+   */
+  @Nonnull
+  protected FhirPathTestBuilder builder() {
+    FhirPathTestExecutor executor = new FhirPathTestExecutor(spark);
+    return new FhirPathTestBuilder(executor);
+  }
+
+  /**
+   * Create a new test builder whose expressions resolve terminology functions against the given
+   * terminology service.
+   *
+   * @param terminologyServiceFactory the terminology service to use, typically a {@code
+   *     MockTerminologyService}
+   * @return A new FhirPathTestBuilder instance
+   */
+  @Nonnull
+  protected FhirPathTestBuilder builder(
+      @Nonnull final TerminologyServiceFactory terminologyServiceFactory) {
+    return new FhirPathTestBuilder(new FhirPathTestExecutor(spark, terminologyServiceFactory));
+  }
+}

@@ -21,7 +21,7 @@ The repo is `aehrc/fp2spark` on GitHub.
 - **Exclusion format and types**: [TESTING.md](TESTING.md) § "Exclusion format"
 - **Specification divergences**: [SPEC_DIVERGENCES.md](SPEC_DIVERGENCES.md)
 - **Config file**: `src/test/resources/fhirpath-js/config.yaml`
-- **Test class**: `src/test/java/com/example/fhirpath/compat/yaml/YamlReferenceCompatTest.java`
+- **Test class**: `src/test/java/au/csiro/fhirpath/compat/yaml/YamlReferenceCompatTest.java`
 - **Arbitrary subjects**: `ENABLED_ARBITRARY_SUBJECTS` in `YamlSubjectFactory.java`
 - **Re-review companion skill**: `.claude/skills/review-compat-exclusions/SKILL.md` — use when
   auditing already-enabled content rather than enabling a blanket-skipped file.

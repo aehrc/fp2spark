@@ -3,11 +3,43 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.example</groupId>
-    <artifactId>fp2sql</artifactId>
+    <groupId>au.csiro.fhirpath</groupId>
+    <artifactId>fhirpath</artifactId>
     <version>0.1.0-SNAPSHOT</version>
     <name>FHIRPath to SparkSQL Translator</name>
     <description>Parse, analyze, and evaluate FHIRPath expressions directly to Spark SQL Column expressions.</description>
+
+    <developers>
+        <developer>
+            <name>Piotr Szul</name>
+            <email>piotr.szul@csiro.au</email>
+            <url>https://github.com/piotrszul</url>
+        </developer>
+    </developers>
+
+    <organization>
+        <name>Australian e-Health Research Centre, CSIRO</name>
+        <url>https://aehrc.csiro.au</url>
+    </organization>
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
+        </license>
+    </licenses>
+
+    <scm>
+        <url>https://github.com/aehrc/fp2spark</url>
+        <developerConnection>scm:git:https://github.com/aehrc/fp2spark.git</developerConnection>
+    </scm>
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/aehrc/fp2spark/issues</url>
+    </issueManagement>
+    <ciManagement>
+        <system>GitHub Actions</system>
+        <url>https://github.com/aehrc/fp2spark/actions</url>
+    </ciManagement>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
@@ -16,7 +48,7 @@
         <antlr4.version>4.13.1</antlr4.version>
         <spark.version>4.0.2</spark.version>
         <scala.binary.version>2.13</scala.binary.version>
-        <lombok.version>1.18.36</lombok.version>
+        <lombok.version>1.18.38</lombok.version>
         <logback.version>1.5.12</logback.version>
     </properties>
 
@@ -100,7 +132,7 @@
             <scope>test</scope>
         </dependency>
         <!-- SnakeYAML: used by the YAML-based FHIRPath reference compatibility suite
-             (src/test/java/com/example/fhirpath/compat/yaml) to parse test definitions
+             (src/test/java/au/csiro/fhirpath/compat/yaml) to parse test definitions
              and exclusion config.yaml. -->
         <dependency>
             <groupId>org.yaml</groupId>
@@ -240,7 +272,7 @@
                         <configuration>
                             <excludes combine.self="override"/>
                             <includes>
-                                <include>com/example/fhirpath/compat/**</include>
+                                <include>au/csiro/fhirpath/compat/**</include>
                             </includes>
                         </configuration>
                     </plugin>

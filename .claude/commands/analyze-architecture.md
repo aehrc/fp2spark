@@ -53,5 +53,5 @@ Use the code-refactoring agent to perform architectural analysis on a file, clas
 
 ## Usage:
 - `/analyze-architecture` - Analyzes currently open file
-- `/analyze-architecture src/main/java/com/example/package` - Analyzes specific package
+- `/analyze-architecture src/main/java/au/csiro/fhirpath/package` - Analyzes specific package
 - `/analyze-architecture ClassName` - Analyzes specific class

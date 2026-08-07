@@ -1,5 +1,5 @@
 /*
- * Copyright © 2018-2026 Commonwealth Scientific and Industrial Research
+ * Copyright © 2025-2026 Commonwealth Scientific and Industrial Research
  * Organisation (CSIRO) ABN 41 687 119 230.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package au.csiro.fhirpath.compat;
 
 import static org.hl7.fhir.r4.model.Enumerations.FHIRDefinedType.REFERENCE;

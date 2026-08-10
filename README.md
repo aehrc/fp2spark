@@ -129,7 +129,7 @@ Spark SQL Column
 - String functions: `substring()`, `startsWith()`, `endsWith()`, `contains()`, `matches()`,
   `replace()`, `replaceMatches()`, `length()`, `upper()`, `lower()`, `trim()`, `split()`,
   `join()`, `toChars()`
-- Type functions and operators: `is`, `as`, `ofType()`, `convertsTo*()`, `to*()`
+- Type functions and operators: `is`, `as`, `ofType()`, `type()`, `convertsTo*()`, `to*()`
 - Filtering and projection: `where()`, `select()`, `repeat()`
 - Existence and subsetting: `exists()`, `empty()`, `all()`, `first()`, `last()`, `single()`,
   `skip()`, `take()`, collection indexer (`collection[index]`)
@@ -145,7 +145,6 @@ Spark SQL Column
 
 **Not yet implemented**:
 - Equivalence operators: `~`, `!~`
-- `type()` reflection function
 - Terminology server authentication ([#282](https://github.com/aehrc/fp2spark/issues/282))
 - Terminology response cache respecting server-provided expiry / ETag revalidation
   ([#288](https://github.com/aehrc/fp2spark/issues/288))

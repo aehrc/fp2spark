@@ -281,9 +281,6 @@
                                 <!-- Mirrors of Pathling's DSL test classes; retain Pathling's original
                                      2018 copyright dating rather than fp2sql's inceptionYear. -->
                                 <exclude>src/test/java/au/csiro/fhirpath/compat/*DslTest.java</exclude>
-                                <exclude>scratch/**</exclude>
-                                <exclude>docs/superpowers/**</exclude>
-                                <exclude>2025-10-13-analyze-the-current-implementation-of-irnode-and-t.txt</exclude>
                             </excludes>
                         </licenseSet>
                     </licenseSets>

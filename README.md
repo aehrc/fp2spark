@@ -4,9 +4,9 @@ Parse and evaluate FHIRPath expressions directly to Apache Spark SQL Column expr
 
 ## Project Status
 
-**Current Phase**: Phase 1 - FHIRPath System Types Support
+This project implements the FHIRPath language subset required for [SQL on FHIR v2 ShareableViewDefinition](https://build.fhir.org/ig/FHIR/sql-on-fhir-v2/StructureDefinition-ShareableViewDefinition.html). See [docs/SHAREABLE_VIEW_REQUIREMENTS.md](docs/SHAREABLE_VIEW_REQUIREMENTS.md) for the original requirements analysis (its phase breakdown reflects historical planning, not current status — see Supported Features below for what's implemented today).
 
-This project is implementing the FHIRPath language subset required for [SQL on FHIR v2 ShareableViewDefinition](https://build.fhir.org/ig/FHIR/sql-on-fhir-v2/StructureDefinition-ShareableViewDefinition.html). See [docs/SHAREABLE_VIEW_REQUIREMENTS.md](docs/SHAREABLE_VIEW_REQUIREMENTS.md) for complete requirements and [issue #3](https://github.com/aehrc/fp2spark/issues/3) for tracking.
+It is under active development; the language surface below reflects what's implemented today, not a finished spec.
 
 ## Tech Stack
 
@@ -110,7 +110,7 @@ Spark SQL Column
 
 ### Key Components
 
-- **Parser** (`src/main/antlr/FhirPath.g4`): ANTLR grammar for FHIRPath
+- **Parser** (`src/main/antlr/au/csiro/fhirpath/parser/FhirPath.g4`): ANTLR grammar for FHIRPath
 - **AST** (`au.csiro.fhirpath.ast`): Abstract syntax tree nodes
 - **Analyzer** (`au.csiro.fhirpath.analyzer`): Type system and semantic analysis
 - **IR** (`au.csiro.fhirpath.ir`): Typed intermediate representation
@@ -118,23 +118,39 @@ Spark SQL Column
 
 ## Supported Features
 
-**Phase 1 (In Progress)**:
-- Literals: String, Integer, Decimal, Boolean
-- Boolean operators: `and`, `or`, `not`
-- Arithmetic operators: `+`, `-`, `*`, `/`
-- Comparison operators: `=`, `!=`, `<`, `<=`, `>`, `>=`
-- Functions: `where()`, `exists()`, `empty()`, `ofType()`, `first()`
-- Collection indexer: `collection[index]`
+**Language core**:
+- Literals: String, Integer, Decimal, Boolean, Date, DateTime, Time, Quantity
+- Boolean operators: `and`, `or`, `xor`, `implies`, `not()`
+- Arithmetic and math operators/functions: `+`, `-`, `*`, `/`, `mod`, `ceiling()`, `floor()`,
+  `round()`, `sqrt()`, `truncate()`, `exp()`, `ln()`, `log()`
+- Comparison and equality operators: `=`, `!=`, `<`, `<=`, `>`, `>=`
+- Membership and set operators: `in`, `contains`, `union` (`|`), `combine()`, `intersect()`,
+  `exclude()`, `distinct()`, `isDistinct()`, `subsetOf()`, `supersetOf()`
+- String functions: `substring()`, `startsWith()`, `endsWith()`, `contains()`, `matches()`,
+  `replace()`, `replaceMatches()`, `length()`, `upper()`, `lower()`, `trim()`, `split()`,
+  `join()`, `toChars()`
+- Type functions and operators: `is`, `as`, `ofType()`, `type()`, `convertsTo*()`, `to*()`
+- Filtering and projection: `where()`, `select()`, `repeat()`
+- Existence and subsetting: `exists()`, `empty()`, `all()`, `first()`, `last()`, `single()`,
+  `skip()`, `take()`, collection indexer (`collection[index]`)
+- Utility functions: `trace()`, `iif()`
+
+**FHIR-specific**:
+- Field traversal on FHIR resources
+- `extension()` function
+- `resolve()` for reference navigation
+- SQL on FHIR extension functions: `getResourceKey()`, `getReferenceKey()`
 - Terminology functions: `memberOf()` (needs a terminology server — see
   [Terminology server](#terminology-server))
 
-**Coming in Phase 2**:
-- FHIR-specific types and resources
-- Field traversal on FHIR resources
-- `extension()` function
+**Not yet implemented**:
+- Equivalence operators: `~`, `!~`
+- Terminology server authentication ([#282](https://github.com/aehrc/fp2spark/issues/282))
+- Terminology response cache respecting server-provided expiry / ETag revalidation
+  ([#288](https://github.com/aehrc/fp2spark/issues/288))
 
-**Coming in Phase 3**:
-- SQL on FHIR extension functions: `getResourceKey()`, `getReferenceKey()`
+See [SPEC_DIVERGENCES.md](SPEC_DIVERGENCES.md) for known differences from the FHIRPath
+specification and reference implementations.
 
 ## Requirements
 
@@ -158,6 +174,12 @@ Key points:
 - [JAVA_CODING_STYLE.md](JAVA_CODING_STYLE.md) - Java coding conventions
 - [docs/SHAREABLE_VIEW_REQUIREMENTS.md](docs/SHAREABLE_VIEW_REQUIREMENTS.md) - FHIRPath requirements
 
-## License
+## Licensing and attribution
 
-Apache 2.0
+This project is licensed under the [Apache License, Version 2.0](LICENSE),
+copyright © Commonwealth Scientific and Industrial Research Organisation
+(CSIRO).
+
+This is experimental, research software. It is provided without warranty of
+any kind, express or implied, including but not limited to fitness for a
+particular purpose. See the [LICENSE](LICENSE) for the full terms.

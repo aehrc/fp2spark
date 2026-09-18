@@ -1,12 +1,53 @@
-# FHIRPath to SparkSQL Translator
+# FHIRPath to SQL
 
-Parse and evaluate FHIRPath expressions directly to Apache Spark SQL Column expressions.
+Compile FHIRPath expressions into SQL engine expressions — today, Apache Spark SQL
+`Column` trees.
+
+Rather than interpreting FHIRPath row by row, fp2sql translates an expression once,
+ahead of execution, into a native query expression that the engine plans and optimises
+like any hand-written query.
 
 ## Project Status
 
 This project implements the FHIRPath language subset required for [SQL on FHIR v2 ShareableViewDefinition](https://build.fhir.org/ig/FHIR/sql-on-fhir-v2/StructureDefinition-ShareableViewDefinition.html). See [docs/SHAREABLE_VIEW_REQUIREMENTS.md](docs/SHAREABLE_VIEW_REQUIREMENTS.md) for the original requirements analysis (its phase breakdown reflects historical planning, not current status — see Supported Features below for what's implemented today).
 
 It is under active development; the language surface below reflects what's implemented today, not a finished spec.
+
+## Design
+
+Two assumptions shape the whole system.
+
+### Statically validated expressions
+
+fp2sql resolves every type and cardinality at **compile time**, from the FHIR schema —
+never from the data. An expression that compiles is guaranteed to evaluate on any
+conformant dataset, whatever the values or collection sizes turn out to be. Errors that
+a dynamic FHIRPath engine would surface mid-query — a math operator handed two values, a
+`where()` clause that isn't boolean — surface here as a compilation failure, before a
+single row is read.
+
+This is a deliberate trade. The FHIRPath specification assumes a dynamic evaluator and
+permits runtime singleton coercion, so fp2sql rejects a few expressions the spec allows:
+`Patient.name + 'x'` fails to compile because `name` is schema-cardinality `MANY`, even
+for a patient who happens to have exactly one name. The cost is paid at authoring time;
+what you get back is that a compiled view definition cannot fail on data it has not seen
+yet. See [D1 in SPEC_DIVERGENCES.md](SPEC_DIVERGENCES.md#d1-static-typing-and-cardinality) for the full consequences.
+
+### One validation layer, pluggable emitters
+
+Parsing, type resolution, overload resolution and cardinality checking are engine-agnostic
+and happen exactly once. They produce a typed, target-independent IR in which every node
+already carries its resolved `Shape` (element type + cardinality) — no type information is
+recomputed downstream.
+
+Emitting SQL is then a separate, deliberately thin concern: a visitor over that IR
+(`IRNodeVisitor<T>`, where `T` is whatever the target builds — `Column` for Spark, a
+`String` for a textual SQL dialect). A new backend implements that one interface and
+touches nothing else; the analyzer, the type system and the spec-conformance test suite
+are shared across every target, so dialect support is not re-litigated per engine.
+
+**Spark is currently the only emitter shipped.** The seam is real and load-bearing in the
+design, but a second backend has not been written yet.
 
 ## Tech Stack
 
@@ -99,22 +140,39 @@ Authentication is not yet supported: the server must be reachable without creden
 ## Architecture
 
 ```
-FHIRPath Expression
-  ↓ ANTLR Parser
-AST (Abstract Syntax Tree)
-  ↓ Analyzer (type resolution, overload resolution)
-IR (Intermediate Representation)
-  ↓ Code Generator
-Spark SQL Column
+FHIRPath expression
+  │
+  │  ── shared, engine-agnostic ──────────────────────────
+  ↓
+ANTLR parser        →  AST
+  ↓
+Analyzer            →  type resolution, overload resolution,
+                       cardinality checking, implicit casts
+  ↓
+Typed IR               every node attributed with Shape(cardinality, type)
+  │
+  │  ── per-target emitter (IRNodeVisitor<T>) ────────────
+  ↓
+SparkCodeGenerator  →  Spark SQL Column
+(other targets)     →  SQL string, …
 ```
 
-### Key Components
+### Key components
 
-- **Parser** (`src/main/antlr/au/csiro/fhirpath/parser/FhirPath.g4`): ANTLR grammar for FHIRPath
-- **AST** (`au.csiro.fhirpath.ast`): Abstract syntax tree nodes
-- **Analyzer** (`au.csiro.fhirpath.analyzer`): Type system and semantic analysis
-- **IR** (`au.csiro.fhirpath.ir`): Typed intermediate representation
-- **Code Generator** (`au.csiro.fhirpath.spark`): Spark SQL Column generation
+| Layer | Package | Role |
+|---|---|---|
+| Parser | `src/main/antlr/.../FhirPath.g4` | ANTLR grammar for FHIRPath |
+| AST | `au.csiro.fhirpath.ast` | Untyped syntax tree |
+| Analyzer | `au.csiro.fhirpath.analyzer` | Type system, semantic analysis, static validation |
+| IR | `au.csiro.fhirpath.ir` | Typed, target-agnostic representation |
+| Emitter | `au.csiro.fhirpath.spark` | Spark SQL `Column` generation |
+
+Everything above the emitter boundary is shared. Operation signatures live in a single
+`OperationRegistry`, which is what makes auditing the implementation against the FHIRPath
+specification tractable.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design and
+[TYPE_SYSTEM.md](TYPE_SYSTEM.md) for the element-first type model.
 
 ## Supported Features
 
